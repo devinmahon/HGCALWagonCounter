@@ -123,6 +123,7 @@ def hexdraw(bow, x, y, des, rot, mb, eng):
                          fill=MBColor(bow, mb, des), outline=(0, 0, 0))
     #elif des == 'cOe':
     elif 'c' in des:
+        rot = (rot+2)%6
         if rot == 2:
             draw.polygon(((cx, cy+r), (cx-.866*r, cy+r/2), (cx-.866*r, cy-r/2)),
                          fill=MBColor(bow, mb, des), outline=(0, 0, 0))
@@ -143,7 +144,6 @@ def hexdraw(bow, x, y, des, rot, mb, eng):
                          fill=MBColor(bow, mb, des), outline=(0, 0, 0))
     #elif des == 'dIe' or des == 'dOe':
     elif 'd' in des:
-        #rot = (rot+3)%6
         rot = (rot+5)%6
         if rot == 5:
             draw.polygon(((cx, cy+r), (cx-.866*r, cy+r/2), (cx-.866*r, cy-r/2),
@@ -978,7 +978,7 @@ def VertToiRot(ls):
 layerstart = 1
 layerend = 2
 xmax = 5000#2000
-ymax = 2300#2000
+ymax = 3000#2000
 xoff = 850
 yoff = 100
 # radius

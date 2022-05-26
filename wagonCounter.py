@@ -5,7 +5,9 @@ import itertools
 import wagonDrawer
 import sys
 import time
+import copy
 import matplotlib.pyplot as plt
+from matplotlib.ticker import MaxNLocator
 
 def checkContiguity(group):
 
@@ -62,66 +64,51 @@ def all_pairs(lst):
 
 def main():
 
-  geometryPath = '/Users/devinmahon/Documents/CMS/hgcal_modmap/maps/'
-  geometryFile = '220120_104521_fullGeom'
-  #geometryPath = '/Users/devinmahon/Documents/CMS/hgcal_modmap/geometries/v13.2/'
-  #geometryFile = 'geometry.hgcal'
+  # Configuration parameters
+  threesSeparate = False
+  halvesSemisSame = False
+  LDOnly = True
+
+  # Specify the geometry file to be used
+  geometryPath = 'geometries/v13.2/'
+  geometryFile = 'geometry.hgcal'
 
   # Extract required columns
-  #geom = pd.read_csv('geometries/v11.6/geometry.hgcal.txt',delim_whitespace=True)
-  #geom = pd.read_csv('/Users/devinmahon/Documents/CMS/hgcal_modmap/maps/210927_151335_fullGeom_v2.txt',delim_whitespace=True)
   geom = pd.read_csv('{0}{1}.txt'.format(geometryPath,geometryFile),delim_whitespace=True)
-  geomBasic = geom[['plane','u','v','x0','y0','itype','irot','MB','wagon','isEngine','HDorLD','trigLinks','dataLinks_ld','dataLinks_hd']]
-  geomBasic = geomBasic[~geomBasic['itype'].str.contains('c')] # Threes don't affect wagon shape
+  geomBasic = geom[['plane','u','v','x0','y0','itype','irot','MB','wagon','isEngine','HDorLD','trigLinks','dataLinks_ld','dataLinks_hd']].copy()
+  if not threesSeparate: geomBasic = geomBasic[~geomBasic['itype'].str.contains('c')] # Threes don't affect wagon shape
   geomBasic['itype'] = geomBasic['itype'].str[0]
   geomBasic['r'] = np.sqrt(geomBasic['x0']**2 + geomBasic['y0']**2)
+  if halvesSemisSame: 
+    #geomBasic.loc[geomBasic['itype'] == 'd','irot'] += 1
+    geomBasic.loc[geomBasic['itype'] == 'd','itype'] = 'a'
 
-  fiberCountsFile = '/Users/devinmahon/Documents/CMS/hgcal_modmap/maps/fiberCounts_220221_163022.txt'
+  #  Specify the file with the fiber counts
+  fiberCountsFile = 'fiberCounts/fiberCounts_220221_163022.txt'
   fiberCounts = pd.read_csv(fiberCountsFile,delim_whitespace=True,dtype={'TlpGBT':'Int64'})
   geomBasic = pd.merge(geomBasic, fiberCounts,  how='left', on=['plane','MB'])
-  #geomBasic = geomBasic[geomBasic['plane'] == 1]
-  #print(geomBasic[['plane','u','v','MB','TlpGBT']][0:50])
-  #sys.exit()
 
-  # Get a subset
+  # Get a subset (if needed)
   #geomBasic = geomBasic[(geomBasic['plane'] <= 28) | (geomBasic['plane'] >= 37)]
-  geomBasic = geomBasic[geomBasic['HDorLD'] == 1]
+  if LDOnly: geomBasic = geomBasic[geomBasic['HDorLD'] == 0]
+  #geomBasic = geomBasic[(geomBasic['plane'] == 33) & (geomBasic['HDorLD'] == 0)]
 
-  # Consolidate partials
-  #geomBasic.loc[geomBasic['itype'] == 'b','itype'] = 'F'
+  # Remove impossible wagons
+  removeWagons = [[3,2,0],[3,102,0],[5,2,0],[5,102,0],[3,0,0],[3,100,0],[5,0,0],[5,100,0]]
+  for w in removeWagons:
+    geomBasic = geomBasic.drop(geomBasic[(geomBasic['plane'] == w[0]) & (geomBasic['MB'] == w[1]) & (geomBasic['wagon'] == w[2])].index)
 
+  # Group modules by plane (layer), MB index, and wagon index
   geomGrouped = geomBasic.sort_values('r',ascending=True).groupby(['plane','MB','wagon'])
 
   wagonCodes = []
   wagonCodesDict = {}
   for name, group in geomGrouped:
-
+    
     newCode = []
-    #print(name)
 
     # Ensure that ordering of modules is contiguous
-    #if name != (1,109,1):
-    #  continue
     group = makeContiguous(group)    
-
-    #if name in [(35,9,0),(35,9,1),(36,2,0),(36,2,1),(37,10,0),(37,10,1)]: print(group)
-
-    #nModules = group.shape[0]
-    #nomSequence = list(range(nModules - 1) + np.ones(nModules - 1,dtype=int))
-    #orderings = list(itertools.permutations(nomSequence))
-    #orderings = orderings[1:] # First one is the nominal ordering
-    #groupTemp = group.copy()
-    #for ordering in orderings:
-    #  isContiguous, badIndex = checkContiguity(groupTemp)
-    #  if isContiguous:
-    #    break
-    #  else:
-    #    groupTemp.iloc[nomSequence] = group.iloc[list(ordering)]
-    #group = groupTemp.copy()
-    ##print(checkContiguity(group))
-    ##print(checkContiguity(group)[0])
-    #if not checkContiguity(group)[0]:
-    #  print('ERROR: Could not make wagon contiguous')
 
     # Add code for HD/LD
     if group['HDorLD'].astype(bool).all():
@@ -131,21 +118,16 @@ def main():
     else:
       print('ERROR: Train contains both HD and LD modules. MB:',group.loc[0,'MB'])
 
-    # Add code for isEngine (direction)
+    # Add code for isEngine (for west wagons set index of engine, for east wagons set to -1)
     #newCode.append(1) if (group['isEngine'] == True).any() else newCode.append(0)
     try: enginePos = list(group['isEngine'] == True).index(True)
     except ValueError: enginePos = -1
     newCode.append(enginePos)   
 
-    # Add placeholder code for crossover trigger links
+    # Add placeholder code for crossover trigger links (# of outgoing links)
     newCode.append(0)
-    #totTrigLinks = sum([int(x) for x in group['trigLinks'].tolist()])
-    #if newCode[0] == 0 and totTrigLinks > 7:
-    #  x1 = totTrigLinks - 7
-    #  x2 = -x1
-    #  
-    #  wagonTempPartner = geomBasic[(geomBasic['plane'] == group['plane'].iloc[0]) & (geomBasic['MB'] == group['MB'].iloc[0]) & (geomBasic['wagon'] == int(not group['wagon'].iloc[0])) ]
- 
+
+    # Determine angles and orientation codes
     irotPrev, uPrev, vPrev = -999 * np.ones(3,dtype=int)
     i = 0
     for rowIndex, row in group.iterrows():
@@ -181,7 +163,6 @@ def main():
 
         # Orientation code
         orientCode = (irotCurr - irotPrev) % 6
-        #orientCode = -1 if not 'F' in row['itype'] else (irotCurr - irotPrev) % 6 # Orientation of non-full modules contains no information since modules can only attach to neighbors in one way based on angle
         newCode.append(orientCode)
 
       newCode.append(row['itype'])
@@ -191,27 +172,17 @@ def main():
       vPrev    = vCurr
       i += 1
    
-    #print(group)
-    #print(newCode)
-    # If the first module is non-full, orientation wrt second module contains no information
-    #if len(newCode) > 3 and newCode[2] != 'F': newCode[4] = -1
-
-    #if newCode == [0,-1,'F',1,0,'d',5,1,'b']:
-    #  print(group)    
-    
     wagonCodes.append(newCode)
     wagonCodesDict.setdefault(tuple(newCode),[]).append([row['plane'],row['MB'],row['wagon']])
 
   # Get all unique wagons
   codeCounter = Counter([tuple(i) for i in wagonCodes])
-  #print(dict(codeCounter))
-  #print('-------')
+
   # Consolidate 180 degree rotations
   duplicateCodes = []
   for wagon in list(codeCounter.keys()):
     if len(wagon) == 4:
       continue
-    #print('original:',wagon)
     preCodes = wagon[0:3] #wagon[0:2]
     if preCodes[1] != -1:
       preCodesRot = [preCodes[0],list(reversed(list(range(int(len(wagon)/3)))))[preCodes[1]],preCodes[2]]
@@ -228,6 +199,11 @@ def main():
 
     wagonRot = tuple(wagonRot)
     if wagonRot in codeCounter and not wagonRot in duplicateCodes:
+      #if wagon == (0, 0, 0, 'F', 3, 0, 'F', 3, 0, 'F', 3, 3, 'a'): print('deleting',wagonRot)
+
+      for id in wagonCodesDict[wagonRot]:
+        geomBasic.loc[(geomBasic['plane'] == id[0]) & (geomBasic['MB'] == id[1]) & (geomBasic['wagon'] == id[2]),'r'] *= -1
+
       codeCounter[wagon] += codeCounter[wagonRot]
       duplicateCodes.append(wagon)
       codeCounter.pop(wagonRot,None)
@@ -235,17 +211,16 @@ def main():
       wagonCodesDict[wagon] = wagonCodesDict[wagon] + wagonCodesDict[wagonRot]
       wagonCodesDict.pop(wagonRot)
 
+  geomGrouped = geomBasic.sort_values('r',ascending=True).groupby(['plane','MB','wagon'])
+
   numTrigLinksHDLT15 = 0
   numHD = 0
-  wagonCodesDictCopy = wagonCodesDict.copy()
+  wagonCodesDictCopy = copy.deepcopy(wagonCodesDict)
   for key, value in wagonCodesDictCopy.items():
     maxTrigLinks = []
     numDataLinksHDGT7 = 0
-    #print(key)
     for id in value:
-      #if id == [3,2,0] or id == [3,102,0] or id == [5,2,0] or id == [5,102,0] or id == [3,0,0] or id == [3,100,0] or id == [5,0,0] or id == [5,100,0]: continue
-      wagonTemp = geomBasic[(geomBasic['plane'] == id[0]) & (geomBasic['MB'] == id[1]) & (geomBasic['wagon'] == id[2])]#.sort_values('r',ascending=True)
-      #print(wagonTemp)
+      wagonTemp = geomGrouped.get_group((id[0],id[1],id[2])) #geomBasic[(geomBasic['plane'] == id[0]) & (geomBasic['MB'] == id[1]) & (geomBasic['wagon'] == id[2])]#.sort_values('r',ascending=True)
       numTrigLinks = [int(x) for x in wagonTemp['trigLinks'].tolist()]
       totTrigLinks = sum(numTrigLinks)
       if key[0] == 0: numDataLinks = [int(x) for x in wagonTemp['dataLinks_ld'].tolist()]
@@ -263,7 +238,7 @@ def main():
       isNew = False
       if key[0] == 0:
         idPartner = [id[0],id[1],int(not id[2])]
-        wagonTempPartner = geomBasic[(geomBasic['plane'] == id[0]) & (geomBasic['MB'] == id[1]) & (geomBasic['wagon'] == int(not id[2]))]
+        wagonTempPartner = geomGrouped.get_group((idPartner[0],idPartner[1],idPartner[2]))
         numTrigLinksPartner = [int(x) for x in wagonTempPartner['trigLinks'].tolist()]
         totTrigLinksPartner = sum(numTrigLinksPartner)
         # Overflow links
@@ -309,34 +284,60 @@ def main():
             wagonCodesDict[newCode1] = [id]
           if newCode2 in codeCounter:
             codeCounter[newCode2] += 1
-            wagonCodesDict[newCode2] = wagonCodesDict[newCode2] + [id]
+            wagonCodesDict[newCode2] = wagonCodesDict[newCode2] + [idPartner]
           else:
             codeCounter[newCode2] = 1
-            wagonCodesDict[newCode2] = [id]
+            wagonCodesDict[newCode2] = [idPartner]
 
       # Trigger links
       if not len(maxTrigLinks): maxTrigLinks = numTrigLinks
       else: 
         maxTrigLinks = np.maximum(maxTrigLinks,numTrigLinks)
+
+      ################################
+      # Print out optional information
+      ################################
+
       # Check number of links on individual MBs
       #if key == (1, 2, 0, 'g', 3, 3, 'F', 0, 0, 'F'):
       #  if sum(numTrigLinks) >= 24: print(id,numTrigLinks)
+      #  if numTrigLinks[1] == 6: print(id,numTrigLinks,wagonTemp)
       #if key == (1, 3, 0, 'd', 4, 4, 'F', 0, 0, 'F', 0, 0, 'F'):
       #  if sum(numTrigLinks) > 28: print(id,numTrigLinks)
+
+      # Check if link counts
       #if sum(numTrigLinks) > 28: print(id,numTrigLinks)
         #if numTrigLinks[0] > 6:
         #  print(id,numTrigLinks)
         #if numTrigLinks[1] > 3:
         #  print(id,numTrigLinks)
+
+    # Print out links (WARNING: THE CROSSOVERS AREN'T FIXED IN THE COPY!!!)
     #print(maxTrigLinks)
+
     # Print messages about link distribution on LD wagons
     #if key[0] == 0 and sum(maxTrigLinks) > 7: print('Wagon',key,'has maxTrigLinks with total > 7. maxTrigLinks = ',maxTrigLinks)
+    #if key in [(0,-1,0,'F'),(0,0,0,'F'),(0,-1,0,'F',3,0,'F'),(0,0,0,'F',3,0,'F'),(0,-1,0,'F',0,0,'F',0,0,'F'),(0,0,0,'F',3,0,'F',3,0,'F'),(0,0,1,'F',3,0,'F'),(0,-1,-1,'F',3,0,'F')]: print('-->',key,':',maxTrigLinks)
+
     # Print messages about HD links
     #if key[0] == 1: print('Wagon',key,'has maxTrigLinks = ',maxTrigLinks)
     # Print message about how many HD wagons has more than 7 DAQ links
     #if key[0] == 1: print(numDataLinksHDGT7,'/',len(value),'('+'{:.1f}'.format(100 * numDataLinksHDGT7 / len(value)),'%) HD wagons with code',key,'have more than 7 DAQ links')
 
+  # Print message about total number of HD wagons with <= 14 trigger links
   #print(numTrigLinksHDLT15,'out of',numHD,'(','{:.1f}'.format(numTrigLinksHDLT15 * 100.0 / numHD),'%) HD wagons have <= 14 trigger links')
+
+  # Print out maxTrigLinks for individual wagon varieties
+  #for key,value in wagonCodesDict.items():
+  #  maxTrigLinks = []
+  #  for id in value:
+  #    wagonTemp = geomGrouped.get_group((id[0],id[1],id[2]))
+  #    numTrigLinks = [int(x) for x in wagonTemp['trigLinks'].tolist()]
+  #    if not len(maxTrigLinks):	maxTrigLinks = numTrigLinks
+  #    else: 			maxTrigLinks = np.maximum(maxTrigLinks,numTrigLinks)
+  #    #if key == (0, 0, 0, 'F', 3, 0, 'F', 3, 0, 'F', 3, 3, 'a') and numTrigLinks[3] == 2: print(id,numTrigLinks)
+  #  #if key[0] == 0 and sum(maxTrigLinks) > 7: print(key,maxTrigLinks)
+  #  if key in [(0,-1,0,'F'),(0,0,0,'F'),(0,-1,0,'F',3,0,'F'),(0,0,0,'F',3,0,'F'),(0,-1,0,'F',0,0,'F',0,0,'F'),(0,0,0,'F',3,0,'F',3,0,'F'),(0,0,1,'F',3,0,'F'),(0,-1,-1,'F',3,0,'F')]: print(key,':',maxTrigLinks)
 
   # Remove empty Counter entries
   codeCounter = Counter({i:j for i,j in codeCounter.items() if j != 0})
@@ -345,20 +346,49 @@ def main():
   with open('wagonDict/wagonDict_{}.txt'.format(geometryFile),'w') as f:
     print(wagonCodesDict,file=f)
 
-  # Count no. of TlpGBTs required per variety
-  lpGBTCounts = {} 
+  # Count no. of trigger lpGBTs required per variety and make histograms
+  lpGBTCounts = {}
+  maxTrigLinksPerFiber = {}
   for key, value in wagonCodesDict.items():
     if key[0] != 1: continue
     lpGBTCounts[key] = []
-    for id in value:
-      numlpGBT = geomBasic[(geomBasic['plane'] == id[0]) & (geomBasic['MB'] == id[1]) & (geomBasic['wagon'] == id[2])]['TlpGBT'].iloc[0]
-      if not pd.isna(numlpGBT) and numlpGBT != 0: lpGBTCounts[key].append(numlpGBT)
+    #for id in value:
+    #  numlpGBT = geomBasic[(geomBasic['plane'] == id[0]) & (geomBasic['MB'] == id[1]) & (geomBasic['wagon'] == id[2])]['TlpGBT'].iloc[0]
+    #  if not pd.isna(numlpGBT) and numlpGBT != 0: 
+    #    lpGBTCounts[key].append(numlpGBT)
+    # Get maxTrigLinks for each variety per no. of TlpGBTs
+    for i in [1,2,3,4]:
+      maxTrigLinks = []
+      for id in value:
+        wagonTemp = geomGrouped.get_group((id[0],id[1],id[2]))
+        numlpGBT = wagonTemp['TlpGBT'].iloc[0]
+        if pd.isna(numlpGBT) or numlpGBT == 0 or numlpGBT != i: continue
+        lpGBTCounts[key].append(numlpGBT)
+        numTrigLinks = [int(x) for x in wagonTemp['trigLinks'].tolist()]
+        totTrigLinks = sum(numTrigLinks)
+        if not len(maxTrigLinks): maxTrigLinks = numTrigLinks
+        else: 
+          maxTrigLinks = np.maximum(maxTrigLinks,numTrigLinks)
+      if len(maxTrigLinks): 
+        maxTrigLinksPerFiber[key+(i,)] = []
+        maxTrigLinksPerFiber[key+(i,)] = np.array(maxTrigLinks)
+       
   for key,value in lpGBTCounts.items():
-    plt.hist(value,bins=[1,2,3,4,5])
-    plt.xlabel('No. of Required Trigger lpGBTs')
+    ax = plt.figure().gca()
+    plt.hist(value,bins=[1,2,3,4,5],orientation='horizontal')
+    plt.xlabel('Counts')
+    plt.ylabel('No. of Required Trigger lpGBTs')
+    ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+    ax.yaxis.set_major_locator(MaxNLocator(integer=True))
+
+    # Add maxTrigLinks labels for each bin
+    for i in [1,2,3,4]:
+      if key+(i,) in maxTrigLinksPerFiber:
+        plt.text(0.2,i+0.5,str(maxTrigLinksPerFiber[key+(i,)]),fontsize=14) 
+
     plt.savefig('output/fiberHistograms/hist_{}.png'.format(''.join([str(x) for x in key])))
     plt.clf()
- 
+
   #print(codeCounter)
   uniqueWagonCodes = [list(i) for i in set(tuple(i) for i in list(codeCounter.keys()))]
   uniqueWagonCodesHD = [i for i in uniqueWagonCodes if i[0] == 1]
@@ -368,13 +398,11 @@ def main():
   print('Number of LD wagon types:',len(uniqueWagonCodesLD))
   #print(uniqueWagonCodesLD)
 
-  # Sort by HD/LD then number of wagons
-  #codeCounter = dict(sorted(codeCounter.items(), key=lambda item: (item[0][0],item[1]), reverse=True))
-  # Sort by
+  # Sort by HD/LD then no. of modules then no. of instances 
   codeCounter = dict(sorted(codeCounter.items(), key=lambda item: (item[0][0],len(item[0]),item[1]), reverse=True))
 
+  # Draw and save the wagon summary (see wagonDrawer.py)
   wagonDrawer.wagonDrawer(codeCounter,geometryFile)
-  #wagonDrawer.wagonDrawer(dict(sorted(codeCounter.items(), key=lambda item: item[1],reverse=True)),geometryFile)
 
 if __name__ == '__main__':
   main()
