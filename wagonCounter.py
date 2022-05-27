@@ -9,6 +9,7 @@ import copy
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
 
+# Return true if the modules are ordered such that each one touches the previous one
 def checkContiguity(group):
 
   group = group[['u','v']].diff()
@@ -21,6 +22,7 @@ def checkContiguity(group):
   else:
     return False, group.index.get_loc(group[group.touchPrev == False].iloc[0].name) # Index of first non-touching module
 
+# Properly order the modules
 def makeContiguous(group):
 
   #print(group)
@@ -46,22 +48,9 @@ def makeContiguous(group):
 
   return group
 
-def all_pairs(lst):
-  if len(lst) < 2:
-    yield []
-    return
-  if len(lst) % 2 == 1:
-    # Handle odd length list
-    for i in range(len(lst)):
-      for result in all_pairs(lst[:i] + lst[i+1:]):
-         yield result
-  else:
-    a = lst[0]
-    for i in range(1,len(lst)):
-      pair = (a,lst[i])
-      for rest in all_pairs(lst[1:i]+lst[i+1:]):
-        yield [pair] + rest
-
+##################################################
+# MAIN
+##################################################
 def main():
 
   # Configuration parameters
