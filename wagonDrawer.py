@@ -988,7 +988,8 @@ d = r * math.cos(math.pi/6)
 #bow = 0
 im2 = Image.new('RGB', (xmax, ymax), (128, 128, 128))
 draw = ImageDraw.Draw(im2)
-font = ImageFont.truetype('Keyboard.ttf',30)
+# font = ImageFont.truetype('Keyboard.ttf',30)
+font = ImageFont.load_default()
 
 
 # Draw Summary
