@@ -169,7 +169,7 @@ def main():
   codeCounter = Counter([tuple(i) for i in wagonCodes])
 
   # Consolidate 180 degree rotations
-  duplicateCodes = []
+  duplicateCodes = [] 
   for wagon in list(codeCounter.keys()):
     if len(wagon) == 4:
       continue
@@ -232,7 +232,7 @@ def main():
         numTrigLinksPartner = [int(x) for x in wagonTempPartner['trigLinks'].tolist()]
         totTrigLinksPartner = sum(numTrigLinksPartner)
         # Overflow links
-        if totTrigLinks > 7:
+        if totTrigLinks > 7: #****
           isNew = True
           x1 = totTrigLinks - 7
           x2 = -x1
@@ -351,7 +351,7 @@ def main():
       maxTrigLinks = []
       for id in value:
         wagonTemp = geomGrouped.get_group((id[0],id[1],id[2]))
-        numlpGBT = wagonTemp['TlpGBT'].iloc[0]
+        numlpGBT = wagonTemp['TlpGBT'].iloc[0] #****
         if pd.isna(numlpGBT) or numlpGBT == 0 or numlpGBT != i: continue
         lpGBTCounts[key].append(numlpGBT)
         numTrigLinks = [int(x) for x in wagonTemp['trigLinks'].tolist()]
