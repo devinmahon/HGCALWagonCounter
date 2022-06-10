@@ -314,7 +314,7 @@ def main():
     # Print message about how many HD wagons has more than 7 DAQ links
     #if key[0] == 1: print(numDataLinksHDGT7,'/',len(value),'('+'{:.1f}'.format(100 * numDataLinksHDGT7 / len(value)),'%) HD wagons with code',key,'have more than 7 DAQ links')
  
-  #Consolidating using Outgoing Crossover links
+  # Consolidating using Outgoing Crossover links
   wagonCodesDictCopy = copy.deepcopy(wagonCodesDict)
   uniqueWagonStructures = {}
   for code in wagonCodesDictCopy:
@@ -329,12 +329,14 @@ def main():
   
   # print(uniqueWagonStructures)
   
+  consolidatedCodes = []
   for key, val in uniqueWagonStructures.items():
     if len(val) > 1:
       maxCrossoverLinks = max(val)
       newCode = list(key)
       newCode = newCode[:2] + [maxCrossoverLinks] + newCode[3:]
       newCode = tuple(newCode)
+      consolidatedCodes += [newCode]
       val.remove(maxCrossoverLinks)
       for num in val:
         oldCode = list(key)
@@ -346,8 +348,39 @@ def main():
         codeCounter.pop(oldCode)
  
   wagonCodesDict = copy.deepcopy(wagonCodesDictCopy)
+  # print(consolidatedCodes)
 
-    
+  # Consolidating using Incoming Crossover Links
+  wagonCodesDictCopy = copy.deepcopy(wagonCodesDict)
+  incomingWagonCodesDict = {x:wagonCodesDictCopy[x] for x in wagonCodesDictCopy.keys() if x[2] < 0}
+  print(incomingWagonCodesDict)
+  for code, vals in incomingWagonCodesDict.items():
+    for loc in vals:
+      wagonLoc = geomGrouped.get_group((loc[0], loc[1], loc[2]))
+      numTrigLinks = [int(x) for x in wagonLoc['trigLinks'].tolist()]
+      totTrigLinks = sum(numTrigLinks)
+      numAvailable = 7 - totTrigLinks
+      availableRange = range(numAvailable, 0, -1)
+      # print(availableRange)
+      for i in availableRange:
+        i *= -1
+        possibleCode = list(code)
+        possibleCode = possibleCode[:2] + [i] + possibleCode[3:]
+        possibleCode = tuple(possibleCode)
+        if possibleCode in incomingWagonCodesDict:
+          incomingWagonCodesDict[code].remove(loc)
+          incomingWagonCodesDict[possibleCode].append(loc)
+          codeCounter[code] -= 1
+          codeCounter[possibleCode] += 1
+          break
+  print('---')
+  print(incomingWagonCodesDict)
+
+  for key, val in incomingWagonCodesDict.items():
+    wagonCodesDictCopy[key] = val
+  
+  wagonCodesDict = copy.deepcopy(wagonCodesDictCopy)
+
   # Print message about total number of HD wagons with <= 14 trigger links
   #print(numTrigLinksHDLT15,'out of',numHD,'(','{:.1f}'.format(numTrigLinksHDLT15 * 100.0 / numHD),'%) HD wagons have <= 14 trigger links')
 
