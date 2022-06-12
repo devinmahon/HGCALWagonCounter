@@ -315,37 +315,64 @@ def main():
  
   # Consolidating using Outgoing Crossover links
   wagonCodesDictCopy = copy.deepcopy(wagonCodesDict)
-  uniqueWagonStructures = {}
-  for code in wagonCodesDictCopy:
-    numCrossoverLinks = code[2]
-    if numCrossoverLinks < 0:
-      continue
-    everythingElse = code[:2] + tuple('N') + code[3:]
-    if everythingElse in uniqueWagonStructures.keys():
-      uniqueWagonStructures[everythingElse].append(numCrossoverLinks)
-    else:
-      uniqueWagonStructures[everythingElse] = [numCrossoverLinks]
+  # uniqueWagonStructures = {}
+  # for code in wagonCodesDictCopy:
+  #   numCrossoverLinks = code[2]
+  #   if numCrossoverLinks < 0:
+  #     continue
+  #   everythingElse = code[:2] + tuple('N') + code[3:]
+  #   if everythingElse in uniqueWagonStructures.keys():
+  #     uniqueWagonStructures[everythingElse].append(numCrossoverLinks)
+  #   else:
+  #     uniqueWagonStructures[everythingElse] = [numCrossoverLinks]
   
   # print(uniqueWagonStructures)
   
-  consolidatedCodes = []
-  for key, val in uniqueWagonStructures.items():
-    if len(val) > 1:
-      maxCrossoverLinks = max(val)
-      newCode = list(key)
-      newCode = newCode[:2] + [maxCrossoverLinks] + newCode[3:]
-      newCode = tuple(newCode)
-      consolidatedCodes += [newCode]
-      val.remove(maxCrossoverLinks)
-      for num in val:
-        oldCode = list(key)
-        oldCode[2] = num
-        oldCode = tuple(oldCode)
-        wagonCodesDictCopy[newCode] = wagonCodesDictCopy[newCode] + wagonCodesDictCopy[oldCode]
-        wagonCodesDictCopy.pop(oldCode)
-        codeCounter[newCode] += codeCounter[oldCode]
-        codeCounter.pop(oldCode)
- 
+  # consolidatedCodes = []
+  # for key, val in uniqueWagonStructures.items():
+  #   if len(val) > 1:
+  #     maxCrossoverLinks = max(val)
+  #     newCode = list(key)
+  #     newCode = newCode[:2] + [maxCrossoverLinks] + newCode[3:]
+  #     newCode = tuple(newCode)
+  #     consolidatedCodes += [newCode]
+  #     val.remove(maxCrossoverLinks)
+  #     for num in val:
+  #       oldCode = list(key)
+  #       oldCode[2] = num
+  #       oldCode = tuple(oldCode)
+  #       wagonCodesDictCopy[newCode] = wagonCodesDictCopy[newCode] + wagonCodesDictCopy[oldCode]
+  #       wagonCodesDictCopy.pop(oldCode)
+  #       codeCounter[newCode] += codeCounter[oldCode]
+  #       codeCounter.pop(oldCode)
+
+  # Consolidating using outgoing crossover links, taking into account wagon partners
+  outgoingWagonCodesDict = {x:wagonCodesDictCopy[x] for x in wagonCodesDictCopy.keys() if x[2] >= 0}
+  for key, val in outgoingWagonCodesDict.items():
+    for loc in val:
+      wagonLoc = geomGrouped.get_group((loc[0], loc[1], loc[2]))
+      wagonPartnerLoc = geomGrouped.get_group((loc[0], loc[1], int(not loc[2])))
+      numLinks = sum([int(x) for x in wagonLoc['trigLinks'].tolist()])
+      numOutgoingLinks = key[2]
+      numPartnerLinks = sum([int(x) for x in wagonPartnerLoc['trigLinks'].tolist()])
+      numAvailablePartnerLinks = 7 - numPartnerLinks
+      acceptableRange = list(range(numAvailablePartnerLinks + 1, 0, -1))
+      if key[2] == acceptableRange[0]:
+        continue
+      for num in acceptableRange:
+        possibleCode = list(key)
+        possibleCode = possibleCode[:2] + [num] + possibleCode[3:]
+        possibleCode = tuple(possibleCode)
+        if possibleCode not in outgoingWagonCodesDict:
+          continue
+        outgoingWagonCodesDict[key].remove(loc)
+        outgoingWagonCodesDict[possibleCode].append(loc)
+        codeCounter[key] -= 1
+        codeCounter[possibleCode] += 1
+        break
+        
+  for key, val in outgoingWagonCodesDict.items():
+    wagonCodesDictCopy[key] = val
   wagonCodesDict = copy.deepcopy(wagonCodesDictCopy)
   # print(consolidatedCodes)
 
