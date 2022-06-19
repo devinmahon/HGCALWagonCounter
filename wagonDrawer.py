@@ -1006,7 +1006,7 @@ y0 = 120
 colSpacing = 400
 rowSpacing = 110
 
-def wagonDrawer(wagonCounter,geometryFile):
+def wagonDrawer(wagonCounter, geometryFile, maxLinksDict):
   
   row, col = 0, 0
   ySpaces = 0
