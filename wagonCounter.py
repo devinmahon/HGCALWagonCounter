@@ -378,7 +378,6 @@ def main():
   for key, val in incomingWagonCodesDict.items():
     wagonCodesDictCopy[key] = val
   
-  dictDifferences(incomingWagonCodesCopy, incomingWagonCodesDict)
   wagonCodesDict = copy.deepcopy(wagonCodesDictCopy)
 
   # Consolidating using outgoing crossover links, taking into account wagon partners
@@ -409,6 +408,7 @@ def main():
         
   for key, val in outgoingWagonCodesDict.items():
     wagonCodesDictCopy[key] = val
+
   wagonCodesDict = copy.deepcopy(wagonCodesDictCopy)
  
   # Finding max. links on each module on each wagon type
