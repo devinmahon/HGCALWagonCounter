@@ -1012,7 +1012,7 @@ def wagonDrawer(wagonCounter, geometryFile, maxLinksDict):
   ySpaces = 0
   ySpaceExtra = 1.5 * r #1.5 * r #120
   for wagon in list(wagonCounter.keys()):
-
+    
     # Remove x-over index 
     wagonTemp = wagon[0:2] + wagon[3:]
  
@@ -1032,7 +1032,7 @@ def wagonDrawer(wagonCounter, geometryFile, maxLinksDict):
       for i, codeGroup in enumerate(codeGroups):
    
         #drawEngine = 'True' if i == (len(codeGroups) - 1) and wagonTemp[1] else 'False'
-        drawEngine = 'True' if wagonTemp[1] == (i + 1) else 'False'
+        drawEngine = 'True' if wagonTemp[1] == (i + 1) else 'False' 
   
         #angle = (int(codeGroup[0]) - orient) % 6
         angle = (orient + int(codeGroup[0])) % 6
