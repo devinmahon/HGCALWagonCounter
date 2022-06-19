@@ -48,6 +48,13 @@ def makeContiguous(group):
 
   return group
 
+def dictDifferences(dict1, dict2):
+  for key in dict1.keys():
+    if key in dict2.keys():
+      diff = len(dict2[key]) - len(dict1[key])
+      if diff != 0:
+        print(str(key) + ": " + str(len(dict1[key])) + ", " + str(diff))
+
 ##################################################
 # MAIN
 ##################################################
@@ -346,9 +353,38 @@ def main():
   #       codeCounter[newCode] += codeCounter[oldCode]
   #       codeCounter.pop(oldCode)
 
+  # Consolidating using Incoming Crossover Links
+  wagonCodesDictCopy = copy.deepcopy(wagonCodesDict)
+  incomingWagonCodesDict = {x:wagonCodesDictCopy[x] for x in wagonCodesDictCopy.keys() if x[2] <= 0}
+  incomingWagonCodesCopy = copy.deepcopy(incomingWagonCodesDict)
+  for code, vals in incomingWagonCodesCopy.items():
+    for loc in vals:
+      wagonLoc = geomGrouped.get_group((loc[0], loc[1], loc[2]))
+      numTrigLinks = [int(x) for x in wagonLoc['trigLinks'].tolist()]
+      totTrigLinks = sum(numTrigLinks)
+      numAvailable = 7 - totTrigLinks
+      availableRange = range(-1 * numAvailable, 0)
+      for i in availableRange:
+        possibleCode = list(code)
+        possibleCode = possibleCode[:2] + [i] + possibleCode[3:]
+        possibleCode = tuple(possibleCode)
+        if possibleCode in incomingWagonCodesCopy and possibleCode != code:
+          incomingWagonCodesDict[code].remove(loc)
+          incomingWagonCodesDict[possibleCode].append(loc)
+          codeCounter[code] -= 1
+          codeCounter[possibleCode] += 1
+          break
+
+  for key, val in incomingWagonCodesDict.items():
+    wagonCodesDictCopy[key] = val
+  
+  dictDifferences(incomingWagonCodesCopy, incomingWagonCodesDict)
+  wagonCodesDict = copy.deepcopy(wagonCodesDictCopy)
+
   # Consolidating using outgoing crossover links, taking into account wagon partners
   outgoingWagonCodesDict = {x:wagonCodesDictCopy[x] for x in wagonCodesDictCopy.keys() if x[2] >= 0}
-  for key, val in outgoingWagonCodesDict.items():
+  outgoingWagonCodesCopy = copy.deepcopy(outgoingWagonCodesDict)
+  for key, val in outgoingWagonCodesCopy.items():
     for loc in val:
       wagonLoc = geomGrouped.get_group((loc[0], loc[1], loc[2]))
       wagonPartnerLoc = geomGrouped.get_group((loc[0], loc[1], int(not loc[2])))
@@ -358,12 +394,12 @@ def main():
       numAvailablePartnerLinks = 7 - numPartnerLinks
       acceptableRange = list(range(numAvailablePartnerLinks + 1, 0, -1))
       if key[2] == acceptableRange[0]:
-        continue
+        continue 
       for num in acceptableRange:
         possibleCode = list(key)
         possibleCode = possibleCode[:2] + [num] + possibleCode[3:]
         possibleCode = tuple(possibleCode)
-        if possibleCode not in outgoingWagonCodesDict:
+        if possibleCode not in outgoingWagonCodesCopy:
           continue
         outgoingWagonCodesDict[key].remove(loc)
         outgoingWagonCodesDict[possibleCode].append(loc)
@@ -374,36 +410,7 @@ def main():
   for key, val in outgoingWagonCodesDict.items():
     wagonCodesDictCopy[key] = val
   wagonCodesDict = copy.deepcopy(wagonCodesDictCopy)
-  # print(consolidatedCodes)
-
-  # Consolidating using Incoming Crossover Links
-  wagonCodesDictCopy = copy.deepcopy(wagonCodesDict)
-  incomingWagonCodesDict = {x:wagonCodesDictCopy[x] for x in wagonCodesDictCopy.keys() if x[2] <= 0}
-  for code, vals in incomingWagonCodesDict.items():
-    for loc in vals:
-      wagonLoc = geomGrouped.get_group((loc[0], loc[1], loc[2]))
-      numTrigLinks = [int(x) for x in wagonLoc['trigLinks'].tolist()]
-      totTrigLinks = sum(numTrigLinks)
-      numAvailable = 7 - totTrigLinks
-      availableRange = range(numAvailable, 0, -1)
-      # print(availableRange)
-      for i in availableRange:
-        i *= -1
-        possibleCode = list(code)
-        possibleCode = possibleCode[:2] + [i] + possibleCode[3:]
-        possibleCode = tuple(possibleCode)
-        if possibleCode in incomingWagonCodesDict:
-          incomingWagonCodesDict[code].remove(loc)
-          incomingWagonCodesDict[possibleCode].append(loc)
-          codeCounter[code] -= 1
-          codeCounter[possibleCode] += 1
-          break
-
-  for key, val in incomingWagonCodesDict.items():
-    wagonCodesDictCopy[key] = val
-  
-  wagonCodesDict = copy.deepcopy(wagonCodesDictCopy)
-
+ 
   # Finding max. links on each module on each wagon type
   maxLinks = {x:[] for x in wagonCodesDict.keys()}
   for code, vals in wagonCodesDict.items():
@@ -419,7 +426,7 @@ def main():
           maxLinksList[j] = numTrigLinks[j]
     maxLinks[code] = maxLinksList
   
-  print(maxLinks)
+  # print(maxLinks)
 
   # Print message about total number of HD wagons with <= 14 trigger links
   #print(numTrigLinksHDLT15,'out of',numHD,'(','{:.1f}'.format(numTrigLinksHDLT15 * 100.0 / numHD),'%) HD wagons have <= 14 trigger links')
@@ -499,7 +506,7 @@ def main():
   codeCounter = dict(sorted(codeCounter.items(), key=lambda item: (item[0][0],len(item[0]),item[1]), reverse=True))
 
   # Draw and save the wagon summary (see wagonDrawer.py)
-  wagonDrawer.wagonDrawer(codeCounter,geometryFile)
+  wagonDrawer.wagonDrawer(codeCounter, geometryFile, maxLinks)
 
 if __name__ == '__main__':
   main()
