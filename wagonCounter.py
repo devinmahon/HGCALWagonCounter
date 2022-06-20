@@ -321,39 +321,6 @@ def main():
     # Print message about how many HD wagons has more than 7 DAQ links
     #if key[0] == 1: print(numDataLinksHDGT7,'/',len(value),'('+'{:.1f}'.format(100 * numDataLinksHDGT7 / len(value)),'%) HD wagons with code',key,'have more than 7 DAQ links')
  
-  # Consolidating using Outgoing Crossover links
-  wagonCodesDictCopy = copy.deepcopy(wagonCodesDict)
-  # uniqueWagonStructures = {}
-  # for code in wagonCodesDictCopy:
-  #   numCrossoverLinks = code[2]
-  #   if numCrossoverLinks < 0:
-  #     continue
-  #   everythingElse = code[:2] + tuple('N') + code[3:]
-  #   if everythingElse in uniqueWagonStructures.keys():
-  #     uniqueWagonStructures[everythingElse].append(numCrossoverLinks)
-  #   else:
-  #     uniqueWagonStructures[everythingElse] = [numCrossoverLinks]
-  
-  # print(uniqueWagonStructures)
-  
-  # consolidatedCodes = []
-  # for key, val in uniqueWagonStructures.items():
-  #   if len(val) > 1:
-  #     maxCrossoverLinks = max(val)
-  #     newCode = list(key)
-  #     newCode = newCode[:2] + [maxCrossoverLinks] + newCode[3:]
-  #     newCode = tuple(newCode)
-  #     consolidatedCodes += [newCode]
-  #     val.remove(maxCrossoverLinks)
-  #     for num in val:
-  #       oldCode = list(key)
-  #       oldCode[2] = num
-  #       oldCode = tuple(oldCode)
-  #       wagonCodesDictCopy[newCode] = wagonCodesDictCopy[newCode] + wagonCodesDictCopy[oldCode]
-  #       wagonCodesDictCopy.pop(oldCode)
-  #       codeCounter[newCode] += codeCounter[oldCode]
-  #       codeCounter.pop(oldCode)
-
   # Consolidating using Incoming Crossover Links
   wagonCodesDictCopy = copy.deepcopy(wagonCodesDict)
   incomingWagonCodesDict = {x:wagonCodesDictCopy[x] for x in wagonCodesDictCopy.keys() if x[2] <= 0}
@@ -411,6 +378,7 @@ def main():
     wagonCodesDictCopy[key] = val
 
   wagonCodesDict = copy.deepcopy(wagonCodesDictCopy)
+  wagonCodesDict = {x:y for x, y in wagonCodesDict.items() if len(y) > 0}
  
   # Finding max. links on each module on each wagon type
   maxLinks = {x:[] for x in wagonCodesDict.keys()}
@@ -426,7 +394,7 @@ def main():
         if numTrigLinks[j] > maxLinksList[j]:
           maxLinksList[j] = numTrigLinks[j]
     maxLinks[code] = maxLinksList
-  
+
   # print(maxLinks)
 
   # Print message about total number of HD wagons with <= 14 trigger links
