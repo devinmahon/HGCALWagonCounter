@@ -1079,7 +1079,7 @@ def wagonDrawer(wagonCounter, geometryFile, maxLinksDict):
             #orient = (orient + 1) % 6
             orientAdj += 1
   
-        centers.append((x,y,codeGroup[2],(orient + orientAdj) % 6,drawEngine, maxLinksList[i]))
+        centers.append((x,y,codeGroup[2],(orient + orientAdj) % 6,drawEngine, maxLinksList[i + 1]))
         # print(centers)
         #print('Drawing x =',str(x),'y =',str(y),'type',codeGroup[2],'irot =',orient,'engine?',drawEngine)
         #hexdraw(x,y,codeGroup[2],orient,1,drawEngine)
