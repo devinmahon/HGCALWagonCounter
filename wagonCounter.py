@@ -324,6 +324,7 @@ def main():
   wagonCodesDictCopy = copy.deepcopy(wagonCodesDict)
   incomingWagonCodesDict = {x:wagonCodesDictCopy[x] for x in wagonCodesDictCopy.keys() if x[2] <= 0}
   incomingWagonCodesCopy = copy.deepcopy(incomingWagonCodesDict)
+  removedWagonsList = []
   for code, vals in incomingWagonCodesCopy.items():
     for loc in vals:
       wagonLoc = geomGrouped.get_group((loc[0], loc[1], loc[2]))
@@ -340,6 +341,8 @@ def main():
           incomingWagonCodesDict[possibleCode].append(loc)
           codeCounter[code] -= 1
           codeCounter[possibleCode] += 1
+          if codeCounter[code] == 0:
+            removedWagonsList.append(code)
           break
 
   for key, val in incomingWagonCodesDict.items():
@@ -371,6 +374,8 @@ def main():
         outgoingWagonCodesDict[possibleCode].append(loc)
         codeCounter[key] -= 1
         codeCounter[possibleCode] += 1
+        if codeCounter[key] == 0:
+          removedWagonsList.append(key)
         break
         
   for key, val in outgoingWagonCodesDict.items():
@@ -395,6 +400,16 @@ def main():
     maxLinks[code] = maxLinksList
 
   # print(maxLinks)
+
+  emptyCounter = Counter([tuple(i) for i in removedWagonsList])
+  for wagon in removedWagonsList:
+    emptyCounter[wagon] = 0
+  
+  geometryFile2 = 'removedWagons'
+  with open('wagonDict/{}.txt'.format(geometryFile2), 'w') as f:
+    print(removedWagonsList, file = f) 
+
+  wagonDrawer.wagonDrawer(emptyCounter, geometryFile2)
 
   # Print message about total number of HD wagons with <= 14 trigger links
   #print(numTrigLinksHDLT15,'out of',numHD,'(','{:.1f}'.format(numTrigLinksHDLT15 * 100.0 / numHD),'%) HD wagons have <= 14 trigger links')

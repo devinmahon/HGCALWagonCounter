@@ -1032,13 +1032,19 @@ y0 = 120
 colSpacing = 400
 rowSpacing = 110
 
-def wagonDrawer(wagonCounter, geometryFile, maxLinksDict):
+def wagonDrawer(wagonCounter, geometryFile, maxLinksDict = {}):
   
   row, col = 0, 0
   ySpaces = 0
   ySpaceExtra = 1.5 * r #1.5 * r #120
   for wagon in list(wagonCounter.keys()):
-    maxLinksList = maxLinksDict[wagon]
+    
+    if maxLinksDict != {}:
+        maxLinksList = maxLinksDict[wagon]
+    else:
+        maxLinksList = []
+        for i in wagonCounter:
+            maxLinksList.append(0)
 
     # Remove x-over index 
     wagonTemp = wagon[0:2] + wagon[3:]
