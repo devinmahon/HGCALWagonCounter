@@ -319,13 +319,18 @@ def main():
     #if key[0] == 1: print('Wagon',key,'has maxTrigLinks = ',maxTrigLinks)
     # Print message about how many HD wagons has more than 7 DAQ links
     #if key[0] == 1: print(numDataLinksHDGT7,'/',len(value),'('+'{:.1f}'.format(100 * numDataLinksHDGT7 / len(value)),'%) HD wagons with code',key,'have more than 7 DAQ links')
- 
+
   # Consolidating using Incoming Crossover Links
   wagonCodesDictCopy = copy.deepcopy(wagonCodesDict)
   incomingWagonCodesDict = {x:wagonCodesDictCopy[x] for x in wagonCodesDictCopy.keys() if x[2] <= 0}
   incomingWagonCodesCopy = copy.deepcopy(incomingWagonCodesDict)
   removedWagonsList = []
+  removedWagonsDict = {x:[] for x in wagonCodesDict}
+  wagonMovementDict = {x:[] for x in wagonCodesDict}
   for code, vals in incomingWagonCodesCopy.items():
+    transferredCodes = {}
+    numTransfers = 0
+    counterCopy = copy.deepcopy(codeCounter)
     for loc in vals:
       wagonLoc = geomGrouped.get_group((loc[0], loc[1], loc[2]))
       numTrigLinks = [int(x) for x in wagonLoc['trigLinks'].tolist()]
@@ -337,13 +342,28 @@ def main():
         possibleCode = possibleCode[:2] + [i] + possibleCode[3:]
         possibleCode = tuple(possibleCode)
         if possibleCode in incomingWagonCodesCopy and possibleCode != code:
+          if possibleCode in transferredCodes.keys():
+            transferredCodes[possibleCode].append(loc)
+          else:
+            transferredCodes[possibleCode] = [loc]
+          numTransfers += 1
+          break
+    if numTransfers == codeCounter[code] or code[2] == 0:
+      for possibleCode, locations in transferredCodes.items():
+        for loc in locations:
           incomingWagonCodesDict[code].remove(loc)
           incomingWagonCodesDict[possibleCode].append(loc)
           codeCounter[code] -= 1
           codeCounter[possibleCode] += 1
           if codeCounter[code] == 0:
             removedWagonsList.append(code)
-          break
+          if possibleCode not in removedWagonsDict[code]:
+            removedWagonsDict[code].append(possibleCode)
+    for wagon in removedWagonsDict[code]:
+      delta = codeCounter[wagon] - counterCopy[wagon]
+      if delta != 0:
+        wagonMovementDict[code].append((wagon, delta))
+
 
   for key, val in incomingWagonCodesDict.items():
     wagonCodesDictCopy[key] = val
@@ -354,6 +374,9 @@ def main():
   outgoingWagonCodesDict = {x:wagonCodesDictCopy[x] for x in wagonCodesDictCopy.keys() if x[2] >= 0}
   outgoingWagonCodesCopy = copy.deepcopy(outgoingWagonCodesDict)
   for key, val in outgoingWagonCodesCopy.items():
+    counterCopy = copy.deepcopy(codeCounter)
+    transferredCodes = {}
+    numTransfers = 0
     for loc in val:
       wagonLoc = geomGrouped.get_group((loc[0], loc[1], loc[2]))
       wagonPartnerLoc = geomGrouped.get_group((loc[0], loc[1], int(not loc[2])))
@@ -368,16 +391,29 @@ def main():
         possibleCode = list(key)
         possibleCode = possibleCode[:2] + [num] + possibleCode[3:]
         possibleCode = tuple(possibleCode)
-        if possibleCode not in outgoingWagonCodesCopy:
-          continue
-        outgoingWagonCodesDict[key].remove(loc)
-        outgoingWagonCodesDict[possibleCode].append(loc)
-        codeCounter[key] -= 1
-        codeCounter[possibleCode] += 1
-        if codeCounter[key] == 0:
-          removedWagonsList.append(key)
-        break
-        
+        if possibleCode in outgoingWagonCodesCopy and possibleCode != code:
+          if possibleCode in transferredCodes.keys():
+            transferredCodes[possibleCode].append(loc)
+          else:
+            transferredCodes[possibleCode] = [loc]
+          numTransfers += 1
+          break
+    if numTransfers == codeCounter[key] or key[2] == 0:
+      for possibleCode, locations in transferredCodes.items():
+        for loc in locations:
+          outgoingWagonCodesDict[key].remove(loc)
+          outgoingWagonCodesDict[possibleCode].append(loc)
+          codeCounter[key] -= 1
+          codeCounter[possibleCode] += 1
+          if codeCounter[key] == 0:
+            removedWagonsList.append(key)
+          if possibleCode not in removedWagonsDict[key]:
+            removedWagonsDict[key].append(possibleCode)
+    for wagon in removedWagonsDict[key]:
+      delta = codeCounter[wagon] - counterCopy[wagon]
+      if delta != 0:
+        wagonMovementDict[key].append((wagon, delta))
+  
   for key, val in outgoingWagonCodesDict.items():
     wagonCodesDictCopy[key] = val
 
@@ -400,6 +436,17 @@ def main():
     maxLinks[code] = maxLinksList
 
   # print(maxLinks)
+
+  # Removed Wagons
+  removedWagonsDict = {x:y for x, y in removedWagonsDict.items() if x in removedWagonsList}
+  wagonMovementDict = {x:y for x, y in wagonMovementDict.items() if x in removedWagonsList}
+  wagonMovementSummaryFile = 'movementsummary'
+  with open('{}.txt'.format(wagonMovementSummaryFile), 'w') as f:
+    for wagon, movements in wagonMovementDict.items():
+      for receivingWagon in movements:
+        print("{0} moves {1} times into {2}".format(wagon, receivingWagon[1], receivingWagon[0]), file = f)
+      print("\n", file = f)
+    
 
   emptyCounter = Counter([tuple(i) for i in removedWagonsList])
   for wagon in removedWagonsList:
