@@ -320,6 +320,19 @@ def main():
     # Print message about how many HD wagons has more than 7 DAQ links
     #if key[0] == 1: print(numDataLinksHDGT7,'/',len(value),'('+'{:.1f}'.format(100 * numDataLinksHDGT7 / len(value)),'%) HD wagons with code',key,'have more than 7 DAQ links')
 
+  def maxLinksCalculation(code, dict1):
+    lenWagon = len(code[3::3])
+    maxLinksList = []
+    for i in range(lenWagon):
+      maxLinksList.append(0)
+    for loc in dict1[code]:
+      wagonLoc = geomGrouped.get_group((loc[0], loc[1], loc[2]))
+      numTrigLinks = [int(x) for x in wagonLoc['trigLinks'].tolist()]
+      for j in range(len(numTrigLinks)):
+        if numTrigLinks[j] > maxLinksList[j]:
+          maxLinksList[j] = numTrigLinks[j]
+    return maxLinksList
+     
   # Consolidating using Incoming Crossover Links
   wagonCodesDictCopy = copy.deepcopy(wagonCodesDict)
   incomingWagonCodesDict = {x:wagonCodesDictCopy[x] for x in wagonCodesDictCopy.keys() if x[2] <= 0}
@@ -342,11 +355,17 @@ def main():
         possibleCode = possibleCode[:2] + [i] + possibleCode[3:]
         possibleCode = tuple(possibleCode)
         if possibleCode in incomingWagonCodesCopy and possibleCode != code:
-          if possibleCode in transferredCodes.keys():
+          incomingWagonCodesDict[possibleCode].append(loc)
+          if (sum(maxLinksCalculation(possibleCode, incomingWagonCodesDict)) + -1 * possibleCode[2] > 7):
+            incomingWagonCodesDict[possibleCode].remove(loc)
+            break
+          elif possibleCode in transferredCodes.keys():
             transferredCodes[possibleCode].append(loc)
+            numTransfers += 1
           else:
             transferredCodes[possibleCode] = [loc]
-          numTransfers += 1
+            numTransfers += 1  
+          incomingWagonCodesDict[possibleCode].remove(loc)      
           break
     if numTransfers == codeCounter[code] or code[2] == 0:
       for possibleCode, locations in transferredCodes.items():
@@ -421,19 +440,7 @@ def main():
   wagonCodesDict = {x:y for x, y in wagonCodesDict.items() if len(y) > 0}
  
   # Finding max. links on each module on each wagon type
-  maxLinks = {x:[] for x in wagonCodesDict.keys()}
-  for code, vals in wagonCodesDict.items():
-    lenWagon = len(list(code[3::3]))
-    maxLinksList = []
-    for i in range(lenWagon):
-      maxLinksList.append(0)
-    for loc in vals:
-      wagonLoc = geomGrouped.get_group((loc[0], loc[1], loc[2]))
-      numTrigLinks = [int(x) for x in wagonLoc['trigLinks'].tolist()]
-      for j in range(len(maxLinksList)):
-        if numTrigLinks[j] > maxLinksList[j]:
-          maxLinksList[j] = numTrigLinks[j]
-    maxLinks[code] = maxLinksList
+  maxLinks = {x:maxLinksCalculation(x, wagonCodesDict) for x in wagonCodesDict}
 
   # print(maxLinks)
 
