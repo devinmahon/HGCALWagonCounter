@@ -399,10 +399,15 @@ def main():
     for loc in val:
       wagonLoc = geomGrouped.get_group((loc[0], loc[1], loc[2]))
       wagonPartnerLoc = geomGrouped.get_group((loc[0], loc[1], int(not loc[2])))
+      numTrigLinks = [int(x) for x in wagonLoc['trigLinks'].tolist()]
       numLinks = sum([int(x) for x in wagonLoc['trigLinks'].tolist()])
       numOutgoingLinks = key[2]
       numPartnerLinks = sum([int(x) for x in wagonPartnerLoc['trigLinks'].tolist()])
       numAvailablePartnerLinks = 7 - numPartnerLinks
+      if key == (0, -1, 3, 'F', 0, 1, 'b'):
+        print(numTrigLinks)
+        print([int(x) for x in wagonPartnerLoc['trigLinks'].tolist()])
+        print("---")
       acceptableRange = list(range(numAvailablePartnerLinks + 1, 0, -1))
       if key[2] == acceptableRange[0]:
         continue 
