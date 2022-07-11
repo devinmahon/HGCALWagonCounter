@@ -333,6 +333,19 @@ def main():
         if numTrigLinks[j] > maxLinksList[j]:
           maxLinksList[j] = numTrigLinks[j]
     return maxLinksList
+  
+  def minLinksCalculation(code, dict1):
+    lenWagon = len(code[3::3])
+    minLinksList = []
+    for i in range(lenWagon):
+      minLinksList.append(5)
+    for loc in dict1[code]:
+      wagonLoc = geomGrouped.get_group((loc[0], loc[1], loc[2]))
+      numTrigLinks = [int(x) for x in wagonLoc['trigLinks'].tolist()]
+      for j in range(len(numTrigLinks)):
+        if numTrigLinks[j] < minLinksList[j] and numTrigLinks[j] != 0:
+          minLinksList[j] = numTrigLinks[j]
+    return minLinksList
      
   # Consolidating using Incoming Crossover Links
   wagonCodesDictCopy = copy.deepcopy(wagonCodesDict)
@@ -405,10 +418,6 @@ def main():
       numOutgoingLinks = key[2]
       numPartnerLinks = sum([int(x) for x in wagonPartnerLoc['trigLinks'].tolist()])
       numAvailablePartnerLinks = 7 - numPartnerLinks
-      if key == (0, -1, 3, 'F', 0, 1, 'b'):
-        print(numTrigLinks)
-        print([int(x) for x in wagonPartnerLoc['trigLinks'].tolist()])
-        print("---")
       acceptableRange = list(range(numAvailablePartnerLinks + 1, 0, -1))
       if key[2] == acceptableRange[0]:
         continue 
@@ -459,17 +468,58 @@ def main():
       for receivingWagon in movements:
         print("{0} moves {1} times into {2}".format(wagon, receivingWagon[1], receivingWagon[0]), file = f)
       print("\n", file = f)
-    
+  
+  # Which links are getting sent where?
+  outgoingMaxLinks = {x:maxLinks[x] for x in maxLinks if x[2] > 0}
+  linksSummary = {x:[] for x in maxLinks if x[2] > 0}
+  print(linksSummary)
+  for code in wagonCodesDict:
+    if code[2] > 0:
+      numOutgoingLinks = code[2]
+      maxLinksList = outgoingMaxLinks[code]
+      minLinksList = minLinksCalculation(code, wagonCodesDict)
+      maxIndex = maxLinksList.index(max(maxLinksList))
+      minIndex = minLinksList.index(min(minLinksList))
+      
+      for i in range(len(maxLinksList)):
+        linksSummary[code].append(0)
+      
+      if min(minLinksList) > code[2]:
+        linksSummary[code][minIndex] = -1 * code[2]
+      else:
+        minLinksListCopy = minLinksList
+        linksSummary[code][minIndex] = -1 * min(minLinksList)
+        numAccountedFor = min(minLinksList)
+        minLinksListCopy.remove(min(minLinksList))
+        while numAccountedFor != code[2]:
+          print(minLinksCalculation((0, -1, 3, 'F', 0, 1, 'b'), wagonCodesDict))
+          minNextLargestModule = min(minLinksListCopy)
+          if minNextLargestModule >= (code[2] - numAccountedFor):
+            newMinIndex = minLinksList.index(minNextLargestModule)
+            linksSummary[code][newMinIndex] = numAccountedFor - code[2]
+            numAccountedFor = code[2]
+          else:
+            newMinIndex = minLinksList.index(minNextLargestModule)
+            linksSummary[code][newMinIndex] = -1 * minNextLargestModule
+            numAccountedFor += minNextLargestModule
+            minLinksListCopy.remove(minNextLargestModule)
+
+  linksRoutingSummaryFile = 'linksroutingummary'
+  with open("{}.txt".format(linksRoutingSummaryFile), 'w') as f:
+    for code in linksSummary:
+      linksInfoList = linksSummary[code]
+      maxLinksList = maxLinks[code]
+      print("{0}: {1} + {2}".format(code, maxLinksList, linksInfoList), file = f)
 
   emptyCounter = Counter([tuple(i) for i in removedWagonsList])
   for wagon in removedWagonsList:
     emptyCounter[wagon] = 0
   
-  geometryFile2 = 'removedWagons'
-  with open('wagonDict/{}.txt'.format(geometryFile2), 'w') as f:
-    print(removedWagonsList, file = f) 
+  # geometryFile2 = 'removedWagons'
+  # with open('wagonDict/{}.txt'.format(geometryFile2), 'w') as f:
+  #   print(removedWagonsList, file = f) 
 
-  wagonDrawer.wagonDrawer(emptyCounter, geometryFile2)
+  # wagonDrawer.wagonDrawer(emptyCounter, geometryFile2)
 
   # Print message about total number of HD wagons with <= 14 trigger links
   #print(numTrigLinksHDLT15,'out of',numHD,'(','{:.1f}'.format(numTrigLinksHDLT15 * 100.0 / numHD),'%) HD wagons have <= 14 trigger links')
