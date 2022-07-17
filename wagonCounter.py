@@ -320,7 +320,7 @@ def main():
     # Print message about how many HD wagons has more than 7 DAQ links
     #if key[0] == 1: print(numDataLinksHDGT7,'/',len(value),'('+'{:.1f}'.format(100 * numDataLinksHDGT7 / len(value)),'%) HD wagons with code',key,'have more than 7 DAQ links')
 
-  def maxLinksCalculation(code, dict1):
+  def maxLinksCalculation(code, dict1 = wagonCodesDict):
     lenWagon = len(code[3::3])
     maxLinksList = []
     for i in range(lenWagon):
@@ -472,38 +472,62 @@ def main():
   outgoingMaxLinks = {x:maxLinks[x] for x in maxLinks if x[2] > 0}
   linksSummary = {x:[] for x in maxLinks if x[2] > 0}
   print(linksSummary)
+  # for code in wagonCodesDict:
+  #   if code[2] > 0:
+  #     numOutgoingLinks = code[2]
+  #     maxLinksList = outgoingMaxLinks[code]
+  #     minLinksList = minLinksCalculation(code, wagonCodesDict)
+  #     maxIndex = maxLinksList.index(max(maxLinksList))
+  #     minIndex = minLinksList.index(min(minLinksList))
+      
+  #     for i in range(len(maxLinksList)):
+  #       linksSummary[code].append(0)
+      
+  #     if min(minLinksList) > code[2]:
+  #       linksSummary[code][minIndex] = -1 * code[2]
+  #     else:
+  #       minLinksListCopy = minLinksList
+  #       linksSummary[code][minIndex] = -1 * min(minLinksList)
+  #       numAccountedFor = min(minLinksList)
+  #       minLinksListCopy.remove(min(minLinksList))
+  #       while numAccountedFor != code[2]:
+  #         print(minLinksCalculation((0, -1, 3, 'F', 0, 1, 'b'), wagonCodesDict))
+  #         minNextLargestModule = min(minLinksListCopy)
+  #         if minNextLargestModule >= (code[2] - numAccountedFor):
+  #           newMinIndex = minLinksList.index(minNextLargestModule)
+  #           linksSummary[code][newMinIndex] = numAccountedFor - code[2]
+  #           numAccountedFor = code[2]
+  #         else:
+  #           newMinIndex = minLinksList.index(minNextLargestModule)
+  #           linksSummary[code][newMinIndex] = -1 * minNextLargestModule
+  #           numAccountedFor += minNextLargestModule
+  #           minLinksListCopy.remove(minNextLargestModule)
+  
   for code in wagonCodesDict:
     if code[2] > 0:
       numOutgoingLinks = code[2]
-      maxLinksList = outgoingMaxLinks[code]
-      minLinksList = minLinksCalculation(code, wagonCodesDict)
+      maxLinksList = maxLinks[code]
       maxIndex = maxLinksList.index(max(maxLinksList))
-      minIndex = minLinksList.index(min(minLinksList))
-      
+      numUnaccountedFor = numOutgoingLinks
+
       for i in range(len(maxLinksList)):
         linksSummary[code].append(0)
-      
-      if min(minLinksList) > code[2]:
-        linksSummary[code][minIndex] = -1 * code[2]
-      else:
-        minLinksListCopy = minLinksList
-        linksSummary[code][minIndex] = -1 * min(minLinksList)
-        numAccountedFor = min(minLinksList)
-        minLinksListCopy.remove(min(minLinksList))
-        while numAccountedFor != code[2]:
-          print(minLinksCalculation((0, -1, 3, 'F', 0, 1, 'b'), wagonCodesDict))
-          minNextLargestModule = min(minLinksListCopy)
-          if minNextLargestModule >= (code[2] - numAccountedFor):
-            newMinIndex = minLinksList.index(minNextLargestModule)
-            linksSummary[code][newMinIndex] = numAccountedFor - code[2]
-            numAccountedFor = code[2]
-          else:
-            newMinIndex = minLinksList.index(minNextLargestModule)
-            linksSummary[code][newMinIndex] = -1 * minNextLargestModule
-            numAccountedFor += minNextLargestModule
-            minLinksListCopy.remove(minNextLargestModule)
 
-  linksRoutingSummaryFile = 'linksroutingummary'
+      maxLinksListCopy = maxLinksList
+      while numUnaccountedFor > 0:
+        linksSummary[code][maxIndex] -= 1
+        # print(maxLinks[code])
+        maxLinksListCopy[maxIndex] -= 1
+        # print(maxLinks[code])
+        maxIndex = maxLinksListCopy.index(max(maxLinksListCopy))
+        numUnaccountedFor -= 1
+        # print('---')
+      
+      for i in range(len(maxLinksList)):
+        maxLinksList[i] += -1 * linksSummary[code][i]
+      maxLinks[code] = maxLinksList
+
+  linksRoutingSummaryFile = 'link-routing-summary'
   with open("{}.txt".format(linksRoutingSummaryFile), 'w') as f:
     for code in linksSummary:
       linksInfoList = linksSummary[code]
