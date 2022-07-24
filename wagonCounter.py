@@ -470,8 +470,8 @@ def main():
   
   # Which links are getting sent where?
   outgoingMaxLinks = {x:maxLinks[x] for x in maxLinks if x[2] > 0}
-  linksSummary = {x:[] for x in maxLinks if x[2] > 0}
-  print(linksSummary)
+  linksSummary = {x:[] for x in maxLinks if x[2] != 0}
+  # print(linksSummary)
   # for code in wagonCodesDict:
   #   if code[2] > 0:
   #     numOutgoingLinks = code[2]
@@ -525,6 +525,26 @@ def main():
       
       for i in range(len(maxLinksList)):
         maxLinksList[i] += -1 * linksSummary[code][i]
+      maxLinks[code] = maxLinksList
+    
+    elif code[2] < 0:
+      numIncomingLinks = code[2]
+      maxLinksList = maxLinks[code]
+      minIndex = maxLinksList.index(min(maxLinksList))
+      numUnaccountedFor = -1 * numIncomingLinks
+
+      for i in range(len(maxLinksList)):
+        linksSummary[code].append(0)
+      
+      maxLinksListCopy = maxLinksList
+      while numUnaccountedFor > 0:
+        linksSummary[code][minIndex] += 1
+        maxLinksListCopy[minIndex] += 1
+        minIndex = maxLinksListCopy.index(min(maxLinksListCopy))
+        numUnaccountedFor -= 1
+      
+      for i in range(len(maxLinksList)):
+        maxLinksList[i] -= linksSummary[code][i]
       maxLinks[code] = maxLinksList
 
   linksRoutingSummaryFile = 'link-routing-summary'
