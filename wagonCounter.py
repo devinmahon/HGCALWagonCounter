@@ -55,6 +55,27 @@ def dictDifferences(dict1, dict2):
       if diff != 0:
         print(str(key) + ": " + str(len(dict1[key])) + ", " + str(diff))
 
+def recode(code):
+  wagonLength = len(code[3::3])
+  if code[1] == 0:
+    return code
+  elif code[1] == -1:
+    preCode = code[:3]
+    labels = code[3::3]
+    labelsReversed = tuple(reversed(labels))
+    codes = [x for x in code[3:] if x not in labels]
+    codes = [codes[n:n+2] for n in range(0, len(codes), 2)]
+    codesReversed = reversed(codes)
+    codesReversed = [list(((x[0] - x[1] - 3) % 6, (6 - x[1]) % 6)) for x in codesReversed]
+    codesReversed = [x for grouping in codesReversed for x in grouping]
+    middleCode = [list(labelsReversed[int(i / 2)]) + codesReversed[i:i+2] for i in range(0, len(codesReversed), 2)]
+    newCode = list(preCode) + [x for ele in middleCode for x in ele] + list(labelsReversed[-1])
+    return tuple(newCode)
+  else:
+    engineIndex = code[1]
+    print("West")
+    return code
+
 ##################################################
 # MAIN
 ##################################################
@@ -557,6 +578,15 @@ def main():
   emptyCounter = Counter([tuple(i) for i in removedWagonsList])
   for wagon in removedWagonsList:
     emptyCounter[wagon] = 0
+  
+  for code in wagonCodesDict:
+    if code[1] == -1 and code[4:6] == (3, 0):
+      recodedCode = recode(code)
+      if recodedCode != code:
+        codeCounter[recodedCode] = codeCounter[code]
+        codeCounter.pop(code)
+        maxLinks[recodedCode] = maxLinks[code]
+        maxLinks.pop(code)
   
   # geometryFile2 = 'removedWagons'
   # with open('wagonDict/{}.txt'.format(geometryFile2), 'w') as f:
