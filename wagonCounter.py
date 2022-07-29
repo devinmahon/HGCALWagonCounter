@@ -65,6 +65,8 @@ def recode(code):
     labelsReversed = tuple(reversed(labels))
     codes = [x for x in code[3:] if x not in labels]
     codes = [codes[n:n+2] for n in range(0, len(codes), 2)]
+    if codes.count([3, 0]) != len(codes):
+      return code
     codesReversed = reversed(codes)
     codesReversed = [list(((x[0] - x[1] - 3) % 6, (6 - x[1]) % 6)) for x in codesReversed]
     codesReversed = [x for grouping in codesReversed for x in grouping]
@@ -73,6 +75,9 @@ def recode(code):
     return tuple(newCode)
   else:
     engineIndex = code[1]
+    if engineIndex != wagonLength - 1:
+      print("Recoding not possible; returning original code")
+      return code
     print("West")
     return code
 
@@ -580,8 +585,9 @@ def main():
   for wagon in removedWagonsList:
     emptyCounter[wagon] = 0
   
+  # Recoding
   for code in wagonCodesDict:
-    if code[1] == -1 and code[4:6] == (3, 0):
+    if code[1] == -1:
       recodedCode = recode(code)
       if recodedCode != code:
         codeCounter[recodedCode] = codeCounter[code]
