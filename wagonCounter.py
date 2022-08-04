@@ -76,10 +76,100 @@ def recode(code):
   else:
     engineIndex = code[1]
     if engineIndex != wagonLength - 1:
-      print("Recoding not possible; returning original code")
+      # print("Recoding not possible; returning original code")
       return code
-    print("West")
+    # print("West")
     return code
+
+def findEngine(code, wagonCodesDict, geomGrouped):
+  if code[1] != -1:
+    return code[1]
+  
+  moduleTypes = list(code[3::3])
+  print(code)
+
+  if len(moduleTypes) == 1:
+    print()
+    # print(0)
+    return 0
+  
+  if moduleTypes.count('F') == 1:
+    print()
+    # print(moduleTypes.index('F'))
+    return moduleTypes.index('F')
+ 
+  earliestWagonID = wagonCodesDict[code][0]
+  earliestWagon = geomGrouped.get_group((earliestWagonID[0], earliestWagonID[1], earliestWagonID[2]))
+  earliestWagonPartner = geomGrouped.get_group((earliestWagonID[0], earliestWagonID[1], not earliestWagonID[2]))
+  
+  partnerEngineTF = [x for x in earliestWagonPartner['isEngine'].tolist()]
+  partnerEnginePos = partnerEngineTF.index(True)
+
+  partnerModule_x1 = [x for x in earliestWagonPartner['vx_1'].tolist()]
+  partnerModule_y1 = [y for y in earliestWagonPartner['vy_1'].tolist()]
+
+  partnerModule_x2 = [x for x in earliestWagonPartner['vx_2'].tolist()]
+  partnerModule_y2 = [y for y in earliestWagonPartner['vy_2'].tolist()]
+  
+  partnerEngine_x1 = partnerModule_x1[partnerEnginePos]
+  partnerEngine_y1 = partnerModule_y1[partnerEnginePos]
+
+  partnerEngine_x2 = partnerModule_x2[partnerEnginePos]
+  partnerEngine_y2 = partnerModule_y2[partnerEnginePos]
+
+  print((partnerEngine_x1, partnerEngine_y1), (partnerEngine_x2, partnerEngine_y2))
+  
+  moduleCoords = []
+  for i in range(len(moduleTypes)):
+    moduleCoords.append([])
+
+  i = 0
+  while i < 6:
+    if i == 0:
+      prev_i = 5
+      next_i = 1
+    elif i == 5:
+      prev_i = 4
+      next_i = 0
+    else:
+      prev_i = i - 1
+      next_i = i + 1
+    
+    vertexNum_x = 'vx_{0}'.format(i)
+    vertexNum_y = 'vy_{0}'.format(i)
+
+    moduleCoord_x = [x for x in earliestWagon[vertexNum_x].tolist()]
+    moduleCoord_y = [y for y in earliestWagon[vertexNum_y].tolist()]
+
+    for j in range(len(moduleCoord_x)):
+      coords = (moduleCoord_x[j], moduleCoord_y[j], i, j)
+      moduleCoords[j].append(coords)
+      if (moduleCoord_x[j] == partnerEngine_x1 and moduleCoord_y[j] == partnerEngine_y1) or (moduleCoord_x[j] == partnerEngine_x2 and moduleCoord_y[j] == partnerEngine_y2):
+        vertexNum_nextx = 'vx_{0}'.format(next_i)
+        vertexNum_nexty = 'vy_{0}'.format(next_i)
+
+        vertexNum_prevx = 'vx_{0}'.format(prev_i)
+        vertexNum_prevy = 'vy_{0}'.format(prev_i)
+
+        moduleCoord_nextx = [x for x in earliestWagon[vertexNum_nextx].tolist()]
+        moduleCoord_nexty = [y for y in earliestWagon[vertexNum_nexty].tolist()]
+
+        moduleCoord_prevx = [x for x in earliestWagon[vertexNum_prevx].tolist()]
+        moduleCoord_prevy = [y for y in earliestWagon[vertexNum_prevy].tolist()]
+        if (moduleCoord_nextx[j] == partnerEngine_x1 and moduleCoord_nexty[j] == partnerEngine_y1) or (moduleCoord_nextx[j] == partnerEngine_x2 and moduleCoord_nexty[j] == partnerEngine_y2):
+          print(j)
+          print()
+          return j
+        elif (moduleCoord_prevx[j] == partnerEngine_x1 and moduleCoord_prevy[j] == partnerEngine_y1) or (moduleCoord_prevx[j] == partnerEngine_x2 and moduleCoord_prevy[j] == partnerEngine_y2):
+          print(j)
+          print()
+          return j
+
+    i += 1
+  print(moduleCoords) 
+  print()   
+
+  
 
 ##################################################
 # MAIN
@@ -97,7 +187,7 @@ def main():
 
   # Extract required columns
   geom = pd.read_csv('{0}{1}.txt'.format(geometryPath,geometryFile),delim_whitespace=True)
-  geomBasic = geom[['plane','u','v','x0','y0','itype','irot','MB','wagon','isEngine','HDorLD','trigLinks','dataLinks_ld','dataLinks_hd']].copy()
+  geomBasic = geom[['plane','u','v','x0','y0', 'vx_0', 'vy_0', 'vx_1', 'vy_1', 'vx_2', 'vy_2', 'vx_3', 'vy_3', 'vx_4', 'vy_4', 'vx_5', 'vy_5', 'vx_6', 'vy_6', 'itype','irot','MB','wagon','isEngine','HDorLD','trigLinks','dataLinks_ld','dataLinks_hd']].copy()
   if not threesSeparate: geomBasic = geomBasic[~geomBasic['itype'].str.contains('c')] # Threes don't affect wagon shape
   geomBasic['itype'] = geomBasic['itype'].str[0]
   geomBasic['r'] = np.sqrt(geomBasic['x0']**2 + geomBasic['y0']**2)
@@ -496,7 +586,7 @@ def main():
   
   # Which links are getting sent where?
   outgoingMaxLinks = {x:maxLinks[x] for x in maxLinks if x[2] > 0}
-  linksSummary = {x:[] for x in maxLinks if x[2] != 0}
+  linksSummary = {x:[] for x in maxLinks if x[2] > 0}
   # print(linksSummary)
   # for code in wagonCodesDict:
   #   if code[2] > 0:
@@ -553,25 +643,25 @@ def main():
         maxLinksList[i] += -1 * linksSummary[code][i]
       maxLinks[code] = maxLinksList
     
-    elif code[2] < 0:
-      numIncomingLinks = code[2]
-      maxLinksList = maxLinks[code]
-      minIndex = maxLinksList.index(min(maxLinksList))
-      numUnaccountedFor = -1 * numIncomingLinks
+    # elif code[2] < 0:
+    #   numIncomingLinks = code[2]
+    #   maxLinksList = maxLinks[code]
+    #   minIndex = maxLinksList.index(min(maxLinksList))
+    #   numUnaccountedFor = -1 * numIncomingLinks
 
-      for i in range(len(maxLinksList)):
-        linksSummary[code].append(0)
+    #   for i in range(len(maxLinksList)):
+    #     linksSummary[code].append(0)
       
-      maxLinksListCopy = maxLinksList
-      while numUnaccountedFor > 0:
-        linksSummary[code][minIndex] += 1
-        maxLinksListCopy[minIndex] += 1
-        minIndex = maxLinksListCopy.index(min(maxLinksListCopy))
-        numUnaccountedFor -= 1
+    #   maxLinksListCopy = maxLinksList
+    #   while numUnaccountedFor > 0:
+    #     linksSummary[code][minIndex] += 1
+    #     maxLinksListCopy[minIndex] += 1
+    #     minIndex = maxLinksListCopy.index(min(maxLinksListCopy))
+    #     numUnaccountedFor -= 1
       
-      for i in range(len(maxLinksList)):
-        maxLinksList[i] -= linksSummary[code][i]
-      maxLinks[code] = maxLinksList
+    #   for i in range(len(maxLinksList)):
+    #     maxLinksList[i] -= linksSummary[code][i]
+    #   maxLinks[code] = maxLinksList
 
   linksRoutingSummaryFile = 'link-routing-summary'
   with open("{}.txt".format(linksRoutingSummaryFile), 'w') as f:
@@ -579,20 +669,34 @@ def main():
       linksInfoList = linksSummary[code]
       maxLinksList = maxLinks[code]
       print("{0}: {1} + {2}".format(code, maxLinksList, linksInfoList), file = f)
+  
+  maxLinksSummary = {x:[] for x in linksSummary}
+  for code in linksSummary:
+    for i in range(len(linksSummary[code])):
+      maxLinksSummary[code].append(str(maxLinks[code][i]) + "-" + str(-1 * linksSummary[code][i]))
+    maxLinks[code] = maxLinksSummary[code]
 
   emptyCounter = Counter([tuple(i) for i in removedWagonsList])
   for wagon in removedWagonsList:
     emptyCounter[wagon] = 0
   
   # Recoding
-  for code in wagonCodesDict:
-    if code[1] == -1:
+  wagonCodesDictCopy = copy.deepcopy(wagonCodesDict)
+  for code in wagonCodesDictCopy:
       recodedCode = recode(code)
       if recodedCode != code:
         codeCounter[recodedCode] = codeCounter[code]
         codeCounter.pop(code)
         maxLinks[recodedCode] = maxLinks[code]
         maxLinks.pop(code)
+        wagonCodesDict[recodedCode] = wagonCodesDict[code]
+        wagonCodesDict.pop(code)
+  
+  # Finding engine pos. for east wagons
+  eastEnginePositions = {x:findEngine(x, wagonCodesDict, geomGrouped) for x in wagonCodesDict if x[1] == -1}
+  # print(eastEnginePositions)
+
+  # findEngine((0, -1, -3, 'F', 0, 0, 'F'), wagonCodesDict, geomGrouped)
   
   # geometryFile2 = 'removedWagons'
   # with open('wagonDict/{}.txt'.format(geometryFile2), 'w') as f:
