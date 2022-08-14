@@ -88,16 +88,11 @@ def findEngine(code, wagonCodesDict, geomGrouped):
     return code[1]
   
   moduleTypes = list(code[3::3])
-  print(code)
 
   if len(moduleTypes) == 1:
-    print()
-    # print(0)
     return 0
   
   if moduleTypes.count('F') == 1:
-    print()
-    # print(moduleTypes.index('F'))
     return moduleTypes.index('F')
  
   earliestWagonID = wagonCodesDict[code][0]
@@ -107,12 +102,10 @@ def findEngine(code, wagonCodesDict, geomGrouped):
   earliestWagon_plane = [x for x in earliestWagon['plane'].tolist()]
   earliestWagon_u = [x for x in earliestWagon['u'].tolist()]
   earliestWagon_v = [x for x in earliestWagon['v'].tolist()]
-  print((earliestWagon_plane, earliestWagon_u, earliestWagon_v))
 
   partnerModule_plane = [x for x in earliestWagonPartner['plane'].tolist()]
   partnerModule_u = [x for x in earliestWagonPartner['u'].tolist()]
   partnerModule_v = [x for x in earliestWagonPartner['v'].tolist()]
-  print((partnerModule_plane, partnerModule_u, partnerModule_v))
 
   partnerEngineTF = [x for x in earliestWagonPartner['isEngine'].tolist()]
   partnerEnginePos = partnerEngineTF.index(True)
