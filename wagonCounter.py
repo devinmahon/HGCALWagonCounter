@@ -55,31 +55,33 @@ def dictDifferences(dict1, dict2):
       if diff != 0:
         print(str(key) + ": " + str(len(dict1[key])) + ", " + str(diff))
 
+def reverseCode(code):
+  preCode = code[:3]
+  labels = code[3::3]
+  labelsReversed = tuple(reversed(labels))
+  codes = [x for x in code[3:] if x not in labels]
+  codes = [codes[n:n+2] for n in range(0, len(codes), 2)]
+  if codes.count([3, 0]) != len(codes):
+    return code
+  codesReversed = reversed(codes)
+  codesReversed = [list(((x[0] - x[1] - 3) % 6, (6 - x[1]) % 6)) for x in codesReversed]
+  codesReversed = [x for grouping in codesReversed for x in grouping]
+  middleCode = [list(labelsReversed[int(i / 2)]) + codesReversed[i:i+2] for i in range(0, len(codesReversed), 2)]
+  newCode = list(preCode) + [x for ele in middleCode for x in ele] + list(labelsReversed[-1])
+  return tuple(newCode)
+
 def recode(code):
   wagonLength = len(code[3::3])
   if code[1] == 0:
     return code
   elif code[1] == -1:
-    preCode = code[:3]
-    labels = code[3::3]
-    labelsReversed = tuple(reversed(labels))
-    codes = [x for x in code[3:] if x not in labels]
-    codes = [codes[n:n+2] for n in range(0, len(codes), 2)]
-    if codes.count([3, 0]) != len(codes):
-      return code
-    codesReversed = reversed(codes)
-    codesReversed = [list(((x[0] - x[1] - 3) % 6, (6 - x[1]) % 6)) for x in codesReversed]
-    codesReversed = [x for grouping in codesReversed for x in grouping]
-    middleCode = [list(labelsReversed[int(i / 2)]) + codesReversed[i:i+2] for i in range(0, len(codesReversed), 2)]
-    newCode = list(preCode) + [x for ele in middleCode for x in ele] + list(labelsReversed[-1])
-    return tuple(newCode)
+    return reverseCode(code)
   else:
     engineIndex = code[1]
     if engineIndex != wagonLength - 1:
       # print("Recoding not possible; returning original code")
       return code
-    # print("West")
-    return code
+    return reverseCode(code)
 
 def findEngine(code, wagonCodesDict, geomGrouped):
   if code[1] != -1:
@@ -102,22 +104,30 @@ def findEngine(code, wagonCodesDict, geomGrouped):
   earliestWagon = geomGrouped.get_group((earliestWagonID[0], earliestWagonID[1], earliestWagonID[2]))
   earliestWagonPartner = geomGrouped.get_group((earliestWagonID[0], earliestWagonID[1], not earliestWagonID[2]))
   
+  earliestWagon_plane = [x for x in earliestWagon['plane'].tolist()]
+  earliestWagon_u = [x for x in earliestWagon['u'].tolist()]
+  earliestWagon_v = [x for x in earliestWagon['v'].tolist()]
+  print((earliestWagon_plane, earliestWagon_u, earliestWagon_v))
+
+  partnerModule_plane = [x for x in earliestWagonPartner['plane'].tolist()]
+  partnerModule_u = [x for x in earliestWagonPartner['u'].tolist()]
+  partnerModule_v = [x for x in earliestWagonPartner['v'].tolist()]
+  print((partnerModule_plane, partnerModule_u, partnerModule_v))
+
   partnerEngineTF = [x for x in earliestWagonPartner['isEngine'].tolist()]
   partnerEnginePos = partnerEngineTF.index(True)
 
-  partnerModule_x1 = [x for x in earliestWagonPartner['vx_1'].tolist()]
-  partnerModule_y1 = [y for y in earliestWagonPartner['vy_1'].tolist()]
+  partnerEngineCoords = [(), (), (), (), (), ()]
+  for k in range(6):
+    vertexNum_x = 'vx_{0}'.format(k)
+    vertexNum_y = 'vy_{0}'.format(k)
 
-  partnerModule_x2 = [x for x in earliestWagonPartner['vx_2'].tolist()]
-  partnerModule_y2 = [y for y in earliestWagonPartner['vy_2'].tolist()]
-  
-  partnerEngine_x1 = partnerModule_x1[partnerEnginePos]
-  partnerEngine_y1 = partnerModule_y1[partnerEnginePos]
+    partnerModuleVertex_x = [x for x in earliestWagonPartner[vertexNum_x].tolist()]
+    partnerModuleVertex_y = [y for y in earliestWagonPartner[vertexNum_y].tolist()]
 
-  partnerEngine_x2 = partnerModule_x2[partnerEnginePos]
-  partnerEngine_y2 = partnerModule_y2[partnerEnginePos]
-
-  print((partnerEngine_x1, partnerEngine_y1), (partnerEngine_x2, partnerEngine_y2))
+    partnerEngineModuleCoords = (partnerModuleVertex_x[partnerEnginePos], partnerModuleVertex_y[partnerEnginePos])
+    partnerEngineCoords[k] = partnerEngineModuleCoords
+  # print(partnerEngineCoords)
   
   moduleCoords = []
   for i in range(len(moduleTypes)):
@@ -142,9 +152,9 @@ def findEngine(code, wagonCodesDict, geomGrouped):
     moduleCoord_y = [y for y in earliestWagon[vertexNum_y].tolist()]
 
     for j in range(len(moduleCoord_x)):
-      coords = (moduleCoord_x[j], moduleCoord_y[j], i, j)
+      coords = (moduleCoord_x[j], moduleCoord_y[j], j, i)
       moduleCoords[j].append(coords)
-      if (moduleCoord_x[j] == partnerEngine_x1 and moduleCoord_y[j] == partnerEngine_y1) or (moduleCoord_x[j] == partnerEngine_x2 and moduleCoord_y[j] == partnerEngine_y2):
+      if (moduleCoord_x[j], moduleCoord_y[j]) in partnerEngineCoords:
         vertexNum_nextx = 'vx_{0}'.format(next_i)
         vertexNum_nexty = 'vy_{0}'.format(next_i)
 
@@ -156,11 +166,11 @@ def findEngine(code, wagonCodesDict, geomGrouped):
 
         moduleCoord_prevx = [x for x in earliestWagon[vertexNum_prevx].tolist()]
         moduleCoord_prevy = [y for y in earliestWagon[vertexNum_prevy].tolist()]
-        if (moduleCoord_nextx[j] == partnerEngine_x1 and moduleCoord_nexty[j] == partnerEngine_y1) or (moduleCoord_nextx[j] == partnerEngine_x2 and moduleCoord_nexty[j] == partnerEngine_y2):
+        if (moduleCoord_nextx[j], moduleCoord_nexty[j]) in partnerEngineCoords:
           print(j)
           print()
           return j
-        elif (moduleCoord_prevx[j] == partnerEngine_x1 and moduleCoord_prevy[j] == partnerEngine_y1) or (moduleCoord_prevx[j] == partnerEngine_x2 and moduleCoord_prevy[j] == partnerEngine_y2):
+        elif (moduleCoord_prevx[j], moduleCoord_prevy[j]) in partnerEngineCoords:
           print(j)
           print()
           return j
@@ -694,7 +704,7 @@ def main():
   
   # Finding engine pos. for east wagons
   eastEnginePositions = {x:findEngine(x, wagonCodesDict, geomGrouped) for x in wagonCodesDict if x[1] == -1}
-  # print(eastEnginePositions)
+  print(eastEnginePositions)
 
   # findEngine((0, -1, -3, 'F', 0, 0, 'F'), wagonCodesDict, geomGrouped)
   
