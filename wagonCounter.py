@@ -88,10 +88,8 @@ def findEngine(code, wagonCodesDict, geomGrouped):
     return code[1]
   
   moduleTypes = list(code[3::3])
-
   if len(moduleTypes) == 1:
     return 0
-  
   if moduleTypes.count('F') == 1:
     return moduleTypes.index('F')
  
@@ -160,17 +158,11 @@ def findEngine(code, wagonCodesDict, geomGrouped):
         moduleCoord_prevx = [x for x in earliestWagon[vertexNum_prevx].tolist()]
         moduleCoord_prevy = [y for y in earliestWagon[vertexNum_prevy].tolist()]
         if (moduleCoord_nextx[j], moduleCoord_nexty[j]) in partnerEngineCoords:
-          print(j)
-          print()
           return j
         elif (moduleCoord_prevx[j], moduleCoord_prevy[j]) in partnerEngineCoords:
-          print(j)
-          print()
           return j
 
     i += 1
-  print(moduleCoords) 
-  print()   
 
   
 
@@ -696,11 +688,51 @@ def main():
         wagonCodesDict.pop(code)
   
   # Finding engine pos. for east wagons
-  eastEnginePositions = {x:findEngine(x, wagonCodesDict, geomGrouped) for x in wagonCodesDict if x[1] == -1}
+  eastEnginePositions = {x:findEngine(x, wagonCodesDict, geomGrouped) for x in wagonCodesDict if x[1] == -1}  
+  for code in eastEnginePositions:
+    labels = code[3::3]
+    if labels.count('F') != 1:
+      codes = [x for x in code[3:] if x not in labels]
+      codes = [codes[n : n + 2] for n in range(0, len(codes), 2)]
+      num_00 = codes.count([0, 0])
   print(eastEnginePositions)
+  # print(geom['plane'][0])
+  # print(geom)
 
-  # findEngine((0, -1, -3, 'F', 0, 0, 'F'), wagonCodesDict, geomGrouped)
+  engineTypeDict = {}
+  for code in wagonCodesDict:
+    if code[1] == -1:
+      position = eastEnginePositions[code]
+    else:
+      position = code[1]
+    for location in wagonCodesDict[code]:
+      wagon = geomGrouped.get_group((location[0], location[1], location[2]))
+      plane = [x for x in wagon['plane'].tolist()]
+      u = [x for x in wagon['u'].tolist()]
+      v = [x for x in wagon['v'].tolist()]
+      for i in range(len(plane)):
+        module_loc = (plane[i], u[i], v[i])
+        if i == position and code[1] == -1:
+          engineTypeDict[module_loc] = 'E'
+        elif i == position and code[1] != -1:
+          engineTypeDict[module_loc] = 'W'
+        else:
+          engineTypeDict[module_loc] = 'N'
   
+  geom.insert(44, 'engineType', ['N' for i in range(len(geom['plane']))])
+  for i in range(len(geom['engineType'])):
+    ele = geom['engineType'][i]
+    ele_coords = (geom['plane'][i], geom['u'][i], geom['v'][i])
+    if ele_coords in engineTypeDict:
+      geom['engineType'][i] = engineTypeDict[ele_coords]
+
+  geometryPath = geometryPath
+  geometryFile_WithEngine = 'geom_with_east.hgcal'
+  geomFilePath_WithEngine = '{0}{1}.txt'.format(geometryPath, geometryFile_WithEngine)
+  geom = np.around(geom, decimals = 3)
+  cols = [x for x in geom.columns]
+  np.savetxt(geomFilePath_WithEngine, geom, fmt = '%s', header = ' '.join(cols))
+
   # geometryFile2 = 'removedWagons'
   # with open('wagonDict/{}.txt'.format(geometryFile2), 'w') as f:
   #   print(removedWagonsList, file = f) 
