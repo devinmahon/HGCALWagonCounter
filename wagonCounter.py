@@ -72,6 +72,9 @@ def reverseCode(code):
 
 def recode(code):
   wagonLength = len(code[3::3])
+  wagonTypes = code[3::3]
+  if wagonTypes.count('F') != wagonLength:
+    return code
   if code[1] == 0:
     return code
   elif code[1] == -1:
@@ -458,6 +461,19 @@ def main():
           minLinksList[j] = numTrigLinks[j]
     return minLinksList
      
+  # Recoding
+  wagonCodesDictCopy = copy.deepcopy(wagonCodesDict)
+  recodedCodesList = []
+  for code in wagonCodesDictCopy:
+      recodedCode = recode(code)
+      if recodedCode != code:
+        codeCounter[recodedCode] = codeCounter[code]
+        codeCounter.pop(code)
+        wagonCodesDict[recodedCode] = wagonCodesDict[code]  
+        
+        wagonCodesDict.pop(code)
+        recodedCodesList.append(recodedCode)
+  
   # Consolidating using Incoming Crossover Links
   wagonCodesDictCopy = copy.deepcopy(wagonCodesDict)
   incomingWagonCodesDict = {x:wagonCodesDictCopy[x] for x in wagonCodesDictCopy.keys() if x[2] <= 0}
@@ -520,6 +536,7 @@ def main():
   for key, val in outgoingWagonCodesCopy.items():
     counterCopy = copy.deepcopy(codeCounter)
     transferredCodes = {}
+    preConsolLength = len(wagonCodesDict[key])
     numTransfers = 0
     for loc in val:
       wagonLoc = geomGrouped.get_group((loc[0], loc[1], loc[2]))
@@ -543,7 +560,7 @@ def main():
             transferredCodes[possibleCode] = [loc]
           numTransfers += 1
           break
-    if numTransfers == codeCounter[key] or key[2] == 0:
+    if numTransfers == preConsolLength or key[2] == 0:
       for possibleCode, locations in transferredCodes.items():
         for loc in locations:
           outgoingWagonCodesDict[key].remove(loc)
@@ -558,7 +575,9 @@ def main():
       delta = codeCounter[wagon] - counterCopy[wagon]
       if delta != 0:
         wagonMovementDict[key].append((wagon, delta))
-  
+    postConsolLength = len(outgoingWagonCodesDict[key])
+    diff = preConsolLength - postConsolLength
+
   for key, val in outgoingWagonCodesDict.items():
     wagonCodesDictCopy[key] = val
 
@@ -583,37 +602,6 @@ def main():
   # Which links are getting sent where?
   outgoingMaxLinks = {x:maxLinks[x] for x in maxLinks if x[2] > 0}
   linksSummary = {x:[] for x in maxLinks if x[2] > 0}
-  # print(linksSummary)
-  # for code in wagonCodesDict:
-  #   if code[2] > 0:
-  #     numOutgoingLinks = code[2]
-  #     maxLinksList = outgoingMaxLinks[code]
-  #     minLinksList = minLinksCalculation(code, wagonCodesDict)
-  #     maxIndex = maxLinksList.index(max(maxLinksList))
-  #     minIndex = minLinksList.index(min(minLinksList))
-      
-  #     for i in range(len(maxLinksList)):
-  #       linksSummary[code].append(0)
-      
-  #     if min(minLinksList) > code[2]:
-  #       linksSummary[code][minIndex] = -1 * code[2]
-  #     else:
-  #       minLinksListCopy = minLinksList
-  #       linksSummary[code][minIndex] = -1 * min(minLinksList)
-  #       numAccountedFor = min(minLinksList)
-  #       minLinksListCopy.remove(min(minLinksList))
-  #       while numAccountedFor != code[2]:
-  #         print(minLinksCalculation((0, -1, 3, 'F', 0, 1, 'b'), wagonCodesDict))
-  #         minNextLargestModule = min(minLinksListCopy)
-  #         if minNextLargestModule >= (code[2] - numAccountedFor):
-  #           newMinIndex = minLinksList.index(minNextLargestModule)
-  #           linksSummary[code][newMinIndex] = numAccountedFor - code[2]
-  #           numAccountedFor = code[2]
-  #         else:
-  #           newMinIndex = minLinksList.index(minNextLargestModule)
-  #           linksSummary[code][newMinIndex] = -1 * minNextLargestModule
-  #           numAccountedFor += minNextLargestModule
-  #           minLinksListCopy.remove(minNextLargestModule)
   
   for code in wagonCodesDict:
     if code[2] > 0:
@@ -635,6 +623,8 @@ def main():
         numUnaccountedFor -= 1
         # print('---')
       
+      if linksSummary[code] == [-2, 0] or linksSummary[code] == [0, -2]:
+        linksSummary[code] == [-1, -1]
       for i in range(len(maxLinksList)):
         maxLinksList[i] += -1 * linksSummary[code][i]
       maxLinks[code] = maxLinksList
@@ -668,6 +658,8 @@ def main():
   
   maxLinksSummary = {x:[] for x in linksSummary}
   for code in linksSummary:
+    if linksSummary[code] == [-2, 0] or linksSummary[code] == [0, -2]:
+      linksSummary[code] = [-1, -1]
     for i in range(len(linksSummary[code])):
       maxLinksSummary[code].append(str(maxLinks[code][i]) + "-" + str(-1 * linksSummary[code][i]))
     maxLinks[code] = maxLinksSummary[code]
@@ -675,18 +667,6 @@ def main():
   emptyCounter = Counter([tuple(i) for i in removedWagonsList])
   for wagon in removedWagonsList:
     emptyCounter[wagon] = 0
-  
-  # Recoding
-  wagonCodesDictCopy = copy.deepcopy(wagonCodesDict)
-  for code in wagonCodesDictCopy:
-      recodedCode = recode(code)
-      if recodedCode != code:
-        codeCounter[recodedCode] = codeCounter[code]
-        codeCounter.pop(code)
-        maxLinks[recodedCode] = maxLinks[code]
-        maxLinks.pop(code)
-        wagonCodesDict[recodedCode] = wagonCodesDict[code]
-        wagonCodesDict.pop(code)
   
   # Finding engine pos. for east wagons
   eastEnginePositions = {x:findEngine(x, wagonCodesDict, geomGrouped) for x in wagonCodesDict if x[1] == -1}  
@@ -696,10 +676,53 @@ def main():
       codes = [x for x in code[3:] if x not in labels]
       codes = [codes[n : n + 2] for n in range(0, len(codes), 2)]
       num_00 = codes.count([0, 0])
-  print(eastEnginePositions)
-  # print(geom['plane'][0])
-  # print(geom)
 
+  # Correcting engine pos. calculation for recoded wagons
+  for code in recodedCodesList:
+    if code in removedWagonsList:
+      continue
+    lenWagon = len(code[3::3])
+    eastEnginePositions[code] = (lenWagon - 1) - eastEnginePositions[code]
+
+  # Recoding as per new format
+  newCodeFormat = {}
+  for code in wagonCodesDict:
+      HDorLD = code[0]
+      EastorWest = 0 if code[1] == -1 else 1
+      enginePos = code[1] if code[1] != -1 else eastEnginePositions[code]
+      if code[2] == 0:
+        crossoverType = 0
+        crossoverNum = 0
+      elif code[2] > 0:
+        crossoverType = 1
+        crossoverNum = code[2]
+      else:
+        crossoverType = 2
+        crossoverNum = -1 * code[2]
+      preCode = (HDorLD, EastorWest, enginePos, crossoverType, crossoverNum)
+
+      wagonTypes = code[3::3]
+      codeMinusTypes = tuple([x for x in code[3:] if x not in wagonTypes])
+      angleOrientationCodes = tuple([codeMinusTypes[i:i+2] for i in range(0, len(codeMinusTypes), 2)])
+      
+      for i in range(len(wagonTypes)):
+        wagonType = wagonTypes[i]
+        maxLinksModule = maxLinks[code][i]
+        if type(maxLinksModule) == str:
+          maxLinksModule = int(maxLinksModule[0])
+        if code in linksSummary:
+          crossoverLinks = linksSummary[code][i]
+          engineLinks = maxLinksModule - crossoverLinks
+        else:
+          crossoverLinks = 0
+          engineLinks = maxLinksModule
+        angleOrientationCode = angleOrientationCodes[i] if i < (len(wagonTypes) - 1) else ()
+        newCode = preCode + (wagonType, engineLinks, crossoverLinks)
+        newCode += angleOrientationCode
+      newCodeFormat[code] = newCode
+  print(newCodeFormat)
+
+  # Setting engineType column in new geometry file
   engineTypeDict = {}
   for code in wagonCodesDict:
     if code[1] == -1:

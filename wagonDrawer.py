@@ -20,6 +20,7 @@ def hexdraw(bow, x, y, des, rot, mb, eng, maxLinks = 0):
     cx = x
     cy = y
     rot = float(rot)
+    maxLinksType = type(maxLinks)
     #if des == 'F' or des == 'FI' or des == 'FIe' or des == 'FMI' or des == 'FO'\
             #or des == 'FOe' or des == 'FM' or des == 'FMe':
     if 'F' in des:
@@ -28,7 +29,10 @@ def hexdraw(bow, x, y, des, rot, mb, eng, maxLinks = 0):
             draw.polygon(((cx, cy+r), (cx-.866*r, cy+r/2), (cx-.866*r, cy-r/2),
                           (cx, cy-r), (cx+.866*r, cy-r/2), (cx+.866*r, cy+r/2)),
                          fill=MBColor(bow, mb, des), outline=(0, 0, 0))
-            draw.text((cx - 0.05*r, cy - 0.05*r), str(maxLinks), font = font)
+            if maxLinksType == int:
+                draw.text((cx - 0.05*r, cy - 0.05*r), str(maxLinks), font = font)
+            else:
+                draw.text((cx - 0.20*r, cy - 0.05*r), str(maxLinks), font = font)
         # orientation
         draworfull(cx, cy, r, rot)
         # draw engine
@@ -74,32 +78,50 @@ def hexdraw(bow, x, y, des, rot, mb, eng, maxLinks = 0):
                           (cx, cy-r)), fill=MBColor(bow, mb, des), outline=(0, 0, 0))
             # draw.polygon(((cx,cy+r),(cx-.433*r,cy+3/4*r),(cx,cy+3/4*r)),\
             #                 fill=(0,0,0),outline=(0,0,0))
-            draw.text((cx - 0.425*r, cy - 0.05*r), str(maxLinks), font = font)
+            if maxLinksType == int:
+                draw.text((cx - 0.425*r, cy - 0.05*r), str(maxLinks), font = font)
+            else:
+               draw.text((cx - 0.575*r, cy - 0.05*r), str(maxLinks), font = font) 
         elif rot == 5:
             draw.polygon(((cx, cy+r), (cx-.866*r, cy+r/2), (cx-.866*r, cy-r/2),
                           (cx+.866*r, cy+r/2)), fill=MBColor(bow, mb, des), outline=(0, 0, 0))
-            draw.text((cx - 0.20*r, cy + 0.25 * r), str(maxLinks), font = font)
+            if maxLinksType == int:
+                draw.text((cx - 0.20*r, cy + 0.25 * r), str(maxLinks), font = font)
+            else:
+                draw.text((cx - 0.35*r, cy + 0.25 * r), str(maxLinks), font = font)
         elif rot == 0:
             draw.polygon(((cx, cy+r), (cx-.866*r, cy+r/2), (cx+.866*r, cy-r/2),
                           (cx+.866*r, cy+r/2)), fill=MBColor(bow, mb, des), outline=(0, 0, 0))
-            draw.text((cx + 0.10*r, cy + 0.25*r), str(maxLinks), font = font)
+            if maxLinksType == int:
+                draw.text((cx + 0.10*r, cy + 0.25*r), str(maxLinks), font = font)
+            else:
+                draw.text((cx - 0.05*r, cy + 0.25*r), str(maxLinks), font = font)
         elif rot == 1:
             draw.polygon(((cx, cy+r), (cx, cy-r), (cx+.866*r, cy-r/2),
                           (cx+.866*r, cy+r/2)), fill=MBColor(bow, mb, des), outline=(0, 0, 0))
             # draw.polygon(((cx,cy+r),(cx,cy+3/4*r),(cx+.433*r,cy+3/4*r)),\
             #                 fill=(0,0,0),outline=(0,0,0))
-            draw.text((cx + 0.325*r, cy - 0.05*r), str(maxLinks), font = font)
+            if maxLinksType == int:
+                draw.text((cx + 0.325*r, cy - 0.05*r), str(maxLinks), font = font)
+            else:
+                draw.text((cx + 0.175*r, cy - 0.05*r), str(maxLinks), font = font)
         elif rot == 2:
             draw.polygon(((cx-.866*r, cy-r/2), (cx, cy-r), (cx+.866*r, cy-r/2),
                           (cx+.866*r, cy+r/2)), fill=MBColor(bow, mb, des), outline=(0, 0, 0))
             # the 2nd coord is still wrong a bit
             # draw.polygon(((cx+.866*r,cy+r/2),(cx+r*.70,cy+.4*r),(cx+.866*r,cy)),\
             #             fill=(0,0,0),outline=(0,0,0))
-            draw.text((cx + 0.10*r, cy - 0.45 * r), str(maxLinks), font = font)
+            if maxLinksType == int:
+                draw.text((cx + 0.10*r, cy - 0.45 * r), str(maxLinks), font = font)
+            else:
+                draw.text((cx - 0.05*r, cy - 0.45 * r), str(maxLinks), font = font)
         elif rot == 3:
             draw.polygon(((cx-.866*r, cy+r/2), (cx-.866*r, cy-r/2), (cx, cy-r),
                           (cx+.866*r, cy-r/2)), fill=MBColor(bow, mb, des), outline=(0, 0, 0))
-            draw.text((cx - 0.20*r, cy - 0.45 * r), str(maxLinks), font = font)
+            if maxLinksType == int:
+                draw.text((cx - 0.20*r, cy - 0.45 * r), str(maxLinks), font = font)
+            else:
+                draw.text((cx - 0.35*r, cy - 0.45 * r), str(maxLinks), font = font)
     #elif des == 'bI' or des == 'bIe' or des == 'bMe' or des == 'bOe':
     elif 'b' in des:
         rot = (rot+4)%6
@@ -107,34 +129,52 @@ def hexdraw(bow, x, y, des, rot, mb, eng, maxLinks = 0):
             draw.polygon(((cx, cy+r), (cx-.866*r, cy+r/2), (cx-.866*r, cy-r/2),
                           (cx, cy-r), (cx+.866*r, cy-r/2)),
                          fill=MBColor(bow, mb, des), outline=(0, 0, 0))
-            draw.text((cx - 0.05 * r, cy - 0.05 * r), str(maxLinks), font = font)
+            if maxLinksType == int:
+                draw.text((cx - 0.05 * r, cy - 0.05 * r), str(maxLinks), font = font)
+            else:
+                draw.text((cx - 0.20 * r, cy - 0.05 * r), str(maxLinks), font = font)
         elif rot == 5:
             draw.polygon(((cx, cy+r), (cx-.866*r, cy+r/2), (cx-.866*r, cy-r/2),
                           (cx, cy-r), (cx+.866*r, cy+r/2)),
                          fill=MBColor(bow, mb, des), outline=(0, 0, 0))
-            draw.text((cx - 0.05 * r, cy - 0.05 * r), str(maxLinks), font = font)
+            if maxLinksType == int:
+                draw.text((cx - 0.05 * r, cy - 0.05 * r), str(maxLinks), font = font)
+            else:
+                draw.text((cx - 0.20 * r, cy - 0.05 * r), str(maxLinks), font = font)
         elif rot == 0:
             draw.polygon(((cx, cy+r), (cx-.866*r, cy+r/2), (cx-.866*r, cy-r/2),
                           (cx+.866*r, cy-r/2), (cx+.866*r, cy+r/2)),
                          fill=MBColor(bow, mb, des), outline=(0, 0, 0))
             # draw.polygon(((cx,cy+r),(cx-.433*r,cy+3/4*r),(cx+.433*r,cy+3/4*r)),\
             #                 fill=(0,0,0),outline=(0,0,0))
-            draw.text((cx - 0.05 * r, cy - 0.05 * r), str(maxLinks), font = font)
+            if maxLinksType == int:
+                draw.text((cx - 0.05 * r, cy - 0.05 * r), str(maxLinks), font = font)
+            else:
+                draw.text((cx - 0.20 * r, cy - 0.05 * r), str(maxLinks), font = font)
         elif rot == 1:
             draw.polygon(((cx, cy+r), (cx-.866*r, cy+r/2), (cx, cy-r),
                           (cx+.866*r, cy-r/2), (cx+.866*r, cy+r/2)),
                          fill=MBColor(bow, mb, des), outline=(0, 0, 0))
-            draw.text((cx - 0.05 * r, cy - 0.05 * r), str(maxLinks), font = font)
+            if maxLinksType == int:
+                draw.text((cx - 0.05 * r, cy - 0.05 * r), str(maxLinks), font = font)
+            else:
+                draw.text((cx - 0.20 * r, cy - 0.05 * r), str(maxLinks), font = font)
         elif rot == 2:
             draw.polygon(((cx, cy+r), (cx-.866*r, cy-r/2), (cx, cy-r),
                           (cx+.866*r, cy-r/2), (cx+.866*r, cy+r/2)),
                          fill=MBColor(bow, mb, des), outline=(0, 0, 0))
-            draw.text((cx - 0.05 * r, cy - 0.05 * r), str(maxLinks), font = font)
+            if maxLinksType == int:
+                draw.text((cx - 0.05 * r, cy - 0.05 * r), str(maxLinks), font = font)
+            else:
+                draw.text((cx - 0.20 * r, cy - 0.05 * r), str(maxLinks), font = font)
         elif rot == 3:
             draw.polygon(((cx-.866*r, cy+r/2), (cx-.866*r, cy-r/2), (cx, cy-r),
                           (cx+.866*r, cy-r/2), (cx+.866*r, cy+r/2)),
                          fill=MBColor(bow, mb, des), outline=(0, 0, 0))
-            draw.text((cx - 0.05 * r, cy - 0.05 * r), str(maxLinks), font = font)
+            if maxLinksType == int:
+                draw.text((cx - 0.05 * r, cy - 0.05 * r), str(maxLinks), font = font)
+            else:
+                draw.text((cx - 0.20 * r, cy - 0.05 * r), str(maxLinks), font = font)
     #elif des == 'cOe':
     elif 'c' in des:
         rot = (rot+2)%6
