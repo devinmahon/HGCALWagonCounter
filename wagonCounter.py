@@ -689,37 +689,32 @@ def main():
       HDorLD = code[0]
       EastorWest = 0 if code[1] == -1 else 1
       enginePos = code[1] if code[1] != -1 else eastEnginePositions[code]
-      if code[2] == 0:
-        crossoverType = 0
-        crossoverNum = 0
-      elif code[2] > 0:
-        crossoverType = 1
-        crossoverNum = code[2]
+      if code[2] < 0:
+        incomingNum = -1 * code[2]
       else:
-        crossoverType = 2
-        crossoverNum = -1 * code[2]
-      preCode = (HDorLD, EastorWest, enginePos, crossoverType, crossoverNum)
+        incomingNum = 0
+      preCode = (HDorLD, EastorWest, enginePos, incomingNum)
 
       wagonTypes = code[3::3]
       codeMinusTypes = tuple([x for x in code[3:] if x not in wagonTypes])
       angleOrientationCodes = tuple([codeMinusTypes[i:i+2] for i in range(0, len(codeMinusTypes), 2)])
-      
+      newCode = preCode
       for i in range(len(wagonTypes)):
         wagonType = wagonTypes[i]
         maxLinksModule = maxLinks[code][i]
         if type(maxLinksModule) == str:
           maxLinksModule = int(maxLinksModule[0])
         if code in linksSummary:
-          crossoverLinks = linksSummary[code][i]
+          crossoverLinks = -1 * linksSummary[code][i]
           engineLinks = maxLinksModule - crossoverLinks
         else:
           crossoverLinks = 0
           engineLinks = maxLinksModule
         angleOrientationCode = angleOrientationCodes[i] if i < (len(wagonTypes) - 1) else ()
-        newCode = preCode + (wagonType, engineLinks, crossoverLinks)
+        newCode += (wagonType, engineLinks, crossoverLinks)
         newCode += angleOrientationCode
       newCodeFormat[code] = newCode
-  print(newCodeFormat)
+  print(newCodeFormat[(0, 0, 2, 'F', 3, 0, 'F')])
 
   # Setting engineType column in new geometry file
   engineTypeDict = {}
