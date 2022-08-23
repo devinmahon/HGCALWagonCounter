@@ -715,7 +715,7 @@ def main():
         newCode += (wagonType, engineLinks, crossoverLinks)
         newCode += angleOrientationCode
       newCodeFormat[code] = newCode
-  print(newCodeFormat[(0, 0, 2, 'F', 3, 0, 'F')])
+  print(newCodeFormat)
 
   # Setting engineType column in new geometry file
   engineTypeDict = {}
