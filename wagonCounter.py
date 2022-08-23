@@ -743,7 +743,7 @@ def main():
     ele = geom['engineType'][i]
     ele_coords = (geom['plane'][i], geom['u'][i], geom['v'][i])
     if ele_coords in engineTypeDict:
-      geom['engineType'][i] = engineTypeDict[ele_coords]
+      geom.loc[i,'engineType'] = engineTypeDict[ele_coords]
 
   geometryPath = geometryPath
   geometryFile_WithEngine = 'geom_with_east.hgcal'
