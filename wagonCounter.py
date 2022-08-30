@@ -56,7 +56,7 @@ def main():
   # Configuration parameters
   threesSeparate = False
   halvesSemisSame = False
-  LDOnly = True
+  LDHDBoth = 0
 
   # Specify the geometry file to be used
   geometryPath = 'geometries/v13.2/'
@@ -79,8 +79,9 @@ def main():
 
   # Get a subset (if needed)
   #geomBasic = geomBasic[(geomBasic['plane'] <= 28) | (geomBasic['plane'] >= 37)]
-  if LDOnly: geomBasic = geomBasic[geomBasic['HDorLD'] == 0]
-  #geomBasic = geomBasic[(geomBasic['plane'] == 33) & (geomBasic['HDorLD'] == 0)]
+  if LDHDBoth == 0: 	geomBasic = geomBasic[geomBasic['HDorLD'] == 0]
+  elif LDHDBoth == 1: 	geomBasic = geomBasic[geomBasic['HDorLD'] == 1]
+  #geomBasic = geomBasic[(geomBasic['plane'] <= 26)]
 
   # Remove impossible wagons
   removeWagons = [[3,2,0],[3,102,0],[5,2,0],[5,102,0],[3,0,0],[3,100,0],[5,0,0],[5,100,0]]
@@ -389,6 +390,9 @@ def main():
 
   # Sort by HD/LD then no. of modules then no. of instances 
   codeCounter = dict(sorted(codeCounter.items(), key=lambda item: (item[0][0],len(item[0]),item[1]), reverse=True))
+
+  # Print total number of boards (full detector)
+  #print('Total number of boards (full detector):',6 * sum(codeCounter.values()))
 
   # Draw and save the wagon summary (see wagonDrawer.py)
   wagonDrawer.wagonDrawer(codeCounter,geometryFile)
