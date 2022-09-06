@@ -110,8 +110,16 @@ def main():
 
     # Add code for isEngine (for west wagons set index of engine, for east wagons set to -1)
     #newCode.append(1) if (group['isEngine'] == True).any() else newCode.append(0)
-    try: enginePos = list(group['isEngine'] == True).index(True)
+
+    try: enginePos = list(group['isEngine'] == True).index('True')
     except ValueError: enginePos = -1
+
+    if enginePos == -1:
+      EastorWest = 0
+    else:
+      EastorWest = 1
+
+    newCode.append(EastorWest)
     newCode.append(enginePos)   
 
     # Add placeholder code for crossover trigger links (# of outgoing links)
@@ -121,7 +129,6 @@ def main():
     irotPrev, uPrev, vPrev = -999 * np.ones(3,dtype=int)
     i = 0
     for rowIndex, row in group.iterrows():
-
       irotCurr = row['irot']
       uCurr    = row['u']
       vCurr    = row['v']
@@ -149,6 +156,7 @@ def main():
           print(group)
         
         angleCode = (angle - irotPrev) % 6
+        newCode += [0, 0]
         newCode.append(angleCode)
 
         # Orientation code
@@ -162,6 +170,8 @@ def main():
       vPrev    = vCurr
       i += 1
    
+    newCode += [0, 0]
+    print(newCode)
     wagonCodes.append(newCode)
     wagonCodesDict.setdefault(tuple(newCode),[]).append([row['plane'],row['MB'],row['wagon']])
 
