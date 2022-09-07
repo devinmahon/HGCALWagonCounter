@@ -171,7 +171,6 @@ def main():
       i += 1
    
     newCode += [0, 0]
-    print(newCode)
     wagonCodes.append(newCode)
     wagonCodesDict.setdefault(tuple(newCode),[]).append([row['plane'],row['MB'],row['wagon']])
 
@@ -181,26 +180,26 @@ def main():
   # Consolidate 180 degree rotations
   duplicateCodes = []
   for wagon in list(codeCounter.keys()):
-    if len(wagon) == 4:
+    if len(wagon) == 7:
       continue
-    preCodes = wagon[0:3] #wagon[0:2]
-    if preCodes[1] != -1:
-      preCodesRot = [preCodes[0],list(reversed(list(range(int(len(wagon)/3)))))[preCodes[1]],preCodes[2]]
+    preCodes = wagon[0:4] 
+    if preCodes[1] != 0:
+      preCodesRot = [preCodes[0], preCodes[1], list(reversed(list(range(int(len(wagon)/5)))))[preCodes[2]], precodes[3]]
     else:
       preCodesRot = preCodes
-    labels = wagon[3:][::3]
-    codes = [x for x in wagon[3:] if x not in labels]
-    codes = [codes[n:n+2] for n in range(0,len(codes),2)]
+    labels = wagon[4:][::5]
+    codes = [x for x in wagon[4:] if x not in labels]
+    codes = [codes[n:n+4] for n in range(0,len(codes),4)]
+    codes = [x for x in codes if len(x) == 4]
+    codes = [x[2:4] for x in codes]
     labelsRot = tuple(reversed(labels))
     codesRot = tuple(reversed (codes))
-    codesRot = [[(x[0]+6-(x[1]+3))%6,(6-x[1])%6] for x in codesRot]
-    wagonRot = list(preCodesRot) + [x for sublist in [[labelsRot[i]] + codesRot[i] for i in range(len(labelsRot)-1)] for x in sublist] + [labelsRot[-1]]
+    codesRot = [[(0, 0, x[0] + 6 - (x[1] + 3) % 6, (6 - x[1]) % 6)] for x in codesRot]
+    wagonRot = list(preCodesRot) + [x for sublist in [[labelsRot[i]] + codesRot[i] for i in range(len(labelsRot)-1)] for x in sublist] + [labelsRot[-1]] + [0, 0]
     #print('rotated:',wagonRot)
 
     wagonRot = tuple(wagonRot)
     if wagonRot in codeCounter and not wagonRot in duplicateCodes:
-      #if wagon == (0, 0, 0, 'F', 3, 0, 'F', 3, 0, 'F', 3, 3, 'a'): print('deleting',wagonRot)
-
       for id in wagonCodesDict[wagonRot]:
         geomBasic.loc[(geomBasic['plane'] == id[0]) & (geomBasic['MB'] == id[1]) & (geomBasic['wagon'] == id[2]),'r'] *= -1
 
@@ -212,6 +211,9 @@ def main():
       wagonCodesDict.pop(wagonRot)
 
   geomGrouped = geomBasic.sort_values('r',ascending=True).groupby(['plane','MB','wagon'])
+  print(wagonCodesDict.keys())
+
+  ### Updated for new coding scheme up to here ###
 
   numTrigLinksHDLT15 = 0
   numHD = 0
