@@ -211,9 +211,6 @@ def main():
       wagonCodesDict.pop(wagonRot)
 
   geomGrouped = geomBasic.sort_values('r',ascending=True).groupby(['plane','MB','wagon'])
-  print(wagonCodesDict.keys())
-
-  ### Updated for new coding scheme up to here ###
 
   numTrigLinksHDLT15 = 0
   numHD = 0
@@ -254,7 +251,7 @@ def main():
           x1 = -totTrigLinksPartner
           x2 = totTrigLinksPartner
         # Ambiguous LpGBT consolidation (wagon with engine receives the crossovers (key[1] != -1), for the opposite, do key[1] == -1)
-        elif doConsol and key[1] != -1 and totTrigLinks != 0 and totTrigLinks <= 3 and totTrigLinksPartner <= 3:
+        elif doConsol and key[1] != 0 and totTrigLinks != 0 and totTrigLinks <= 3 and totTrigLinksPartner <= 3:
           #print('Ambiguous:',id)
           isNew = True
           x1 = -totTrigLinksPartner
@@ -263,13 +260,13 @@ def main():
           # Make new codes
           oldCode1 = key
           newCode1 = list(oldCode1)
-          newCode1[2] = x1
+          newCode1[3] = x1
           newCode1 = tuple(newCode1)
           for k,v in wagonCodesDict.items():
             if idPartner in v:
               oldCode2 = k
           newCode2 = list(oldCode2)
-          newCode2[2] = x2
+          newCode2[3] = x2
           newCode2 = tuple(newCode2)
 
           # Remove old ids
@@ -341,6 +338,8 @@ def main():
   #  #if key[0] == 0 and sum(maxTrigLinks) > 7: print(key,maxTrigLinks)
   #  if key in [(0,-1,0,'F'),(0,0,0,'F'),(0,-1,0,'F',3,0,'F'),(0,0,0,'F',3,0,'F'),(0,-1,0,'F',0,0,'F',0,0,'F'),(0,0,0,'F',3,0,'F',3,0,'F'),(0,0,1,'F',3,0,'F'),(0,-1,-1,'F',3,0,'F')]: print(key,':',maxTrigLinks)
 
+  ### Updated for new coding scheme up to here ###
+
   # Remove empty Counter entries
   codeCounter = Counter({i:j for i,j in codeCounter.items() if j != 0})
 
@@ -407,7 +406,7 @@ def main():
   #print('Total number of boards (full detector):',6 * sum(codeCounter.values()))
 
   # Draw and save the wagon summary (see wagonDrawer.py)
-  wagonDrawer.wagonDrawer(codeCounter,geometryFile)
+  # wagonDrawer.wagonDrawer(codeCounter,geometryFile)
 
 if __name__ == '__main__':
   main()
