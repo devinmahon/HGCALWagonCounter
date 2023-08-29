@@ -6,8 +6,11 @@ import wagonDrawer
 import sys
 import time
 import copy
+import os
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
+
+pd.set_option('display.max_columns', None)
 
 # Return true if the modules are ordered such that each one touches the previous one
 def checkContiguity(group):
@@ -16,7 +19,6 @@ def checkContiguity(group):
   group['diff'] = list(zip(group.u,group.v))
   group['touchPrev'] = group['diff'].apply(lambda x: True if x in [(1,0),(1,1),(0,1),(-1,0),(-1,-1),(0,-1)] else False)
   group.loc[group.index[0],'touchPrev'] = True
-
   if group['touchPrev'].all():
     return True, -1
   else:
@@ -25,7 +27,6 @@ def checkContiguity(group):
 # Properly order the modules
 def makeContiguous(group):
 
-  #print(group)
   nModules = group.shape[0]
   nomSequence = list(range(nModules)) #list(range(nModules - 1) + np.ones(nModules - 1,dtype=int))
   orderings = list(itertools.permutations(nomSequence))
@@ -86,86 +87,127 @@ def recode(code):
       return code
     return reverseCode(code)
 
-def findEngine(code, wagonCodesDict, geomGrouped):
+def findEngine(code,wagonCodesDict,geomGrouped):
   if code[1] != -1:
     return code[1]
-  
+
   moduleTypes = list(code[3::3])
   if len(moduleTypes) == 1:
     return 0
   if moduleTypes.count('F') == 1:
     return moduleTypes.index('F')
- 
+
   earliestWagonID = wagonCodesDict[code][0]
   earliestWagon = geomGrouped.get_group((earliestWagonID[0], earliestWagonID[1], earliestWagonID[2]))
   earliestWagonPartner = geomGrouped.get_group((earliestWagonID[0], earliestWagonID[1], not earliestWagonID[2]))
-  
-  earliestWagon_plane = [x for x in earliestWagon['plane'].tolist()]
-  earliestWagon_u = [x for x in earliestWagon['u'].tolist()]
-  earliestWagon_v = [x for x in earliestWagon['v'].tolist()]
 
-  partnerModule_plane = [x for x in earliestWagonPartner['plane'].tolist()]
-  partnerModule_u = [x for x in earliestWagonPartner['u'].tolist()]
-  partnerModule_v = [x for x in earliestWagonPartner['v'].tolist()]
+  u,v,irot,plane = earliestWagonPartner.loc[earliestWagonPartner['isEngine'],['u','v','irot','plane']].values.flatten().tolist()
+ 
+  if plane > 26 or plane % 2: 
+    uDiff = {0: 1, 1: 1, 2: 0, 3: -1, 4: -1, 5:  0}
+    vDiff = {0: 0, 1: 1, 2: 1, 3:  0, 4: -1, 5: -1} 
+    uEastEngine = u + uDiff[irot]
+    vEastEngine = v + vDiff[irot]
+  else:
+    uDiff = {0: -1, 1:  0, 2: 1, 3: -1, 4:  0, 5: -1}
+    vDiff = {0:  0, 1: -1, 2: 1, 3:  0, 4: -1, 5: -1}
+    uEastEngine = u + uDiff[irot]
+    vEastEngine = v + vDiff[irot]
 
-  partnerEngineTF = [x for x in earliestWagonPartner['isEngine'].tolist()]
-  partnerEnginePos = partnerEngineTF.index(True)
+  coords = earliestWagon[['u','v']].values.tolist()
+  index = [i for i in range(len(coords)) if coords[i] == [uEastEngine,vEastEngine]][0]
+  if index != 0: print(plane,u,v,index,code)
 
-  partnerEngineCoords = [(), (), (), (), (), ()]
-  for k in range(6):
-    vertexNum_x = 'vx_{0}'.format(k)
-    vertexNum_y = 'vy_{0}'.format(k)
+  return index
 
-    partnerModuleVertex_x = [x for x in earliestWagonPartner[vertexNum_x].tolist()]
-    partnerModuleVertex_y = [y for y in earliestWagonPartner[vertexNum_y].tolist()]
 
-    partnerEngineModuleCoords = (partnerModuleVertex_x[partnerEnginePos], partnerModuleVertex_y[partnerEnginePos])
-    partnerEngineCoords[k] = partnerEngineModuleCoords
-  # print(partnerEngineCoords)
-  
-  moduleCoords = []
-  for i in range(len(moduleTypes)):
-    moduleCoords.append([])
 
-  i = 0
-  while i < 6:
-    if i == 0:
-      prev_i = 5
-      next_i = 1
-    elif i == 5:
-      prev_i = 4
-      next_i = 0
-    else:
-      prev_i = i - 1
-      next_i = i + 1
-    
-    vertexNum_x = 'vx_{0}'.format(i)
-    vertexNum_y = 'vy_{0}'.format(i)
-
-    moduleCoord_x = [x for x in earliestWagon[vertexNum_x].tolist()]
-    moduleCoord_y = [y for y in earliestWagon[vertexNum_y].tolist()]
-
-    for j in range(len(moduleCoord_x)):
-      coords = (moduleCoord_x[j], moduleCoord_y[j], j, i)
-      moduleCoords[j].append(coords)
-      if (moduleCoord_x[j], moduleCoord_y[j]) in partnerEngineCoords:
-        vertexNum_nextx = 'vx_{0}'.format(next_i)
-        vertexNum_nexty = 'vy_{0}'.format(next_i)
-
-        vertexNum_prevx = 'vx_{0}'.format(prev_i)
-        vertexNum_prevy = 'vy_{0}'.format(prev_i)
-
-        moduleCoord_nextx = [x for x in earliestWagon[vertexNum_nextx].tolist()]
-        moduleCoord_nexty = [y for y in earliestWagon[vertexNum_nexty].tolist()]
-
-        moduleCoord_prevx = [x for x in earliestWagon[vertexNum_prevx].tolist()]
-        moduleCoord_prevy = [y for y in earliestWagon[vertexNum_prevy].tolist()]
-        if (moduleCoord_nextx[j], moduleCoord_nexty[j]) in partnerEngineCoords:
-          return j
-        elif (moduleCoord_prevx[j], moduleCoord_prevy[j]) in partnerEngineCoords:
-          return j
-
-    i += 1
+#def findEngine(code, wagonCodesDict, geomGrouped):
+#  if code[1] != -1:
+#    return code[1]
+#  
+#  moduleTypes = list(code[3::3])
+#  if len(moduleTypes) == 1:
+#    return 0
+#  if moduleTypes.count('F') == 1:
+#    return moduleTypes.index('F')
+# 
+#  earliestWagonID = wagonCodesDict[code][0]
+#  earliestWagon = geomGrouped.get_group((earliestWagonID[0], earliestWagonID[1], earliestWagonID[2]))
+#  earliestWagonPartner = geomGrouped.get_group((earliestWagonID[0], earliestWagonID[1], not earliestWagonID[2]))
+#  
+#  earliestWagon_plane = [x for x in earliestWagon['plane'].tolist()]
+#  earliestWagon_u = [x for x in earliestWagon['u'].tolist()]
+#  earliestWagon_v = [x for x in earliestWagon['v'].tolist()]
+#
+#  partnerModule_plane = [x for x in earliestWagonPartner['plane'].tolist()]
+#  partnerModule_u = [x for x in earliestWagonPartner['u'].tolist()]
+#  partnerModule_v = [x for x in earliestWagonPartner['v'].tolist()]
+#
+#  partnerEngineTF = [x for x in earliestWagonPartner['isEngine'].tolist()]
+#  partnerEnginePos = partnerEngineTF.index(True)
+#
+#  partnerEngineCoords = [(), (), (), (), (), ()]
+#  for k in range(6):
+#    vertexNum_x = 'vx_{0}'.format(k)
+#    vertexNum_y = 'vy_{0}'.format(k)
+#
+#    partnerModuleVertex_x = [x for x in earliestWagonPartner[vertexNum_x].tolist()]
+#    partnerModuleVertex_y = [y for y in earliestWagonPartner[vertexNum_y].tolist()]
+#
+#    partnerEngineModuleCoords = (partnerModuleVertex_x[partnerEnginePos], partnerModuleVertex_y[partnerEnginePos])
+#    partnerEngineCoords[k] = partnerEngineModuleCoords
+#  # print(partnerEngineCoords)
+#  
+#  moduleCoords = []
+#  for i in range(len(moduleTypes)):
+#    moduleCoords.append([])
+#
+#  i = 0
+#  while i < 6:
+#    print(i)
+#    if i == 0:
+#      prev_i = 5
+#      next_i = 1
+#    elif i == 5:
+#      prev_i = 4
+#      next_i = 0
+#    else:
+#      prev_i = i - 1
+#      next_i = i + 1
+#    
+#    vertexNum_x = 'vx_{0}'.format(i)
+#    vertexNum_y = 'vy_{0}'.format(i)
+#
+#    moduleCoord_x = [x for x in earliestWagon[vertexNum_x].tolist()]
+#    moduleCoord_y = [y for y in earliestWagon[vertexNum_y].tolist()]
+#
+#    for j in range(len(moduleCoord_x)):
+#      print(j,next_i,prev_i)
+#      coords = (moduleCoord_x[j], moduleCoord_y[j], j, i)
+#      moduleCoords[j].append(coords)
+#      if (moduleCoord_x[j], moduleCoord_y[j]) in partnerEngineCoords:
+#        vertexNum_nextx = 'vx_{0}'.format(next_i)
+#        vertexNum_nexty = 'vy_{0}'.format(next_i)
+#
+#        vertexNum_prevx = 'vx_{0}'.format(prev_i)
+#        vertexNum_prevy = 'vy_{0}'.format(prev_i)
+#
+#        moduleCoord_nextx = [x for x in earliestWagon[vertexNum_nextx].tolist()]
+#        moduleCoord_nexty = [y for y in earliestWagon[vertexNum_nexty].tolist()]
+#
+#        moduleCoord_prevx = [x for x in earliestWagon[vertexNum_prevx].tolist()]
+#        moduleCoord_prevy = [y for y in earliestWagon[vertexNum_prevy].tolist()]
+#        print(partnerEngineCoords)
+#        print(moduleCoord_nextx)
+#        if (moduleCoord_nextx[j], moduleCoord_nexty[j]) in partnerEngineCoords:
+#          print('next',j)
+#          return j
+#        elif (moduleCoord_prevx[j], moduleCoord_prevy[j]) in partnerEngineCoords:
+#          print('prev',j)
+#          return j
+#
+#    i += 1
 
   
 
@@ -177,21 +219,48 @@ def main():
   # Configuration parameters
   threesSeparate = False
   halvesSemisSame = False
+  halvesSemisFivesSame = True
   LDHDBoth = 0
 
   # Specify the geometry file to be used
-  geometryPath = 'geometries/v13.2/'
+  geomVersion = 'v15.3_development_irot'#'v15.2_uniformirot_def_fixed'
+  geometryPath = 'geometries/{}/'.format(geomVersion)
   geometryFile = 'geometry.hgcal'
+  #geometryFile = 'geo_with_east'
 
   # Extract required columns
   geom = pd.read_csv('{0}{1}.txt'.format(geometryPath,geometryFile),delim_whitespace=True)
-  geomBasic = geom[['plane','u','v','x0','y0', 'vx_0', 'vy_0', 'vx_1', 'vy_1', 'vx_2', 'vy_2', 'vx_3', 'vy_3', 'vx_4', 'vy_4', 'vx_5', 'vy_5', 'vx_6', 'vy_6', 'itype','irot','MB','wagon','isEngine','HDorLD','trigLinks','dataLinks_ld','dataLinks_hd']].copy()
+  geomBasic = geom[['plane','u','v','x0','y0', 'vx_0', 'vy_0', 'vx_1', 'vy_1', 'vx_2', 'vy_2', 'vx_3', 'vy_3', 'vx_4', 'vy_4', 'vx_5', 'vy_5', 'vx_6', 'vy_6', 'itype','irot','MB','wagon','isEngine','HDorLD','trigLinks','dataLinks_ld','dataLinks_hd','icassette']].copy()
+
+  # Reflect even layers
+  #geomBasic.loc[geomBasic['plane'] % 2 == 0,'irot'] *= -1
+  #geomBasic.loc[geomBasic['plane'] % 2 == 0,'irot'] %= 6
+  #geomBasic.loc[geomBasic['plane'] % 2 == 0,'u'] *= -1
+
   if not threesSeparate: geomBasic = geomBasic[~geomBasic['itype'].str.contains('c')] # Threes don't affect wagon shape
-  geomBasic['itype'] = geomBasic['itype'].str[0]
+
+  # Add distance from origin
   geomBasic['r'] = np.sqrt(geomBasic['x0']**2 + geomBasic['y0']**2)
+
+  # Format type
+  #geomBasic['itype'] = geomBasic['itype'].str[0]
+  #geomBasic['itype'] = geomBasic['itype'].str[0] if ('T' in geomBasic['itype']) or ('L' in geomBasic['itype'])
+  geomBasic.loc[(geomBasic['itype'].str.contains('T|L')),'irot'] += 3
+  geomBasic['irot'] %= 6
+  geomBasic['itype'] = geomBasic['itype'].str[0]
+
   if halvesSemisSame: 
     #geomBasic.loc[geomBasic['itype'] == 'd','irot'] += 1
     geomBasic.loc[geomBasic['itype'] == 'd','itype'] = 'a'
+  elif halvesSemisFivesSame:
+    geomBasic.loc[geomBasic['itype'] == 'd','irot'] +=1
+
+    geomBasic.loc[geomBasic['itype'] == 'a','itype'] = 'd'
+
+    geomBasic.loc[geomBasic['itype'] == 'b','irot'] += 1
+    geomBasic.loc[geomBasic['itype'] == 'b','itype'] = 'd'
+
+    geomBasic['irot'] %= 6
 
   #  Specify the file with the fiber counts
   fiberCountsFile = 'fiberCounts/fiberCounts_220221_163022.txt'
@@ -202,15 +271,21 @@ def main():
   #geomBasic = geomBasic[(geomBasic['plane'] <= 28) | (geomBasic['plane'] >= 37)]
   if LDHDBoth == 0: 	geomBasic = geomBasic[geomBasic['HDorLD'] == 0]
   elif LDHDBoth == 1: 	geomBasic = geomBasic[geomBasic['HDorLD'] == 1]
-  #geomBasic = geomBasic[(geomBasic['plane'] <= 26)]
 
   # Remove impossible wagons
   removeWagons = [[3,2,0],[3,102,0],[5,2,0],[5,102,0],[3,0,0],[3,100,0],[5,0,0],[5,100,0]]
   for w in removeWagons:
     geomBasic = geomBasic.drop(geomBasic[(geomBasic['plane'] == w[0]) & (geomBasic['MB'] == w[1]) & (geomBasic['wagon'] == w[2])].index)
 
+  #geomBasic = geomBasic[((geomBasic['plane'] == 23) & (geomBasic['MB'] == 5)) | ((geomBasic['plane'] == 1) & (geomBasic['MB'] == 11))]
+  #geomBasic = geomBasic[(geomBasic['plane'] == 2)]
+
   # Group modules by plane (layer), MB index, and wagon index
   geomGrouped = geomBasic.sort_values('r',ascending=True).groupby(['plane','MB','wagon'])
+
+  #print(geomGrouped.get_group((2,10,0)))
+  #print('#'*50)
+  #print(geomGrouped.get_group((2,10,1)))
 
   wagonCodes = []
   wagonCodesDict = {}
@@ -243,10 +318,16 @@ def main():
     i = 0
     for rowIndex, row in group.iterrows():
 
+      # Odd CE-E layer flag
+      isOdd = row['plane'] % 2 or row['plane'] > 26
+
       irotCurr = row['irot']
       uCurr    = row['u']
       vCurr    = row['v']
- 
+
+      # Fixing rotations in even layers
+      #if not isOdd and not row['itype'] == 'F': irotCurr -= 3
+
       if i != 0:
         
         # Angle code
@@ -254,17 +335,17 @@ def main():
         deltaV = vCurr - vPrev
 
         if deltaU == 1 and deltaV == 0:
-          angle = 0
+          angle = 0 if isOdd else 3
         elif deltaU == 1 and deltaV == 1:
-          angle = 1
+          angle = 1 if isOdd else 2
         elif deltaU == 0 and deltaV == 1:
-          angle = 2
+          angle = 2 if isOdd else 1
         elif deltaU == -1 and deltaV == 0:
-          angle = 3
+          angle = 3 if isOdd else 0
         elif deltaU == -1 and deltaV == -1:
-          angle = 4
+          angle = 4 if isOdd else 5
         elif deltaU == 0 and deltaV == -1:
-          angle = 5
+          angle = 5 if isOdd else 4
         else:
           print('ERROR: Invalid angle. plane:',row['plane'],'u:',row['u'],'v:',row['v'])
           print(group)
@@ -531,7 +612,7 @@ def main():
   wagonCodesDict = copy.deepcopy(wagonCodesDictCopy)
 
   # Consolidating using outgoing crossover links, taking into account wagon partners
-  outgoingWagonCodesDict = {x:wagonCodesDictCopy[x] for x in wagonCodesDictCopy.keys() if x[2] >= 0}
+  outgoingWagonCodesDict = {x:wagonCodesDictCopy[x] for x in wagonCodesDictCopy.keys() if x[0] == 0 and x[2] >= 0}
   outgoingWagonCodesCopy = copy.deepcopy(outgoingWagonCodesDict)
   for key, val in outgoingWagonCodesCopy.items():
     counterCopy = copy.deepcopy(codeCounter)
@@ -547,7 +628,7 @@ def main():
       numPartnerLinks = sum([int(x) for x in wagonPartnerLoc['trigLinks'].tolist()])
       numAvailablePartnerLinks = 7 - numPartnerLinks
       acceptableRange = list(range(numAvailablePartnerLinks + 1, 0, -1))
-      if key[2] == acceptableRange[0]:
+      if len(acceptableRange) and key[2] == acceptableRange[0]:
         continue 
       for num in acceptableRange:
         possibleCode = list(key)
@@ -583,7 +664,7 @@ def main():
 
   wagonCodesDict = copy.deepcopy(wagonCodesDictCopy)
   wagonCodesDict = {x:y for x, y in wagonCodesDict.items() if len(y) > 0}
- 
+
   # Finding max. links on each module on each wagon type
   maxLinks = {x:maxLinksCalculation(x, wagonCodesDict) for x in wagonCodesDict}
 
@@ -655,14 +736,14 @@ def main():
       linksInfoList = linksSummary[code]
       maxLinksList = maxLinks[code]
       print("{0}: {1} + {2}".format(code, maxLinksList, linksInfoList), file = f)
-  
-  maxLinksSummary = {x:[] for x in linksSummary}
-  for code in linksSummary:
-    if linksSummary[code] == [-2, 0] or linksSummary[code] == [0, -2]:
-      linksSummary[code] = [-1, -1]
-    for i in range(len(linksSummary[code])):
-      maxLinksSummary[code].append(str(maxLinks[code][i]) + "-" + str(-1 * linksSummary[code][i]))
-    maxLinks[code] = maxLinksSummary[code]
+
+  #maxLinksSummary = {x:[] for x in linksSummary}
+  #for code in linksSummary:
+  #  if linksSummary[code] == [-2, 0] or linksSummary[code] == [0, -2]:
+  #    linksSummary[code] = [-1, -1]
+  #  for i in range(len(linksSummary[code])):
+  #    maxLinksSummary[code].append(str(maxLinks[code][i]) + "-" + str(-1 * linksSummary[code][i]))
+  #  maxLinks[code] = maxLinksSummary[code]
 
   emptyCounter = Counter([tuple(i) for i in removedWagonsList])
   for wagon in removedWagonsList:
@@ -670,19 +751,11 @@ def main():
   
   # Finding engine pos. for east wagons
   eastEnginePositions = {x:findEngine(x, wagonCodesDict, geomGrouped) for x in wagonCodesDict if x[1] == -1}  
-  for code in eastEnginePositions:
-    labels = code[3::3]
-    if labels.count('F') != 1:
-      codes = [x for x in code[3:] if x not in labels]
-      codes = [codes[n : n + 2] for n in range(0, len(codes), 2)]
-      num_00 = codes.count([0, 0])
 
-  # Correcting engine pos. calculation for recoded wagons
-  for code in recodedCodesList:
-    if code in removedWagonsList:
-      continue
-    lenWagon = len(code[3::3])
-    eastEnginePositions[code] = (lenWagon - 1) - eastEnginePositions[code]
+  for code in eastEnginePositions:
+    if code in recodedCodesList and code not in removedWagonsList:
+      lenWagon = len(code[3::3])
+      eastEnginePositions[code] = (lenWagon - 1) - eastEnginePositions[code]
 
   # Recoding as per new format
   newCodeFormat = {}
@@ -715,7 +788,7 @@ def main():
         newCode += (wagonType, engineLinks, crossoverLinks)
         newCode += angleOrientationCode
       newCodeFormat[code] = newCode
-  print(newCodeFormat)
+  #print(newCodeFormat)
 
   # Setting engineType column in new geometry file
   engineTypeDict = {}
@@ -776,9 +849,140 @@ def main():
   # Remove empty Counter entries
   codeCounter = Counter({i:j for i,j in codeCounter.items() if j != 0})
 
-  # Save dictionary to file
-  with open('wagonDict/wagonDict_{}.txt'.format(geometryFile),'w') as f:
-    print(wagonCodesDict,file=f)
+  ## Mapping modules to wagon schematics
+  #tempCode = (0,0,0,'F',3,0,'F',3,0,'F')
+  #tempIndex = wagonCodesDict[tempCode][0]
+  #print(tempIndex)
+  #temp = geomGrouped.get_group(tuple(tempIndex))
+  ##temp = temp[temp['isEngine'] == 1]
+  #print(temp)
+
+  wagonNameDict = {
+  '1130d7030Fb030F7030F50'	 : 'WH31A1',
+  '1130d0025F0030F0030F00'	 : 'WH31B1',
+  '1130d5051F5020F5030F50'	 : 'WH31C1',
+  '1120F9000F6000F40'	         : 'WH30A1',
+  '1120g9030F8030F50'	         : 'WH21A1',
+  '1120F7040F6020F60'	         : 'WH30B1',
+  '1110F0030F0050F00'	         : 'WH30C1',
+  '1110F5000F50'	         : 'WH20A1',
+  '0000F1100F2000F2005d20'	 : 'WE31A1',
+  '0100F1130F2030F2032d20'	 : 'WW31A1',
+  '0100F1122F2024F2022d20'	 : 'WW31A2',
+  '0100F1121d2035F2022d20'	 : 'WW22A1',
+  '0000F1114F2012F2010d20'	 : 'WE31A3',
+  '0101F2030F2030F20'	         : 'WW30A1', # West 3A
+  '0001F2000F2000F20'	         : 'WE30A1',
+  '0000F2000F2005d20'	         : 'WE21A1',
+  '0100F3030F2032d20'	         : 'WW21A1',
+  '0101F3030F2032d10'	         : 'WW21B1',
+  '0001F3000F2005d10'	         : 'WE21B1',
+  '0011F2030F2022F20'	         : 'WE30A2',
+  '0000F3010d2050d20'	         : 'WE12A1',
+  '0100F2014F2030F20'	         : 'WW30A2', # Lefty Python
+  '0000F2014F2012F20'	         : 'WE30A3', # East T
+  '0100F2022F2024F20'	         : 'WW30A3', # West T
+  '0000F2000F2000d20'	         : 'WE21A2',
+  '0100F2222d3120d20'	         : 'WW12A1',
+  '0111F2000F2014F20'	         : 'WW30B1',
+  '0100F0014F0033d00'	         : 'WW12C1',
+  '0000F0011d0040d00'	         : 'WE12B1',
+  '0000F2010d2050F20'	         : 'WE21A3',
+  '0100F2022d2020d20'	         : 'WW12B1',
+  '0100F0014F0031d00'	         : 'WW21C2',
+  '0000F0000F0001d00'	         : 'WE21C1',
+  '0000F0015d0000d00'	         : 'WE12B2',
+  '0100F2021d2031d20'	         : 'WW12B2',
+  '0000F2010d2055d20'	         : 'WE12C1',
+  '0000F0015d0001F00'	         : 'WE21C2',
+  '0100F0030F0031d00'	         : 'WW21D1',
+  '0100F2030F2033d20'	         : 'WW21E1',
+  '0110d2033F2014F20'	         : 'WW21E2',
+  '0011d2051F2024F20'	         : 'WE21D1',
+  '0100F3014F2032d20'	         : 'WW21A2',
+  '0000F0011d0044d00'	         : 'WE12B3',
+  '0100F2030F2035d20'	         : 'WW21E3',
+  '0000F2011d2045d20'	         : 'WE12C2',
+  '0000F2011d2045F20'	         : 'WE21A4',
+  '0100F2021d2035F20'	         : 'WW21E4',
+  '0110F2000F2011d20'	         : 'WW21E5',
+  '0020F2030F2022d20'	         : 'WE21A5',
+  '0000F2014F2012d20'	         : 'WE21A6',
+  '0002F2000F30'	         : 'WE20C1',
+  '0102F3030F20'	         : 'WW20B1',
+  '0100F3130F41'	         : 'WW20A1', # West 2A
+  '0001F4005d20'	         : 'WE11A1',
+  '0102F2032d20'	         : 'WW11A1',
+  '0001F3000F30'	         : 'WE20B1', # East 2B
+  '0100F3033d30'	         : 'WW11B1',
+  '0000F3200F40'	         : 'WE20A1', # East 2A
+  '0101F3030F30'	         : 'WW20C1',
+  '0100F0031d00'	         : 'WW11C1',
+  '0100F4014F30'	         : 'WW2001',
+  '0001F3000d30'	         : 'WE11B1',
+  '0100F3132d40'	         : 'WW11D1',
+  '0110d3124F40'	         : 'WW11E1',
+  '0000F2010d20'	         : 'WE11C1',
+  '0000F2022F20'	         : 'WE20D1',
+  '0000F3100F30'	         : 'WE20E1',
+  '0103F40'	                 : 'WW10B1',
+  '0003F40'	                 : 'WE10B1',
+  '0001F50'	                 : 'WE10A1', # East 1A 
+  '0101F50'	                 : 'WW10A1', # West 1A
+  '0000F03'	                 : 'WE10C1',
+  '0100F02'	                 : 'WW10C1',
+  }
+
+  if not os.path.exists('output/geometriesWagon/{}'.format(geomVersion)): os.makedirs('output/geometriesWagon/{}'.format(geomVersion))
+  f = open('output/geometriesWagon/{}/geometryWagon.txt'.format(geomVersion),'w')
+
+  f.write('plane u v itype x0 y0 irot nvertices vx_0 vy_0 vx_1 vy_1 vx_2 vy_2 vx_3 vy_3 vx_4 vy_4 vx_5 vy_5 vx_6 vy_6 icassette trigRate trigLinks dataRate_ld dataLinks_ld dataRate_hd dataLinks_hd MB wagon isEngine nROCs power mrot phi HDorLD hash hash_hdld engine_trig_fibres engine_data_fibres engine_ctrl_fibres dataPp0 trigPp0 dataPp0_type trigPp0_type dataPp1 trigPp1 dataPp1_type trigPp1_type dataPp2 DAQ\n')
+
+  for tempCode,indices in wagonCodesDict.items():
+
+    if tempCode[1] == -1: continue
+    if not (len(tempCode) - 1) / 3 == 2: continue
+    #print(tempCode)
+    #print(indices)
+
+    for index in indices:
+
+      tempIndex = index
+
+      #u,v,irot = geomBasic.loc[(geomBasic['plane'] == tempIndex[0]) & (geomBasic['MB']  == tempIndex[1]) & (geomBasic['wagon'] == tempIndex[2]) & (geomBasic['isEngine']),['u','v','irot']].values.flatten().tolist()
+      geomTempIndex = geomBasic.loc[(geomBasic['plane'] == tempIndex[0]) & (geomBasic['MB']  == tempIndex[1]) & (geomBasic['wagon'] == tempIndex[2]) & (geomBasic['isEngine'])]
+      u,v,irot = geomTempIndex[['u','v','irot']].iloc[0]
+
+      if ''.join(str(x) for x in tempCode) in wagonNameDict: wagonName = wagonNameDict[''.join(str(x) for x in tempCode)]
+      else: wagonName = 'XXXXXX'
+      f.write('{} {} {} {}\n'.format(geomTempIndex.iloc[0]['plane'],u,v,wagonName))
+
+      #print('M0:',u,v)
+      #print('irot',irot)
+      angleCode,orientCode = tempCode[4],tempCode[5]
+      angleCode = (angleCode + irot) % 6
+      #print('angleCode',angleCode)
+      if angleCode == 0: 
+        u += 1
+      elif angleCode == 1:
+        u += 1
+        v += 1
+      elif angleCode == 2:
+        v += 1
+      elif angleCode == 3:
+        u -= 1
+      elif angleCode == 4:
+        u -= 1
+        v -= 1
+      elif angleCode == 5:
+        v -= 1
+      #print('M1:',u,v)
+
+  #print(geomGrouped.get_group((20,11,1)))
+  #print(geomGrouped.get_group((20,11,0)))
+  #print(geomGrouped.get_group((19,11,0)))
+  #print(geomGrouped.get_group((1,8,0)))
+  #print(geomGrouped.get_group((1,8,1)))
 
   # Count no. of trigger lpGBTs required per variety and make histograms
   lpGBTCounts = {}
@@ -823,6 +1027,104 @@ def main():
     plt.savefig('output/fiberHistograms/hist_{}.png'.format(''.join([str(x) for x in key])))
     plt.clf()
 
+  # Add link distribtion to codes
+  wagonCodesDictCopy = copy.deepcopy(wagonCodesDict)
+  codeCounterCopy = copy.deepcopy(codeCounter)
+  maxLinksCopy = copy.deepcopy(maxLinks)
+  #eastEnginePositionsCopy = copy.deepcopy(eastEnginePositions)
+  for code in wagonCodesDict:
+  
+    # Compute new code
+    newCode = list(code)
+    nAdded = 0
+    if code not in linksSummary: newCode[2] *= -1 # converting outgoing links code to incoming
+    else: newCode[2] = 0
+    for i,nLinks in enumerate(maxLinks[code]):
+      newCode.insert(4+3*i+nAdded,format(nLinks,'x') if code not in linksSummary else format(nLinks + linksSummary[code][i],'x'))
+      nAdded += 1
+      newCode.insert(4+3*i+nAdded,0 if code not in linksSummary else -1*linksSummary[code][i])
+      nAdded += 1
+
+    # Change code[1] from engine position (or -1 for E) to E/W + engine position
+    if code[1] == -1: # E wagons
+      newCode[1] = 0
+      newCode.insert(2,eastEnginePositions[code])
+    else: # W wagons
+      newCode.insert(1,1)
+
+    # Replace old with new code
+    codeCounterCopy[tuple(newCode)] = codeCounterCopy[code] 
+    del codeCounterCopy[code]
+    wagonCodesDictCopy[tuple(newCode)] = wagonCodesDictCopy[code]
+    del wagonCodesDictCopy[code]
+    maxLinksCopy[tuple(newCode)] = maxLinks[code]
+    del maxLinksCopy[code]
+    #if code[1] == -1: 
+    #  eastEnginePositionsCopy[tuple(newCode)] = eastEnginePositionsCopy[code]
+    #  del eastEnginePositionsCopy[code]
+
+  wagonCodesDict = wagonCodesDictCopy
+  codeCounter = codeCounterCopy
+  maxLinks = maxLinksCopy
+  #eastEnginePositions = eastEnginePositionsCopy
+
+
+  if not os.path.exists('output/geometriesWagon/{}'.format(geomVersion)): os.makedirs('output/geometriesWagon/{}'.format(geomVersion))
+  f = open('output/geometriesWagon/{}/geometryWagon.txt'.format(geomVersion),'w')
+
+  f.write('plane u v itype x0 y0 irot nvertices vx_0 vy_0 vx_1 vy_1 vx_2 vy_2 vx_3 vy_3 vx_4 vy_4 vx_5 vy_5 vx_6 vy_6 icassette trigRate trigLinks dataRate_ld dataLinks_ld dataRate_hd dataLinks_hd MB wagon isEngine nROCs power mrot phi HDorLD hash hash_hdld engine_trig_fibres engine_data_fibres engine_ctrl_fibres dataPp0 trigPp0 dataPp0_type trigPp0_type dataPp1 trigPp1 dataPp1_type trigPp1_type dataPp2 DAQ\n')
+
+  for tempCode,indices in wagonCodesDict.items():
+
+    #iif tempCode[1] == -1: continue
+    #if not (len(tempCode) - 1) / 3 == 2: continue
+    #print(tempCode)
+    #print(indices)
+
+    for index in indices:
+
+      tempIndex = index
+
+      #u,v,irot = geomBasic.loc[(geomBasic['plane'] == tempIndex[0]) & (geomBasic['MB']  == tempIndex[1]) & (geomBasic['wagon'] == tempIndex[2]) & (geomBasic['isEngine']),['u','v','irot']].values.flatten().tolist()
+      #geomTempIndex = geomBasic.loc[(geomBasic['plane'] == tempIndex[0]) & (geomBasic['MB']  == tempIndex[1]) & (geomBasic['wagon'] == tempIndex[2]) & (geomBasic['isEngine'])]
+      geomTempIndex = geomBasic.loc[(geomBasic['plane'] == tempIndex[0]) & (geomBasic['MB']  == tempIndex[1]) & (geomBasic['wagon'] == tempIndex[2])]
+      plane,u,v,irot,icassette = geomTempIndex[['plane','u','v','irot','icassette']].iloc[0]
+
+      if ''.join(str(x) for x in tempCode) in wagonNameDict: wagonName = wagonNameDict[''.join(str(x) for x in tempCode)]
+      else: wagonName = 'XXXXXX'
+      f.write('{}\n'.format(' '.join(str(x) for x in [plane,u,v,wagonName,'-','-','-','-','-','-','-','-','-','-','-','-','-','-','-','-','-','-',icassette,'-','-','-','-','-','-','-','-','-','-','-','-','-','-','-','-','-','-',''.join(str(y) for y in tempCode),'-','-','-','-','-','-','-','-','-','-'])))
+
+  f.close()
+
+  geomWagon = pd.read_csv('output/geometriesWagon/{}/geometryWagon.txt'.format(geomVersion),delim_whitespace=True)
+
+
+  if not os.path.exists('output/geometriesEngine/{}'.format(geomVersion)): os.makedirs('output/geometriesEngine/{}'.format(geomVersion))
+  f = open('output/geometriesEngine/{}/geometryEngine.txt'.format(geomVersion),'w')
+
+  f.write('plane u v itype x0 y0 irot nvertices vx_0 vy_0 vx_1 vy_1 vx_2 vy_2 vx_3 vy_3 vx_4 vy_4 vx_5 vy_5 vx_6 vy_6 icassette trigRate trigLinks dataRate_ld dataLinks_ld dataRate_hd dataLinks_hd MB wagon isEngine nROCs power mrot phi HDorLD hash hash_hdld engine_trig_fibres engine_data_fibres engine_ctrl_fibres dataPp0 trigPp0 dataPp0_type trigPp0_type dataPp1 trigPp1 dataPp1_type trigPp1_type dataPp2 DAQ\n')
+
+
+  geomEngine = geomBasic[geomBasic['isEngine']]
+  for i,engine in geomEngine.iterrows():
+    plane,u,v,irot,icassette = engine['plane'],engine['u'],engine['v'],engine['irot'],engine['icassette']
+    engineType = ''
+    if engine['HDorLD'] == 0:
+      if irot == 0: engineType = 'EL10E0' if engine['x0'] > 0 else 'EL10W0'
+      elif irot == 1 or irot == 2: engineType = 'EL10E0'
+      elif irot == 3: engineType = 'EL10W0'
+      elif irot == 4 or irot ==  5: engineType = 'EL10W0'
+      else: print('ERROR: Invalid irot for engine {}'.format(i))
+    else:
+      if irot == 0 or irot == 5: engineType = 'EH10W0'
+      elif irot == 3 or irot == 4: engineType = 'EH10E0'
+      else: print('ERROR: Invalid irot for engine {}'.format(i))
+    f.write('{}\n'.format(' '.join(str(x) for x in [plane,'-','-',engineType,'-','-','-','-','-','-',u,v,'-','-','-','-','-','-','-','-','-','-',icassette,'-','-','-','-','-','-','-','-','-','-','-','-','-',engine['HDorLD'],'-','-','-','-','-','-','-','-','-','-','-','-','-','-','-'])))
+
+  #geomEngineHD = geomBasic[(geomBasic['HDorLD'] == 1) & (geomBasic['isEngine'])]
+
+  f.close()
+
   #print(codeCounter)
   uniqueWagonCodes = [list(i) for i in set(tuple(i) for i in list(codeCounter.keys()))]
   uniqueWagonCodesHD = [i for i in uniqueWagonCodes if i[0] == 1]
@@ -832,14 +1134,17 @@ def main():
   print('Number of LD wagon types:',len(uniqueWagonCodesLD))
   #print(uniqueWagonCodesLD)
 
+  # Save dictionary to file
+  with open('wagonDict/wagonDict_{}.txt'.format(geometryFile),'w') as f:
+    print(wagonCodesDict,file=f)
+
   # Sort by HD/LD then no. of modules then no. of instances 
   codeCounter = dict(sorted(codeCounter.items(), key=lambda item: (item[0][0],len(item[0]),item[1]), reverse=True))
 
-  # Print total number of boards (full detector)
-  #print('Total number of boards (full detector):',6 * sum(codeCounter.values()))
+  #for code in codeCounter: print('\'{}\'\t : \'\','.format(''.join([str(x) for x in code])))
 
   # Draw and save the wagon summary (see wagonDrawer.py)
-  wagonDrawer.wagonDrawer(codeCounter, geometryFile, maxLinks)
+  wagonDrawer.wagonDrawer(codeCounter,geomVersion,maxLinks)
 
 if __name__ == '__main__':
   main()
