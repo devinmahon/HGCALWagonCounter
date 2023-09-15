@@ -116,11 +116,8 @@ def findEngine(code,wagonCodesDict,geomGrouped):
 
   coords = earliestWagon[['u','v']].values.tolist()
   index = [i for i in range(len(coords)) if coords[i] == [uEastEngine,vEastEngine]][0]
-  if index != 0: print(plane,u,v,index,code)
 
   return index
-
-
 
 #def findEngine(code, wagonCodesDict, geomGrouped):
 #  if code[1] != -1:
@@ -246,6 +243,7 @@ def main():
   #geomBasic['itype'] = geomBasic['itype'].str[0]
   #geomBasic['itype'] = geomBasic['itype'].str[0] if ('T' in geomBasic['itype']) or ('L' in geomBasic['itype'])
   geomBasic.loc[(geomBasic['itype'].str.contains('T|L')),'irot'] += 3
+  geomBasic.loc[(geomBasic['HDorLD']) & (geomBasic['itype'].str.contains('aIe')),'irot'] += 3
   geomBasic['irot'] %= 6
   geomBasic['itype'] = geomBasic['itype'].str[0]
 
@@ -277,8 +275,8 @@ def main():
   for w in removeWagons:
     geomBasic = geomBasic.drop(geomBasic[(geomBasic['plane'] == w[0]) & (geomBasic['MB'] == w[1]) & (geomBasic['wagon'] == w[2])].index)
 
-  #geomBasic = geomBasic[((geomBasic['plane'] == 23) & (geomBasic['MB'] == 5)) | ((geomBasic['plane'] == 1) & (geomBasic['MB'] == 11))]
-  #geomBasic = geomBasic[(geomBasic['plane'] == 2)]
+  #geomBasic = geomBasic[((geomBasic['plane'] < 4) & (geomBasic['MB'] < 4)) | ((geomBasic['plane'] == 1) & (geomBasic['MB'] == 11))]
+  #geomBasic = geomBasic[(geomBasic['plane'] <= 4)]
 
   # Group modules by plane (layer), MB index, and wagon index
   geomGrouped = geomBasic.sort_values('r',ascending=True).groupby(['plane','MB','wagon'])
@@ -363,7 +361,7 @@ def main():
       uPrev    = uCurr
       vPrev    = vCurr
       i += 1
-   
+  
     wagonCodes.append(newCode)
     wagonCodesDict.setdefault(tuple(newCode),[]).append([row['plane'],row['MB'],row['wagon']])
 
@@ -390,8 +388,7 @@ def main():
     #print('rotated:',wagonRot)
 
     wagonRot = tuple(wagonRot)
-    if wagonRot in codeCounter and not wagonRot in duplicateCodes:
-      #if wagon == (0, 0, 0, 'F', 3, 0, 'F', 3, 0, 'F', 3, 3, 'a'): print('deleting',wagonRot)
+    if wagonRot in codeCounter and not wagonRot in duplicateCodes and wagon != wagonRot:
 
       for id in wagonCodesDict[wagonRot]:
         geomBasic.loc[(geomBasic['plane'] == id[0]) & (geomBasic['MB'] == id[1]) & (geomBasic['wagon'] == id[2]),'r'] *= -1
@@ -407,6 +404,7 @@ def main():
 
   numTrigLinksHDLT15 = 0
   numHD = 0
+
   wagonCodesDictCopy = copy.deepcopy(wagonCodesDict)
   for key, value in wagonCodesDictCopy.items():
     maxTrigLinks = []
@@ -554,115 +552,260 @@ def main():
         
         wagonCodesDict.pop(code)
         recodedCodesList.append(recodedCode)
-  
-  # Consolidating using Incoming Crossover Links
+
+  wagonCodesDict = {x:y for x, y in wagonCodesDict.items() if len(y) > 0}
   wagonCodesDictCopy = copy.deepcopy(wagonCodesDict)
-  incomingWagonCodesDict = {x:wagonCodesDictCopy[x] for x in wagonCodesDictCopy.keys() if x[2] <= 0}
-  incomingWagonCodesCopy = copy.deepcopy(incomingWagonCodesDict)
   removedWagonsList = []
   removedWagonsDict = {x:[] for x in wagonCodesDict}
   wagonMovementDict = {x:[] for x in wagonCodesDict}
-  for code, vals in incomingWagonCodesCopy.items():
-    transferredCodes = {}
-    numTransfers = 0
-    counterCopy = copy.deepcopy(codeCounter)
-    for loc in vals:
-      wagonLoc = geomGrouped.get_group((loc[0], loc[1], loc[2]))
-      numTrigLinks = [int(x) for x in wagonLoc['trigLinks'].tolist()]
-      totTrigLinks = sum(numTrigLinks)
-      numAvailable = 7 - totTrigLinks
-      availableRange = range(-1 * numAvailable, 0)
-      for i in availableRange:
-        possibleCode = list(code)
-        possibleCode = possibleCode[:2] + [i] + possibleCode[3:]
-        possibleCode = tuple(possibleCode)
-        if possibleCode in incomingWagonCodesCopy and possibleCode != code:
-          incomingWagonCodesDict[possibleCode].append(loc)
-          if (sum(maxLinksCalculation(possibleCode, incomingWagonCodesDict)) + -1 * possibleCode[2] > 7):
-            incomingWagonCodesDict[possibleCode].remove(loc)
-            break
-          elif possibleCode in transferredCodes.keys():
-            transferredCodes[possibleCode].append(loc)
-            numTransfers += 1
-          else:
-            transferredCodes[possibleCode] = [loc]
-            numTransfers += 1  
-          incomingWagonCodesDict[possibleCode].remove(loc)      
-          break
-    if numTransfers == codeCounter[code] or code[2] == 0:
-      for possibleCode, locations in transferredCodes.items():
-        for loc in locations:
-          incomingWagonCodesDict[code].remove(loc)
-          incomingWagonCodesDict[possibleCode].append(loc)
-          codeCounter[code] -= 1
-          codeCounter[possibleCode] += 1
-          if codeCounter[code] == 0:
-            removedWagonsList.append(code)
-          if possibleCode not in removedWagonsDict[code]:
-            removedWagonsDict[code].append(possibleCode)
-    for wagon in removedWagonsDict[code]:
-      delta = codeCounter[wagon] - counterCopy[wagon]
-      if delta != 0:
-        wagonMovementDict[code].append((wagon, delta))
 
+  # Get all codes that are the same except for # of incoming/outgoing links
+  def getGroupedCodes(wagonDict):
+    groupedCodes = {}
+    for code in wagonDict:
+      codeTemp = list(code)
+      del codeTemp[2]
+      if tuple(codeTemp) in groupedCodes: groupedCodes[tuple(codeTemp)].append(code)
+      else: groupedCodes[tuple(codeTemp)] = [code]
+    return groupedCodes
 
-  for key, val in incomingWagonCodesDict.items():
-    wagonCodesDictCopy[key] = val
+  # Consolidate based on incoming links
+
+  incomingWagonCodesDict = {x:wagonCodesDictCopy[x] for x in wagonCodesDictCopy.keys() if x[2] <= 0}
+  incomingWagonCodesCopy = copy.deepcopy(incomingWagonCodesDict)
+
+  # Run 4 times to allow 0-3 incoming links
+  if True:
+    for iPass in range(4):
+      changes = 0
+      for metacode, codes in getGroupedCodes(incomingWagonCodesCopy).items():
+        for code in codes:
+          canAddLink = True
+          if code not in wagonCodesDict: continue
+          newCode = list(code)
+          newCode[2] -= 1
+          newCode = tuple(newCode)
+          for loc in incomingWagonCodesCopy[code]:
+            numLinks = sum([int(x) for x in geomGrouped.get_group((loc[0], loc[1], loc[2]))['trigLinks'].tolist()])
+            # Get partner info
+            locPartner = [loc[0],loc[1],int(not loc[2])]
+            #numLinksPartner = sum([int(x) for x in geomGrouped.get_group((locPartner[0], locPartner[1],locPartner[2]))['trigLinks'].tolist()])
+            index = 99999
+            for i,val in enumerate(wagonCodesDict.values()):
+              if locPartner in val:
+                index = i
+            if index == 99999: print('ERROR: Wagon partner with location',locPartner,'not found')
+            codePartner = list(wagonCodesDict.keys())[index]
+            newCodePartner = list(codePartner)
+            newCodePartner[2] += 1
+            newCodePartner = tuple(newCodePartner)
+            # Only allow an extra incoming link if 1) taking it gives <= 7 links, 2) taking it doesn't make > 3 xovers, 3) the new code already exists, and 4) all of the new partner codes also exist
+            if not ((numLinks + 1) <= 7 and (newCode[2]) >= -3 and newCode in wagonCodesDict and newCodePartner in wagonCodesDict and newCode != newCodePartner): 
+              canAddLink = False
+              break
+          if canAddLink: 
+            print(code,'can be changed to',newCode)
+            changes += 1
+            # Do the consolidation
+            for loc in incomingWagonCodesCopy[code]:
+              locPartner = [loc[0],loc[1],int(not loc[2])]
+              index = 99999
+              for i,val in enumerate(wagonCodesDict.values()):
+                if locPartner in val:
+                  index = i
+              if index == 99999: print('ERROR: Wagon partner with location',locPartner,'not found')
+              codePartner = list(wagonCodesDict.keys())[index]
+              newCodePartner = list(codePartner)
+              newCodePartner[2] += 1
+              newCodePartner = tuple(newCodePartner)
+              if newCodePartner in wagonCodesDict: wagonCodesDict[newCodePartner] += [locPartner]
+              else: 
+                print('ERROR: New partner wagon variety does not exist, cancelling out the benefit of consolidation!')
+                wagonCodesDict[newCodePartner] = [locPartner]
+              wagonCodesDict[codePartner].remove(locPartner)
+            wagonCodesDict[newCode] = wagonCodesDict[newCode] + wagonCodesDict[code]
+            wagonCodesDict.pop(code)
+            wagonCodesDict = {x:y for x, y in wagonCodesDict.items() if len(y) > 0}
+            #wagonCodesDictCopy = copy.deepcopy(wagonCodesDict)
+            #incomingWagonCodesDict = {x:wagonCodesDict[x] for x in wagonCodesDict.keys() if x[2] <= 0}
+            #incomingWagonCodesCopy = copy.deepcopy(incomingWagonCodesDict)
+            #print(incomingWagonCodesCopy) 
+            #print((0, 0, -2, 'F', 3, 3, 'd') in incomingWagonCodesCopy)
+          
+      print(changes,'can be consolidated in pass',iPass)
+
+  # Consolidate outgoing links
   
-  wagonCodesDict = copy.deepcopy(wagonCodesDictCopy)
+  outgoingWagonCodesDict = {x:wagonCodesDictCopy[x] for x in wagonCodesDictCopy.keys() if x[2] >= 0}
+  outgoingWagonCodesDictCopy = copy.deepcopy(outgoingWagonCodesDict)
 
-  # Consolidating using outgoing crossover links, taking into account wagon partners
-  outgoingWagonCodesDict = {x:wagonCodesDictCopy[x] for x in wagonCodesDictCopy.keys() if x[0] == 0 and x[2] >= 0}
-  outgoingWagonCodesCopy = copy.deepcopy(outgoingWagonCodesDict)
-  for key, val in outgoingWagonCodesCopy.items():
-    counterCopy = copy.deepcopy(codeCounter)
-    transferredCodes = {}
-    preConsolLength = len(wagonCodesDict[key])
-    numTransfers = 0
-    for loc in val:
-      wagonLoc = geomGrouped.get_group((loc[0], loc[1], loc[2]))
-      wagonPartnerLoc = geomGrouped.get_group((loc[0], loc[1], int(not loc[2])))
-      numTrigLinks = [int(x) for x in wagonLoc['trigLinks'].tolist()]
-      numLinks = sum([int(x) for x in wagonLoc['trigLinks'].tolist()])
-      numOutgoingLinks = key[2]
-      numPartnerLinks = sum([int(x) for x in wagonPartnerLoc['trigLinks'].tolist()])
-      numAvailablePartnerLinks = 7 - numPartnerLinks
-      acceptableRange = list(range(numAvailablePartnerLinks + 1, 0, -1))
-      if len(acceptableRange) and key[2] == acceptableRange[0]:
-        continue 
-      for num in acceptableRange:
-        possibleCode = list(key)
-        possibleCode = possibleCode[:2] + [num] + possibleCode[3:]
-        possibleCode = tuple(possibleCode)
-        if possibleCode in outgoingWagonCodesCopy and possibleCode != code:
-          if possibleCode in transferredCodes.keys():
-            transferredCodes[possibleCode].append(loc)
-          else:
-            transferredCodes[possibleCode] = [loc]
-          numTransfers += 1
-          break
-    if numTransfers == preConsolLength or key[2] == 0:
-      for possibleCode, locations in transferredCodes.items():
-        for loc in locations:
-          outgoingWagonCodesDict[key].remove(loc)
-          outgoingWagonCodesDict[possibleCode].append(loc)
-          codeCounter[key] -= 1
-          codeCounter[possibleCode] += 1
-          if codeCounter[key] == 0:
-            removedWagonsList.append(key)
-          if possibleCode not in removedWagonsDict[key]:
-            removedWagonsDict[key].append(possibleCode)
-    for wagon in removedWagonsDict[key]:
-      delta = codeCounter[wagon] - counterCopy[wagon]
-      if delta != 0:
-        wagonMovementDict[key].append((wagon, delta))
-    postConsolLength = len(outgoingWagonCodesDict[key])
-    diff = preConsolLength - postConsolLength
+  if True:
+    # Run 4 times to allow 0-3 outgoing links
+    for iPass in range(4):
+      changes = 0
+      for metacode, codes in getGroupedCodes(outgoingWagonCodesDictCopy).items():
+        for code in codes:
+          canAddLink = True
+          if code not in wagonCodesDict: continue
+          newCode = list(code)
+          newCode[2] += 1
+          newCode = tuple(newCode)
+          for loc in outgoingWagonCodesDictCopy[code]:
+            numLinks = sum([int(x) for x in geomGrouped.get_group((loc[0], loc[1], loc[2]))['trigLinks'].tolist()])
+            # Get partner info
+            locPartner = [loc[0],loc[1],int(not loc[2])]
+            numLinksPartner = sum([int(x) for x in geomGrouped.get_group((locPartner[0], locPartner[1],locPartner[2]))['trigLinks'].tolist()])
+            index = 99999
+            for i,val in enumerate(wagonCodesDict.values()):
+              if locPartner in val:
+                index = i
+            if index == 99999: print('ERROR: Wagon partner with location',locPartner,'not found')
+            codePartner = list(wagonCodesDict.keys())[index]
+            newCodePartner = list(codePartner)
+            newCodePartner[2] -= 1
+            newCodePartner = tuple(newCodePartner)
+            # Only allow an extra outgoing link if 1) sending it gives <= 7 links on partner, 2) taking it doesn't make > 3 xovers, 3) the new code already exists, and 4) all of the new partner codes also exist
+            if not ((numLinksPartner + 1) <= 7 and (newCode[2]) <= 3 and newCode in wagonCodesDict and newCodePartner in wagonCodesDict and newCode != newCodePartner): 
+              canAddLink = False
+              break
+          if canAddLink: 
+            print(code,'can be changed to',newCode)
+            changes += 1
+            # Do the consolidation
+            for loc in outgoingWagonCodesDictCopy[code]:
+              locPartner = [loc[0],loc[1],int(not loc[2])]
+              index = 99999
+              for i,val in enumerate(wagonCodesDict.values()):
+                if locPartner in val:
+                  index = i
+              if index == 99999: print('ERROR: Wagon partner with location',locPartner,'not found')
+              codePartner = list(wagonCodesDict.keys())[index]
+              newCodePartner = list(codePartner)
+              newCodePartner[2] -= 1
+              newCodePartner = tuple(newCodePartner)
+              if newCodePartner in wagonCodesDict: wagonCodesDict[newCodePartner] += [locPartner]
+              else: 
+                print('ERROR: New partner wagon variety does not exist, cancelling out the benefit of consolidation!')
+                wagonCodesDict[newCodePartner] = [locPartner]
+              wagonCodesDict[codePartner].remove(locPartner)
+            wagonCodesDict[newCode] = wagonCodesDict[newCode] + wagonCodesDict[code]
+            wagonCodesDict.pop(code)
+            wagonCodesDict = {x:y for x, y in wagonCodesDict.items() if len(y) > 0}
+          
+      print(changes,'can be consolidated in pass',iPass)
 
-  for key, val in outgoingWagonCodesDict.items():
-    wagonCodesDictCopy[key] = val
+  codeCounter = Counter({tuple(key):len(val) for key,val in wagonCodesDict.items()})
 
-  wagonCodesDict = copy.deepcopy(wagonCodesDictCopy)
+  if False:
+
+    # Consolidating using Incoming Crossover Links
+    wagonCodesDictCopy = copy.deepcopy(wagonCodesDict)
+    incomingWagonCodesDict = {x:wagonCodesDictCopy[x] for x in wagonCodesDictCopy.keys() if x[2] <= 0}
+    incomingWagonCodesCopy = copy.deepcopy(incomingWagonCodesDict)
+    removedWagonsList = []
+    removedWagonsDict = {x:[] for x in wagonCodesDict}
+    wagonMovementDict = {x:[] for x in wagonCodesDict}
+    for code, vals in incomingWagonCodesCopy.items():
+      transferredCodes = {}
+      numTransfers = 0
+      counterCopy = copy.deepcopy(codeCounter)
+      for loc in vals:
+        wagonLoc = geomGrouped.get_group((loc[0], loc[1], loc[2]))
+        numTrigLinks = [int(x) for x in wagonLoc['trigLinks'].tolist()]
+        totTrigLinks = sum(numTrigLinks)
+        numAvailable = 7 - totTrigLinks
+        availableRange = range(-1 * numAvailable, 0)
+        for i in availableRange:
+          possibleCode = list(code)
+          possibleCode = possibleCode[:2] + [i] + possibleCode[3:]
+          possibleCode = tuple(possibleCode)
+          if possibleCode in incomingWagonCodesCopy and possibleCode != code:
+            incomingWagonCodesDict[possibleCode].append(loc)
+            if (sum(maxLinksCalculation(possibleCode, incomingWagonCodesDict)) + -1 * possibleCode[2] > 7):
+              incomingWagonCodesDict[possibleCode].remove(loc)
+              break
+            elif possibleCode in transferredCodes.keys():
+              transferredCodes[possibleCode].append(loc)
+              numTransfers += 1
+            else:
+              transferredCodes[possibleCode] = [loc]
+              numTransfers += 1  
+            incomingWagonCodesDict[possibleCode].remove(loc)      
+            break
+      if numTransfers == codeCounter[code] or code[2] == 0:
+        for possibleCode, locations in transferredCodes.items():
+          for loc in locations:
+            incomingWagonCodesDict[code].remove(loc)
+            incomingWagonCodesDict[possibleCode].append(loc)
+            codeCounter[code] -= 1
+            codeCounter[possibleCode] += 1
+            if codeCounter[code] == 0:
+              removedWagonsList.append(code)
+            if possibleCode not in removedWagonsDict[code]:
+              removedWagonsDict[code].append(possibleCode)
+      for wagon in removedWagonsDict[code]:
+        delta = codeCounter[wagon] - counterCopy[wagon]
+        if delta != 0:
+          wagonMovementDict[code].append((wagon, delta))
+
+    for key, val in incomingWagonCodesDict.items():
+      wagonCodesDictCopy[key] = val
+    
+    wagonCodesDict = copy.deepcopy(wagonCodesDictCopy)
+
+    # Consolidating using outgoing crossover links, taking into account wagon partners
+    outgoingWagonCodesDict = {x:wagonCodesDictCopy[x] for x in wagonCodesDictCopy.keys() if x[0] == 0 and x[2] >= 0}
+    outgoingWagonCodesCopy = copy.deepcopy(outgoingWagonCodesDict)
+    for key, val in outgoingWagonCodesCopy.items():
+      counterCopy = copy.deepcopy(codeCounter)
+      transferredCodes = {}
+      preConsolLength = len(wagonCodesDict[key])
+      numTransfers = 0
+      for loc in val:
+        wagonLoc = geomGrouped.get_group((loc[0], loc[1], loc[2]))
+        wagonPartnerLoc = geomGrouped.get_group((loc[0], loc[1], int(not loc[2])))
+        numTrigLinks = [int(x) for x in wagonLoc['trigLinks'].tolist()]
+        numLinks = sum([int(x) for x in wagonLoc['trigLinks'].tolist()])
+        numOutgoingLinks = key[2]
+        numPartnerLinks = sum([int(x) for x in wagonPartnerLoc['trigLinks'].tolist()])
+        numAvailablePartnerLinks = 7 - numPartnerLinks
+        acceptableRange = list(range(numAvailablePartnerLinks + 1, 0, -1))
+        if len(acceptableRange) and key[2] == acceptableRange[0]:
+          continue 
+        for num in acceptableRange:
+          possibleCode = list(key)
+          possibleCode = possibleCode[:2] + [num] + possibleCode[3:]
+          possibleCode = tuple(possibleCode)
+          if possibleCode in outgoingWagonCodesCopy and possibleCode != code:
+            if possibleCode in transferredCodes.keys():
+              transferredCodes[possibleCode].append(loc)
+            else:
+              transferredCodes[possibleCode] = [loc]
+            numTransfers += 1
+            break
+      if numTransfers == preConsolLength or key[2] == 0:
+        for possibleCode, locations in transferredCodes.items():
+          for loc in locations:
+            outgoingWagonCodesDict[key].remove(loc)
+            outgoingWagonCodesDict[possibleCode].append(loc)
+            codeCounter[key] -= 1
+            codeCounter[possibleCode] += 1
+            if codeCounter[key] == 0:
+              removedWagonsList.append(key)
+            if possibleCode not in removedWagonsDict[key]:
+              removedWagonsDict[key].append(possibleCode)
+      for wagon in removedWagonsDict[key]:
+        delta = codeCounter[wagon] - counterCopy[wagon]
+        if delta != 0:
+          wagonMovementDict[key].append((wagon, delta))
+      postConsolLength = len(outgoingWagonCodesDict[key])
+      diff = preConsolLength - postConsolLength
+
+    for key, val in outgoingWagonCodesDict.items():
+      wagonCodesDictCopy[key] = val
+
+    wagonCodesDict = copy.deepcopy(wagonCodesDictCopy)
+
   wagonCodesDict = {x:y for x, y in wagonCodesDict.items() if len(y) > 0}
 
   # Finding max. links on each module on each wagon type
@@ -679,7 +822,7 @@ def main():
       for receivingWagon in movements:
         print("{0} moves {1} times into {2}".format(wagon, receivingWagon[1], receivingWagon[0]), file = f)
       print("\n", file = f)
-  
+
   # Which links are getting sent where?
   outgoingMaxLinks = {x:maxLinks[x] for x in maxLinks if x[2] > 0}
   linksSummary = {x:[] for x in maxLinks if x[2] > 0}
@@ -750,7 +893,7 @@ def main():
     emptyCounter[wagon] = 0
   
   # Finding engine pos. for east wagons
-  eastEnginePositions = {x:findEngine(x, wagonCodesDict, geomGrouped) for x in wagonCodesDict if x[1] == -1}  
+  eastEnginePositions = {x:findEngine(x, wagonCodesDict, geomGrouped) for x in wagonCodesDict if x[1] == -1 and x[0] == 0}  
 
   for code in eastEnginePositions:
     if code in recodedCodesList and code not in removedWagonsList:
@@ -857,80 +1000,144 @@ def main():
   ##temp = temp[temp['isEngine'] == 1]
   #print(temp)
 
+  #wagonNameDict = {
+  #'1130d7030Fb030F7030F50'	 : 'WH31A1',
+  #'1130d0025F0030F0030F00'	 : 'WH31B1',
+  #'1130d5051F5020F5030F50'	 : 'WH31C1',
+  #'1120F9000F6000F40'	         : 'WH30A1',
+  #'1120g9030F8030F50'	         : 'WH21A1',
+  #'1120F7040F6020F60'	         : 'WH30B1',
+  #'1110F0030F0050F00'	         : 'WH30C1',
+  #'1110F5000F50'	         : 'WH20A1',
+  #'0000F1100F2000F2005d20'	 : 'WE31A1',
+  #'0100F1130F2030F2032d20'	 : 'WW31A1',
+  #'0100F1122F2024F2022d20'	 : 'WW31A2',
+  #'0100F1121d2035F2022d20'	 : 'WW22A1',
+  #'0000F1114F2012F2010d20'	 : 'WE31A3',
+  #'0101F2030F2030F20'	         : 'WW30A1', # West 3A
+  #'0001F2000F2000F20'	         : 'WE30A1',
+  #'0000F2000F2005d20'	         : 'WE21A1',
+  #'0100F3030F2032d20'	         : 'WW21A1',
+  #'0101F3030F2032d10'	         : 'WW21B1',
+  #'0001F3000F2005d10'	         : 'WE21B1',
+  #'0011F2030F2022F20'	         : 'WE30A2',
+  #'0000F3010d2050d20'	         : 'WE12A1',
+  #'0100F2014F2030F20'	         : 'WW30A2', # Lefty Python
+  #'0000F2014F2012F20'	         : 'WE30A3', # East T
+  #'0100F2022F2024F20'	         : 'WW30A3', # West T
+  #'0000F2000F2000d20'	         : 'WE21A2',
+  #'0100F2222d3120d20'	         : 'WW12A1',
+  #'0111F2000F2014F20'	         : 'WW30B1',
+  #'0100F0014F0033d00'	         : 'WW12C1',
+  #'0000F0011d0040d00'	         : 'WE12B1',
+  #'0000F2010d2050F20'	         : 'WE21A3',
+  #'0100F2022d2020d20'	         : 'WW12B1',
+  #'0100F0014F0031d00'	         : 'WW21C2',
+  #'0000F0000F0001d00'	         : 'WE21C1',
+  #'0000F0015d0000d00'	         : 'WE12B2',
+  #'0100F2021d2031d20'	         : 'WW12B2',
+  #'0000F2010d2055d20'	         : 'WE12C1',
+  #'0000F0015d0001F00'	         : 'WE21C2',
+  #'0100F0030F0031d00'	         : 'WW21D1',
+  #'0100F2030F2033d20'	         : 'WW21E1',
+  #'0110d2033F2014F20'	         : 'WW21E2',
+  #'0011d2051F2024F20'	         : 'WE21D1',
+  #'0100F3014F2032d20'	         : 'WW21A2',
+  #'0000F0011d0044d00'	         : 'WE12B3',
+  #'0100F2030F2035d20'	         : 'WW21E3',
+  #'0000F2011d2045d20'	         : 'WE12C2',
+  #'0000F2011d2045F20'	         : 'WE21A4',
+  #'0100F2021d2035F20'	         : 'WW21E4',
+  #'0110F2000F2011d20'	         : 'WW21E5',
+  #'0020F2030F2022d20'	         : 'WE21A5',
+  #'0000F2014F2012d20'	         : 'WE21A6',
+  #'0002F2000F30'	         : 'WE20C1',
+  #'0102F3030F20'	         : 'WW20B1',
+  #'0100F3130F41'	         : 'WW20A1', # West 2A
+  #'0001F4005d20'	         : 'WE11A1',
+  #'0102F2032d20'	         : 'WW11A1',
+  #'0001F3000F30'	         : 'WE20B1', # East 2B
+  #'0100F3033d30'	         : 'WW11B1',
+  #'0000F3200F40'	         : 'WE20A1', # East 2A
+  #'0101F3030F30'	         : 'WW20C1',
+  #'0100F0031d00'	         : 'WW11C1',
+  #'0100F4014F30'	         : 'WW2001',
+  #'0001F3000d30'	         : 'WE11B1',
+  #'0100F3132d40'	         : 'WW11D1',
+  #'0110d3124F40'	         : 'WW11E1',
+  #'0000F2010d20'	         : 'WE11C1',
+  #'0000F2022F20'	         : 'WE20D1',
+  #'0000F3100F30'	         : 'WE20E1',
+  #'0103F40'	                 : 'WW10B1',
+  #'0003F40'	                 : 'WE10B1',
+  #'0001F50'	                 : 'WE10A1', # East 1A 
+  #'0101F50'	                 : 'WW10A1', # West 1A
+  #'0000F03'	                 : 'WE10C1',
+  #'0100F02'	                 : 'WW10C1',
+  #}
+
   wagonNameDict = {
-  '1130d7030Fb030F7030F50'	 : 'WH31A1',
-  '1130d0025F0030F0030F00'	 : 'WH31B1',
-  '1130d5051F5020F5030F50'	 : 'WH31C1',
-  '1120F9000F6000F40'	         : 'WH30A1',
-  '1120g9030F8030F50'	         : 'WH21A1',
-  '1120F7040F6020F60'	         : 'WH30B1',
-  '1110F0030F0050F00'	         : 'WH30C1',
-  '1110F5000F50'	         : 'WH20A1',
-  '0000F1100F2000F2005d20'	 : 'WE31A1',
-  '0100F1130F2030F2032d20'	 : 'WW31A1',
-  '0100F1122F2024F2022d20'	 : 'WW31A2',
-  '0100F1121d2035F2022d20'	 : 'WW22A1',
-  '0000F1114F2012F2010d20'	 : 'WE31A3',
-  '0101F2030F2030F20'	         : 'WW30A1', # West 3A
-  '0001F2000F2000F20'	         : 'WE30A1',
-  '0000F2000F2005d20'	         : 'WE21A1',
-  '0100F3030F2032d20'	         : 'WW21A1',
-  '0101F3030F2032d10'	         : 'WW21B1',
-  '0001F3000F2005d10'	         : 'WE21B1',
-  '0011F2030F2022F20'	         : 'WE30A2',
-  '0000F3010d2050d20'	         : 'WE12A1',
-  '0100F2014F2030F20'	         : 'WW30A2', # Lefty Python
-  '0000F2014F2012F20'	         : 'WE30A3', # East T
-  '0100F2022F2024F20'	         : 'WW30A3', # West T
-  '0000F2000F2000d20'	         : 'WE21A2',
-  '0100F2222d3120d20'	         : 'WW12A1',
-  '0111F2000F2014F20'	         : 'WW30B1',
-  '0100F0014F0033d00'	         : 'WW12C1',
-  '0000F0011d0040d00'	         : 'WE12B1',
-  '0000F2010d2050F20'	         : 'WE21A3',
-  '0100F2022d2020d20'	         : 'WW12B1',
-  '0100F0014F0031d00'	         : 'WW21C2',
-  '0000F0000F0001d00'	         : 'WE21C1',
-  '0000F0015d0000d00'	         : 'WE12B2',
-  '0100F2021d2031d20'	         : 'WW12B2',
-  '0000F2010d2055d20'	         : 'WE12C1',
-  '0000F0015d0001F00'	         : 'WE21C2',
-  '0100F0030F0031d00'	         : 'WW21D1',
-  '0100F2030F2033d20'	         : 'WW21E1',
-  '0110d2033F2014F20'	         : 'WW21E2',
-  '0011d2051F2024F20'	         : 'WE21D1',
-  '0100F3014F2032d20'	         : 'WW21A2',
-  '0000F0011d0044d00'	         : 'WE12B3',
-  '0100F2030F2035d20'	         : 'WW21E3',
-  '0000F2011d2045d20'	         : 'WE12C2',
-  '0000F2011d2045F20'	         : 'WE21A4',
-  '0100F2021d2035F20'	         : 'WW21E4',
-  '0110F2000F2011d20'	         : 'WW21E5',
-  '0020F2030F2022d20'	         : 'WE21A5',
-  '0000F2014F2012d20'	         : 'WE21A6',
-  '0002F2000F30'	         : 'WE20C1',
-  '0102F3030F20'	         : 'WW20B1',
-  '0100F3130F41'	         : 'WW20A1', # West 2A
-  '0001F4005d20'	         : 'WE11A1',
-  '0102F2032d20'	         : 'WW11A1',
-  '0001F3000F30'	         : 'WE20B1', # East 2B
-  '0100F3033d30'	         : 'WW11B1',
-  '0000F3200F40'	         : 'WE20A1', # East 2A
-  '0101F3030F30'	         : 'WW20C1',
-  '0100F0031d00'	         : 'WW11C1',
-  '0100F4014F30'	         : 'WW2001',
-  '0001F3000d30'	         : 'WE11B1',
-  '0100F3132d40'	         : 'WW11D1',
-  '0110d3124F40'	         : 'WW11E1',
-  '0000F2010d20'	         : 'WE11C1',
-  '0000F2022F20'	         : 'WE20D1',
-  '0000F3100F30'	         : 'WE20E1',
-  '0103F40'	                 : 'WW10B1',
-  '0003F40'	                 : 'WE10B1',
-  '0001F50'	                 : 'WE10A1', # East 1A 
-  '0101F50'	                 : 'WW10A1', # West 1A
-  '0000F03'	                 : 'WE10C1',
-  '0100F02'	                 : 'WW10C1',
+  '1130d7030Fb030F7030F50'	: 'WH31A1',
+  '1130d5040F5020F5030F50'	: 'WH31B1',
+  '1120F9000F6000F40'		: 'WH30A1',
+  '1120g9030F8030F50'		: 'WH21A1',
+  '1120F7040F6020F60'		: 'WH30B1',
+  '1110F0030F0050F00'		: 'WH30B2',
+  '1110F5000F50'		: 'WH20A1',
+  '0100F3033d20'		: 'WW11A1',
+  '0100F3030F2033d20'		: 'WW21A1',
+  '0100F3014F2032d20'		: 'WW21A2',
+  '0000F3010d2050d20'		: 'WE12A1',
+  '0100F2022d2020d20'		: 'WW12A1',
+  '0000F0022F0000d00'		: 'WE21A3',
+  '0100F4014F30'		: 'WW20D1',
+  '0000F2000F2000d20'		: 'WE21A1',
+  '0100F4032d20'		: 'WW11C1',
+  '0000F4022d20'		: 'WE11A2',
+  '0100F2014F2030F20'		: 'WW30A3',
+  '0000F2010d2050F20'		: 'WE21A2',
+  '0100F2030F2032d20'		: 'WW21D1',
+  '0000F2000F2000F20'		: 'WE30A1',
+  '0000F2014F2012F20'		: 'WE30A4',
+  '0010F2030F2022F20'		: 'WE30A2',
+  '0000F2011d2045d20'		: 'WE12B1',
+  '0100F2021d2031d20'		: 'WW12A2',
+  '0000F2011d2045F20'		: 'WE21A5',
+  '0100F2021d2035F20'		: 'WW21A3',
+  '0110F2000F2011d20'		: 'WW21A4',
+  '0000F2010d20'		: 'WE11B2',
+  '0010F2030F2022d20'		: 'WE21A6',
+  '0100F2022F2024F20'		: 'WW30A3',
+  '0020d2041F2030F20'		: 'WE21A7',
+  '0000F2014F2012d20'		: 'WE21A8',
+  '0010d2041F20'		: 'WE11B1',
+  '0000F2022F20'		: 'WE20D1',
+  '0110d2033F2014F20'		: 'WE21A4',
+  '0102F3030F20'		: 'WW20B1',
+  '0100F3130F41'		: 'WW20A1',
+  '0001F4000d20'		: 'WE11A1',
+  '0001F3000F2000d10'		: 'WE21B1',
+  '0101F3030F30'		: 'WW20C1',
+  '0101F3030F2033d20'		: 'WW21C1',
+  '0100F02'			: 'WW10C1',
+  '0101F50'			: 'WW10A1',
+  '0103F40'			: 'WW10B1',
+  '0000F03'			: 'WE10B1',
+  '0100F3122d2021d20'		: 'WW12B1',
+  '0001F50'			: 'WE10A1',
+  '0102F2032d20'		: 'WW11B1',
+  '0030F1130F2022F2024F20'	: 'WE40A2',
+  '0111d2035F2022d20'		: 'WW12C1',
+  '0101F2030F2030F20'		: 'WW30A1',
+  '0000F1100F2000F2000d20'	: 'WE31A1',
+  '0000F1114F2012F2010d20'	: 'WE31A2',
+  '0111F2000F2014F20'		: 'WW30A4',
+  '0030d1141F2030F2030F20'	: 'WE31B1',
+  '0002F2000F30'		: 'WE20C1',
+  '0001F3000F30'		: 'WE20B1',
+  '0000F3200F40'		: 'WE20A1',
+  '0000F3100F30'		: 'WE20E1',
+  '0000F1100F2000F2000F20'	: 'WE40A1',
   }
 
   if not os.path.exists('output/geometriesWagon/{}'.format(geomVersion)): os.makedirs('output/geometriesWagon/{}'.format(geomVersion))
@@ -1124,6 +1331,9 @@ def main():
   #geomEngineHD = geomBasic[(geomBasic['HDorLD'] == 1) & (geomBasic['isEngine'])]
 
   f.close()
+
+  #codeCounterTemp = {k: v for k,v in codeCounter.items() if len(k) == 12 and sum([i == 'F' for i in k]) == 2 and k[1] == 0 and k[7] == 0}
+  #codeCounter = codeCounterTemp
 
   #print(codeCounter)
   uniqueWagonCodes = [list(i) for i in set(tuple(i) for i in list(codeCounter.keys()))]
