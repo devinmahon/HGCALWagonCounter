@@ -14,11 +14,13 @@ import numpy as np
 
 # drawfunctions
 
+font = ImageFont.load_default()
 
-def hexdraw(bow, x, y, des, rot, mb, eng):
+def hexdraw(bow, x, y, des, rot, mb, eng, maxLinks = 0,EW = 1):
     cx = x
     cy = y
     rot = float(rot)
+    maxLinksType = type(maxLinks)
     #if des == 'F' or des == 'FI' or des == 'FIe' or des == 'FMI' or des == 'FO'\
             #or des == 'FOe' or des == 'FM' or des == 'FMe':
     if 'F' in des:
@@ -27,42 +29,52 @@ def hexdraw(bow, x, y, des, rot, mb, eng):
             draw.polygon(((cx, cy+r), (cx-.866*r, cy+r/2), (cx-.866*r, cy-r/2),
                           (cx, cy-r), (cx+.866*r, cy-r/2), (cx+.866*r, cy+r/2)),
                          fill=MBColor(bow, mb, des), outline=(0, 0, 0))
+            draw.text((cx-0.2*r,cy-0.5*r), str(maxLinks), font = font,fill='black')
         # orientation
         draworfull(cx, cy, r, rot)
         # draw engine
-        if eng == 'True' and rot == 0:
+        if eng == 'True' and EW and rot == 0:
             draw.polygon(((cx+.866*r, cy+r/4), (cx+.7*r, cy+r/4), (cx+.7*r, cy-r/4),
                           (cx+.866*r, cy-r/4)), fill=(255, 51, 51), outline=(0, 0, 0))
-        # looks a little off
-        elif eng == 'True' and (rot == 1):
-            draw.polygon(((cx+r*.213, cy-r*.875), (cx+.663*r, cy-r*.613), (cx+.575*r, cy-r*.475),
-                          (cx+r*.125, cy-r*.737)), fill=(255, 51, 51), outline=(0, 0, 0))
-        elif eng == 'True' and (rot == 2):
-            draw.polygon(((cx-r*.213, cy-r*.875), (cx-.663*r, cy-r*.613), (cx-.575*r, cy-r*.475),
-                          (cx-r*.125, cy-r*.737)), fill=(255, 51, 51), outline=(0, 0, 0))
-
-        # changed where these draw for the even layers that are reversed and engines should be opp side
-        # this might need to be changed for causing problems in wagon drawing
-        # draws for board
-        elif eng == 'True' and rot == 3 and bow == 0:
-            draw.polygon(((cx+.866*r, cy+r/4), (cx+.7*r, cy+r/4), (cx+.7*r, cy-r/4),
-                          (cx+.866*r, cy-r/4)), fill=(255, 51, 51), outline=(0, 0, 0))
-        elif eng == 'True' and (rot == 4) and bow == 0:
-            draw.polygon(((cx+r*.213, cy-r*.875), (cx+.663*r, cy-r*.613), (cx+.575*r, cy-r*.475),
-                          (cx+r*.125, cy-r*.737)), fill=(255, 51, 51), outline=(0, 0, 0))
-        elif eng == 'True' and (rot == 5) and bow == 0:
-            draw.polygon(((cx-r*.213, cy-r*.875), (cx-.663*r, cy-r*.613), (cx-.575*r, cy-r*.475),
-                          (cx-r*.125, cy-r*.737)), fill=(255, 51, 51), outline=(0, 0, 0))
-        # draws for wagons, these are the more 'proper' placements
-        elif eng == 'True' and rot == 3 and bow != 0:
+        elif eng == 'True' and not EW and rot == 0:
             draw.polygon(((cx-.866*r, cy+r/4), (cx-.7*r, cy+r/4), (cx-.7*r, cy-r/4),
                           (cx-.866*r, cy-r/4)), fill=(255, 51, 51), outline=(0, 0, 0))
-        elif eng == 'True' and rot == 4 and bow != 0:
-            draw.polygon(((cx-r*.213, cy+r*.875), (cx-.663*r, cy+r*.613), (cx-.575*r, cy+r*.475),
-                          (cx-r*.125, cy+r*.737)), fill=(255, 51, 51), outline=(0, 0, 0))
-        elif eng == 'True' and rot == 5 and bow != 0:
-            draw.polygon(((cx+r*.213, cy+r*.875), (cx+.663*r, cy+r*.613), (cx+.575*r, cy+r*.475),
-                          (cx+r*.125, cy+r*.737)), fill=(255, 51, 51), outline=(0, 0, 0))
+        # looks a little off
+        elif eng == 'True' and rot == 1:
+            if EW:
+              draw.polygon(((cx+r*.213, cy-r*.875), (cx+.663*r, cy-r*.613), (cx+.575*r, cy-r*.475),
+                            (cx+r*.125, cy-r*.737)), fill=(255, 51, 51), outline=(0, 0, 0))
+            else:
+              draw.polygon(((cx-r*.213, cy+r*.875), (cx-.663*r, cy+r*.613), (cx-.575*r, cy+r*.475),
+                            (cx-r*.125, cy+r*.737)), fill=(255, 51, 51), outline=(0, 0, 0))
+        elif eng == 'True' and rot == 2:
+            if EW:
+              draw.polygon(((cx-r*.213, cy-r*.875), (cx-.663*r, cy-r*.613), (cx-.575*r, cy-r*.475),
+                            (cx-r*.125, cy-r*.737)), fill=(255, 51, 51), outline=(0, 0, 0))
+            else:
+              draw.polygon(((cx+r*.213, cy+r*.875), (cx+.663*r, cy+r*.613), (cx+.575*r, cy+r*.475),
+                            (cx+r*.125, cy+r*.737)), fill=(255, 51, 51), outline=(0, 0, 0))
+        elif eng == 'True' and rot == 3:
+            if EW:
+              draw.polygon(((cx-.866*r, cy+r/4), (cx-.7*r, cy+r/4), (cx-.7*r, cy-r/4),
+                            (cx-.866*r, cy-r/4)), fill=(255, 51, 51), outline=(0, 0, 0))
+            else:
+              draw.polygon(((cx+.866*r, cy-r/4), (cx+.7*r, cy-r/4), (cx+.7*r, cy+r/4),
+                            (cx+.866*r, cy+r/4)), fill=(255, 51, 51), outline=(0, 0, 0))
+        elif eng == 'True' and rot == 4:
+            if EW:
+              draw.polygon(((cx-r*.213, cy+r*.875), (cx-.663*r, cy+r*.613), (cx-.575*r, cy+r*.475),
+                            (cx-r*.125, cy+r*.737)), fill=(255, 51, 51), outline=(0, 0, 0))
+            else:
+              draw.polygon(((cx+r*.213, cy-r*.875), (cx+.663*r, cy-r*.613), (cx+.575*r, cy-r*.475),
+                            (cx+r*.125, cy-r*.737)), fill=(255, 51, 51), outline=(0, 0, 0))
+        elif eng == 'True' and rot == 5:
+            if EW:
+              draw.polygon(((cx+r*.213, cy+r*.875), (cx+.663*r, cy+r*.613), (cx+.575*r, cy+r*.475),
+                            (cx+r*.125, cy+r*.737)), fill=(255, 51, 51), outline=(0, 0, 0))
+            else:
+              draw.polygon(((cx-r*.213, cy-r*.875), (cx-.663*r, cy-r*.613), (cx-.575*r, cy-r*.475),
+                            (cx-r*.125, cy-r*.737)), fill=(255, 51, 51), outline=(0, 0, 0))
 
     #elif des == 'aIe' or des == 'aOe' or des == 'aM' or des == 'aOe' or des == 'aMe':
     elif 'a' in des:
@@ -72,26 +84,50 @@ def hexdraw(bow, x, y, des, rot, mb, eng):
                           (cx, cy-r)), fill=MBColor(bow, mb, des), outline=(0, 0, 0))
             # draw.polygon(((cx,cy+r),(cx-.433*r,cy+3/4*r),(cx,cy+3/4*r)),\
             #                 fill=(0,0,0),outline=(0,0,0))
+            if maxLinksType == int:
+                draw.text((cx - 0.425*r, cy - 0.05*r), str(maxLinks), font = font)
+            else:
+                draw.text((cx - 0.575*r, cy - 0.05*r), str(maxLinks), font = font) 
         elif rot == 5:
             draw.polygon(((cx, cy+r), (cx-.866*r, cy+r/2), (cx-.866*r, cy-r/2),
                           (cx+.866*r, cy+r/2)), fill=MBColor(bow, mb, des), outline=(0, 0, 0))
+            if maxLinksType == int:
+                draw.text((cx - 0.20*r, cy + 0.25 * r), str(maxLinks), font = font)
+            else:
+                draw.text((cx - 0.35*r, cy + 0.25 * r), str(maxLinks), font = font)
         elif rot == 0:
             draw.polygon(((cx, cy+r), (cx-.866*r, cy+r/2), (cx+.866*r, cy-r/2),
                           (cx+.866*r, cy+r/2)), fill=MBColor(bow, mb, des), outline=(0, 0, 0))
+            if maxLinksType == int:
+                draw.text((cx + 0.10*r, cy + 0.25*r), str(maxLinks), font = font)
+            else:
+                draw.text((cx - 0.05*r, cy + 0.25*r), str(maxLinks), font = font)
         elif rot == 1:
             draw.polygon(((cx, cy+r), (cx, cy-r), (cx+.866*r, cy-r/2),
                           (cx+.866*r, cy+r/2)), fill=MBColor(bow, mb, des), outline=(0, 0, 0))
             # draw.polygon(((cx,cy+r),(cx,cy+3/4*r),(cx+.433*r,cy+3/4*r)),\
             #                 fill=(0,0,0),outline=(0,0,0))
+            if maxLinksType == int:
+                draw.text((cx + 0.325*r, cy - 0.05*r), str(maxLinks), font = font)
+            else:
+                draw.text((cx + 0.175*r, cy - 0.05*r), str(maxLinks), font = font)
         elif rot == 2:
             draw.polygon(((cx-.866*r, cy-r/2), (cx, cy-r), (cx+.866*r, cy-r/2),
                           (cx+.866*r, cy+r/2)), fill=MBColor(bow, mb, des), outline=(0, 0, 0))
             # the 2nd coord is still wrong a bit
             # draw.polygon(((cx+.866*r,cy+r/2),(cx+r*.70,cy+.4*r),(cx+.866*r,cy)),\
             #             fill=(0,0,0),outline=(0,0,0))
+            if maxLinksType == int:
+                draw.text((cx + 0.10*r, cy - 0.45 * r), str(maxLinks), font = font)
+            else:
+                draw.text((cx - 0.05*r, cy - 0.45 * r), str(maxLinks), font = font)
         elif rot == 3:
             draw.polygon(((cx-.866*r, cy+r/2), (cx-.866*r, cy-r/2), (cx, cy-r),
                           (cx+.866*r, cy-r/2)), fill=MBColor(bow, mb, des), outline=(0, 0, 0))
+            if maxLinksType == int:
+                draw.text((cx - 0.20*r, cy - 0.45 * r), str(maxLinks), font = font)
+            else:
+                draw.text((cx - 0.35*r, cy - 0.45 * r), str(maxLinks), font = font)
     #elif des == 'bI' or des == 'bIe' or des == 'bMe' or des == 'bOe':
     elif 'b' in des:
         rot = (rot+4)%6
@@ -99,76 +135,113 @@ def hexdraw(bow, x, y, des, rot, mb, eng):
             draw.polygon(((cx, cy+r), (cx-.866*r, cy+r/2), (cx-.866*r, cy-r/2),
                           (cx, cy-r), (cx+.866*r, cy-r/2)),
                          fill=MBColor(bow, mb, des), outline=(0, 0, 0))
+            if maxLinksType == int:
+                draw.text((cx - 0.05 * r, cy - 0.05 * r), str(maxLinks), font = font)
+            else:
+                draw.text((cx - 0.20 * r, cy - 0.05 * r), str(maxLinks), font = font)
         elif rot == 5:
             draw.polygon(((cx, cy+r), (cx-.866*r, cy+r/2), (cx-.866*r, cy-r/2),
                           (cx, cy-r), (cx+.866*r, cy+r/2)),
                          fill=MBColor(bow, mb, des), outline=(0, 0, 0))
+            if maxLinksType == int:
+                draw.text((cx - 0.05 * r, cy - 0.05 * r), str(maxLinks), font = font)
+            else:
+                draw.text((cx - 0.20 * r, cy - 0.05 * r), str(maxLinks), font = font)
         elif rot == 0:
             draw.polygon(((cx, cy+r), (cx-.866*r, cy+r/2), (cx-.866*r, cy-r/2),
                           (cx+.866*r, cy-r/2), (cx+.866*r, cy+r/2)),
                          fill=MBColor(bow, mb, des), outline=(0, 0, 0))
             # draw.polygon(((cx,cy+r),(cx-.433*r,cy+3/4*r),(cx+.433*r,cy+3/4*r)),\
             #                 fill=(0,0,0),outline=(0,0,0))
+            if maxLinksType == int:
+                draw.text((cx - 0.05 * r, cy - 0.05 * r), str(maxLinks), font = font)
+            else:
+                draw.text((cx - 0.20 * r, cy - 0.05 * r), str(maxLinks), font = font)
         elif rot == 1:
             draw.polygon(((cx, cy+r), (cx-.866*r, cy+r/2), (cx, cy-r),
                           (cx+.866*r, cy-r/2), (cx+.866*r, cy+r/2)),
                          fill=MBColor(bow, mb, des), outline=(0, 0, 0))
+            if maxLinksType == int:
+                draw.text((cx - 0.05 * r, cy - 0.05 * r), str(maxLinks), font = font)
+            else:
+                draw.text((cx - 0.20 * r, cy - 0.05 * r), str(maxLinks), font = font)
         elif rot == 2:
             draw.polygon(((cx, cy+r), (cx-.866*r, cy-r/2), (cx, cy-r),
                           (cx+.866*r, cy-r/2), (cx+.866*r, cy+r/2)),
                          fill=MBColor(bow, mb, des), outline=(0, 0, 0))
+            if maxLinksType == int:
+                draw.text((cx - 0.05 * r, cy - 0.05 * r), str(maxLinks), font = font)
+            else:
+                draw.text((cx - 0.20 * r, cy - 0.05 * r), str(maxLinks), font = font)
         elif rot == 3:
             draw.polygon(((cx-.866*r, cy+r/2), (cx-.866*r, cy-r/2), (cx, cy-r),
                           (cx+.866*r, cy-r/2), (cx+.866*r, cy+r/2)),
                          fill=MBColor(bow, mb, des), outline=(0, 0, 0))
+            if maxLinksType == int:
+                draw.text((cx - 0.05 * r, cy - 0.05 * r), str(maxLinks), font = font)
+            else:
+                draw.text((cx - 0.20 * r, cy - 0.05 * r), str(maxLinks), font = font)
     #elif des == 'cOe':
     elif 'c' in des:
         rot = (rot+2)%6
         if rot == 2:
             draw.polygon(((cx, cy+r), (cx-.866*r, cy+r/2), (cx-.866*r, cy-r/2)),
                          fill=MBColor(bow, mb, des), outline=(0, 0, 0))
+            draw.text((cx - 0.425*r, cy - 0.05*r), str(maxLinks), font = font)
         elif rot == 3:
             draw.polygon(((cx, cy+r), (cx-.866*r, cy+r/2), (cx+.866*r, cy+r/2)),
                          fill=MBColor(bow, mb, des), outline=(0, 0, 0))
+            draw.text((cx - 0.20*r, cy + 0.25 * r), str(maxLinks), font = font)
         elif rot == 4:
             draw.polygon(((cx, cy+r), (cx+.866*r, cy-r/2), (cx+.866*r, cy+r/2)),
                          fill=MBColor(bow, mb, des), outline=(0, 0, 0))
+            draw.text((cx + 0.10*r, cy + 0.25*r), str(maxLinks), font = font)
         elif rot == 5:
             draw.polygon(((cx+.866*r, cy+r/2), (cx+.866*r, cy-r/2), (cx, cy-r)),
                          fill=MBColor(bow, mb, des), outline=(0, 0, 0))
+            draw.text((cx + 0.325*r, cy - 0.05*r), str(maxLinks), font = font)
         elif rot == 0:
             draw.polygon(((cx, cy-r), (cx-.866*r, cy-r/2), (cx+.866*r, cy-r/2)),
                          fill=MBColor(bow, mb, des), outline=(0, 0, 0))
+            draw.text((cx + 0.10*r, cy - 0.45 * r), str(maxLinks), font = font)
         elif rot == 1:
             draw.polygon(((cx-.866*r, cy+r/2), (cx-.866*r, cy-r/2), (cx, cy-r)),
                          fill=MBColor(bow, mb, des), outline=(0, 0, 0))
+            draw.text((cx - 0.20*r, cy - 0.45 * r), str(maxLinks), font = font)
     #elif des == 'dIe' or des == 'dOe':
     elif 'd' in des:
-        rot = (rot+5)%6
+        rot = (rot+0)%6
         if rot == 5:
             draw.polygon(((cx, cy+r), (cx-.866*r, cy+r/2), (cx-.866*r, cy-r/2),
                           (cx-.433*r, cy-3/4*r), (cx+.433*r, cy+3/4*r)),
                          fill=MBColor(bow, mb, des), outline=(0, 0, 0))
+            #draw.text((cx - 0.425*r, cy - 0.05*r), str(maxLinks), font = font)
         elif rot == 0:
             draw.polygon(((cx, cy+r), (cx-.866*r, cy+r/2), (cx-.866*r, cy),
                           (cx+.866*r, cy), (cx+.866*r, cy+r/2)),
                          fill=MBColor(bow, mb, des), outline=(0, 0, 0))
+            #draw.text((cx - 0.20*r, cy + 0.25 * r), str(maxLinks), font = font)
         elif rot == 1:
             draw.polygon(((cx, cy+r), (cx+.866*r, cy+r/2), (cx+.866*r, cy-r/2),
                           (cx+.433*r, cy-3/4*r), (cx-.433*r, cy+3/4*r)),
                          fill=MBColor(bow, mb, des), outline=(0, 0, 0))
+            #draw.text((cx + 0.10*r, cy + 0.25*r), str(maxLinks), font = font)
         elif rot == 2:
             draw.polygon(((cx+.866*r, cy-r/2), (cx+.866*r, cy+r/2), (cx+.433*r, cy+3/4*r),
                           (cx-.433*r, cy-3/4*r), (cx, cy-r)),
                          fill=MBColor(bow, mb, des), outline=(0, 0, 0))
+            #draw.text((cx - 0.325*r, cy - 0.05*r), str(maxLinks), font = font)
         elif rot == 3:
             draw.polygon(((cx, cy-r), (cx-.866*r, cy-r/2), (cx-.866*r, cy),
                           (cx+.866*r, cy), (cx+.866*r, cy-r/2)),
                          fill=MBColor(bow, mb, des), outline=(0, 0, 0))
+            #draw.text((cx + 0.10*r, cy - 0.45 * r), str(maxLinks), font = font)
         elif rot == 4:
             draw.polygon(((cx-.433*r, cy+3/4*r), (cx-.866*r, cy+r/2), (cx-.866*r, cy-r/2),
                           (cx, cy-r), (cx+.433*r, cy-r*3/4)),
                          fill=MBColor(bow, mb, des), outline=(0, 0, 0))
+            #draw.text((cx - 0.20*r, cy - 0.45 * r), str(maxLinks), font = font)
+        draw.text((cx-0.2*r,cy-0.5*r), str(maxLinks), font = font,fill='black')
     #elif des == 'gIe':
     elif 'g' in des:
         rot = (rot+4)%6
@@ -192,7 +265,7 @@ def hexdraw(bow, x, y, des, rot, mb, eng):
             draw.polygon(((cx, cy+r), (cx-.866*r, cy+r/2), (cx-.866*r, cy-r/2),
                           (cx, cy-r), (cx+r/2, cy-r/2), (cx+r/2, cy+r/2)),
                          fill=MBColor(bow, mb, des), outline=(0, 0, 0))
-
+        draw.text((cx-0.2*r,cy-0.5*r), str(maxLinks), font = font,fill='black')
         # orientation
         # draworfull(cx,cy,r,rot)
 
@@ -986,9 +1059,10 @@ r = 40
 d = r * math.cos(math.pi/6)
 # board drawing or wagon drawing
 #bow = 0
-im2 = Image.new('RGB', (xmax, ymax), (128, 128, 128))
+im2 = Image.new('RGB', (xmax, ymax), (256, 256, 256))
 draw = ImageDraw.Draw(im2)
 font = ImageFont.truetype('Keyboard.ttf',30)
+#font = ImageFont.load_default()
 
 
 # Draw Summary
@@ -1002,41 +1076,55 @@ t = 0
 maxrows = 20
 x0 = 200
 y0 = 120
-colSpacing = 400
+colSpacing = 500
 rowSpacing = 110
 
-def wagonDrawer(wagonCounter,geometryFile):
+def wagonDrawer(wagonCounter, geomVersion, maxLinksDict = {}):
   
   row, col = 0, 0
   ySpaces = 0
   ySpaceExtra = 1.5 * r #1.5 * r #120
+  nCharsPerGroup = 5
+  nCharsPreCodes = 4
   for wagon in list(wagonCounter.keys()):
+    
+    if maxLinksDict != {}:
+        maxLinksList = maxLinksDict[wagon]
+    else:
+        maxLinksList = []
+        for i in wagonCounter:
+            maxLinksList.append(0)
 
     # Remove x-over index 
-    wagonTemp = wagon[0:2] + wagon[3:]
- 
+    #wagonTemp = wagon[0:2] + wagon[3:]
+    #wagonTemp = wagon[0:nCharsPreCodes-1] + wagon[nCharsPreCodes:]
+    # Remove last 2 link indices
+    wagonTemp = wagon[:-2]
+
+    EW = wagonTemp[1]
+
     bow = 3 if wagonTemp[0] else 1
     #print(y0,row,col,ySpaces)
     x = x0 + colSpacing * col
     y = y0 + rowSpacing * row #+ ySpaces * ySpaceExtra
     #print('x',x,'y',y)
     #centers = [(x,y,wagonTemp[2],0,'False' if len(wagonTemp) > 3 else ('True' if wagonTemp[1] else 'False'))]
-    centers = [(x,y,wagonTemp[2],0,'True' if wagonTemp[1] == 0 else 'False')]
-    #print(centers)
+    centers = [(x,y,wagonTemp[4],0,'True' if wagonTemp[2] == 0 else 'False', maxLinksList[0])]
+    # print(centers)
     #hexdraw(x,y,wagonTemp[2],0,1,'False' if len(wagonTemp) > 3 else ('True' if wagonTemp[1] else 'False'))
     angle = 0
     orient = 0
-    if len(wagonTemp) > 3:
-      codeGroups = [wagonTemp[i*3:(i+1)*3] for i in range((len(wagonTemp)+3-1)//3)][1:] # First three codes are already taken care of above
+    if len(wagonTemp) > nCharsPreCodes + 2:
+      codeGroups = [wagonTemp[i*nCharsPerGroup:(i+1)*nCharsPerGroup] for i in range((len(wagonTemp)+nCharsPreCodes-1)//(nCharsPerGroup))][1:] # Precodes are already taken care of above
       for i, codeGroup in enumerate(codeGroups):
-   
+
         #drawEngine = 'True' if i == (len(codeGroups) - 1) and wagonTemp[1] else 'False'
-        drawEngine = 'True' if wagonTemp[1] == (i + 1) else 'False'
+        drawEngine = 'True' if wagonTemp[2] == (i + 1) else 'False' 
   
         #angle = (int(codeGroup[0]) - orient) % 6
-        angle = (orient + int(codeGroup[0])) % 6
+        angle = (orient + int(codeGroup[2])) % 6
         #orient = (int(codeGroup[1]) - orient) % 6
-        orient = (orient + int(codeGroup[1])) % 6
+        orient = (orient + int(codeGroup[3])) % 6
         x += 2 * d * math.cos(angle * math.pi / 3)
         y -= 2 * d * math.sin(angle * math.pi / 3)
   
@@ -1044,22 +1132,14 @@ def wagonDrawer(wagonCounter,geometryFile):
         #  orient = (orient + int(codeGroup[0])) % 6
   
         orientAdj = 0
-        if False and any(i in codeGroup[2] for i in ['a','b','d','g']):
+        if False and any(i in codeGroup[4] for i in ['a','b','d','g']):
           #orient = (orient + 4) % 6
           orientAdj = 4
-          if codeGroup[2] == 'd':
+          if codeGroup[4] == 'd':
             #orient = (orient + 1) % 6
             orientAdj += 1
+        centers.append((x,y,codeGroup[4],(orient + orientAdj) % 6,drawEngine,maxLinksList[i + 1]))
   
-        centers.append((x,y,codeGroup[2],(orient + orientAdj) % 6,drawEngine))
-        #print('Drawing x =',str(x),'y =',str(y),'type',codeGroup[2],'irot =',orient,'engine?',drawEngine)
-        #hexdraw(x,y,codeGroup[2],orient,1,drawEngine)
-  
-    #print('--------------------')
-    #print(wagon)
-    #print(centers)
-    #centers.sort(key=lambda centers: centers[1],reverse=True)
-    #print(centers)
     xMin = np.min([i[0] for i in centers])
     yMax = np.max([i[1] for i in centers])
     yMin = np.min([i[1] for i in centers])
@@ -1069,19 +1149,18 @@ def wagonDrawer(wagonCounter,geometryFile):
     #ySpaces += ySpacesNew
     #print('ySpaces',ySpaces)
     #if centers[0][1] == yMax:
-    centers = [(i[0] + centers[0][0] - xMin,i[1] + ySpaces * ySpaceExtra,i[2],i[3],i[4]) for i in centers]  
+    centers = [(i[0] + centers[0][0] - xMin,i[1] + ySpaces * ySpaceExtra,i[2],i[3],i[4],i[5]) for i in centers]
     #print(centers)
     #print('-------------------------')
     #centers = [(i[0] + centers[0][0] - xMin,i[1] + ySpaces*ySpaceExtra,i[2],i[3],i[4]) for i in centers]
-  
+    # print(centers)
     for center in centers:
-      #print(center)
-      hexdraw(bow,center[0],center[1],center[2],center[3],1,center[4])
+      hexdraw(bow,center[0],center[1],center[2],center[3],1,center[4],center[5],EW)
     
     centers.sort(key=lambda centers: centers[1],reverse=True)
  
-    draw.text((50 + colSpacing * col,centers[0][1] + 10),str(wagonCounter.get(wagon)),font=font)
-    draw.text((50 + colSpacing * col,centers[0][1] + 40),''.join(str(i) for i in wagon),font=font)
+    draw.text((50 + colSpacing * col,centers[0][1] + 10),str(wagonCounter.get(wagon)),font=font,fill='black')
+    draw.text((50 + colSpacing * col,centers[0][1] + 40),''.join(str(i) for i in wagon),font=font,fill='black')
   
     row += 1
     if centers[0][1] > 0.8 * (ymax - y0):
@@ -1089,4 +1168,4 @@ def wagonDrawer(wagonCounter,geometryFile):
       col += 1
       ySpaces = 0
   
-  im2.save('output/wagonSummaries/WagonSummary_{}.jpg'.format(str(geometryFile)), quality=95)
+  im2.save('output/wagonSummaries/WagonSummary_{}.jpg'.format(str(geomVersion)), quality=95)
