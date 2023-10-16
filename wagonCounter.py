@@ -220,7 +220,7 @@ def main():
   LDHDBoth = 0
 
   # Specify the geometry file to be used
-  geomVersion = 'v15.3_development_irot'#'v15.2_uniformirot_def_fixed'
+  geomVersion = 'v15.3_NadjaOct2023'
   geometryPath = 'geometries/{}/'.format(geomVersion)
   geometryFile = 'geometry.hgcal'
   #geometryFile = 'geo_with_east'
@@ -228,6 +228,8 @@ def main():
   # Extract required columns
   geom = pd.read_csv('{0}{1}.txt'.format(geometryPath,geometryFile),delim_whitespace=True)
   geomBasic = geom[['plane','u','v','x0','y0', 'vx_0', 'vy_0', 'vx_1', 'vy_1', 'vx_2', 'vy_2', 'vx_3', 'vy_3', 'vx_4', 'vy_4', 'vx_5', 'vy_5', 'vx_6', 'vy_6', 'itype','irot','MB','wagon','isEngine','HDorLD','trigLinks','dataLinks_ld','dataLinks_hd','icassette']].copy()
+
+  geomBasic['irot'] = geomBasic['irot'].astype('int')
 
   # Reflect even layers
   #geomBasic.loc[geomBasic['plane'] % 2 == 0,'irot'] *= -1
@@ -242,23 +244,81 @@ def main():
   # Format type
   #geomBasic['itype'] = geomBasic['itype'].str[0]
   #geomBasic['itype'] = geomBasic['itype'].str[0] if ('T' in geomBasic['itype']) or ('L' in geomBasic['itype'])
-  geomBasic.loc[(geomBasic['itype'].str.contains('T|L')),'irot'] += 3
+  #geomBasic.loc[(geomBasic['itype'].str.contains('T|L')),'irot'] += 3
+
+  # LD halves(aOe + T/B)
+  #geomBasic.loc[geomBasic['itype'] == 'aOeT','irot'] += 3
+  #geomBasic['itype'] = geomBasic['itype'].str.replace('aOeT','A')
+  #geomBasic['itype'] = geomBasic['itype'].str.replace('aOeB','a')
+
+  # LD semis (dOe + R/L)
+  #geomBasic.loc[geomBasic['itype'] == 'dOeL','irot'] += 3
+  #geomBasic['itype'] = geomBasic['itype'].str.replace('dOeL','D')
+  #geomBasic['itype'] = geomBasic['itype'].str.replace('dOeR','d')
+
+  # LD fives (bOe + RL/LR)
+  #geomBasic['itype'] = geomBasic['itype'].str.replace('bOeLR','B')
+  #geomBasic['itype'] = geomBasic['itype'].str.replace('bOeRL','b')
+
+  #geomBasic.loc[(geomBasic['itype'].str.contains('T')),'irot'] += 3
+  #geomBasic.loc[(geomBasic['itype'].str[-1] == 'L'),'irot'] += 3
+  #geomBasic.loc[(geomBasic['itype'].str[-1] == 'R'),'irot'] += 4
+
+  # HD
   geomBasic.loc[(geomBasic['HDorLD']) & (geomBasic['itype'].str.contains('aIe')),'irot'] += 3
+
   geomBasic['irot'] %= 6
-  geomBasic['itype'] = geomBasic['itype'].str[0]
+  #geomBasic['itype'] = geomBasic['itype'].str[0]
 
   if halvesSemisSame: 
-    #geomBasic.loc[geomBasic['itype'] == 'd','irot'] += 1
-    geomBasic.loc[geomBasic['itype'] == 'd','itype'] = 'a'
-  elif halvesSemisFivesSame:
-    geomBasic.loc[geomBasic['itype'] == 'd','irot'] +=1
 
+    geomBasic['itype'] = geomBasic['itype'].str[0]
+    geomBasic.loc[geomBasic['itype'] == 'A','itype'] = 'D'
     geomBasic.loc[geomBasic['itype'] == 'a','itype'] = 'd'
 
-    geomBasic.loc[geomBasic['itype'] == 'b','irot'] += 1
+  elif halvesSemisFivesSame:
+
+    #geomBasic.loc[(geomBasic['itype'] == 'A') | (geomBasic['itype'] == 'a'),'irot'] += 2
+    #geomBasic.loc[geomBasic['itype'] == 'A','itype'] = 'D'
+    #geomBasic.loc[geomBasic['itype'] == 'a','itype'] = 'd'
+
+    #geomBasic.loc[(geomBasic['itype'] == 'B') | (geomBasic['itype'] == 'b'),'irot'] += 4
+    #geomBasic.loc[geomBasic['itype'] == 'B','itype'] = 'D'
+    #geomBasic.loc[geomBasic['itype'] == 'b','itype'] = 'd'
+
+   
+    # LD halves(aOe + T/B)
+    geomBasic.loc[(geomBasic['itype'].str[0] == 'a') & (geomBasic['itype'].str[-1] == 'B'),'irot'] += 5
+    geomBasic.loc[(geomBasic['itype'].str[0] == 'a') & (geomBasic['itype'].str[-1] == 'T'),'irot'] += 1
+  
+    # LD semis (dOe + R/L)
+    geomBasic.loc[(geomBasic['itype'].str[0] == 'd') & (geomBasic['itype'].str[-1] == 'R'),'irot'] += 0
+    geomBasic.loc[(geomBasic['itype'].str[0] == 'd') & (geomBasic['itype'].str[-1] == 'L'),'irot'] += 3
+  
+    # LD fives (bOe + RL/LR)
+    geomBasic.loc[(geomBasic['itype'].str[0] == 'b') & (geomBasic['itype'].str[-2:] == 'RL'),'irot'] += 3
+    geomBasic.loc[(geomBasic['itype'].str[0] == 'b') & (geomBasic['itype'].str[-2:] == 'LR'),'irot'] += 3
+ 
+    geomBasic['itype'] = geomBasic['itype'].str[0]
+    geomBasic.loc[geomBasic['itype'] == 'a','itype'] = 'd'
     geomBasic.loc[geomBasic['itype'] == 'b','itype'] = 'd'
 
+
+
+
+
+    #geomBasic.loc[geomBasic['itype'] == 'd','irot'] +=1
+
+    #geomBasic.loc[geomBasic['itype'] == 'a','itype'] = 'd'
+    #geomBasic.loc[geomBasic['itype'] == 'A','itype'] = 'D'
+
+    #geomBasic.loc[geomBasic['itype'] == 'b','irot'] += 1
+    #geomBasic.loc[geomBasic['itype'] == 'b','itype'] = 'd'
+
     geomBasic['irot'] %= 6
+
+  else: geomBasic['itype'] = geomBasic['itype'].str[0]
+
 
   #  Specify the file with the fiber counts
   fiberCountsFile = 'fiberCounts/fiberCounts_220221_163022.txt'
@@ -281,9 +341,9 @@ def main():
   # Group modules by plane (layer), MB index, and wagon index
   geomGrouped = geomBasic.sort_values('r',ascending=True).groupby(['plane','MB','wagon'])
 
-  #print(geomGrouped.get_group((2,10,0)))
+  #print(geomGrouped.get_group((1,4,0)))
   #print('#'*50)
-  #print(geomGrouped.get_group((2,10,1)))
+  #print(geomGrouped.get_group((1,10,1)))
 
   wagonCodes = []
   wagonCodesDict = {}
@@ -402,6 +462,21 @@ def main():
 
   geomGrouped = geomBasic.sort_values('r',ascending=True).groupby(['plane','MB','wagon'])
 
+  def maxLinksCalculation(code, dict1 = wagonCodesDict):
+    lenWagon = len(code[3::3])
+    maxLinksList = []
+    for i in range(lenWagon):
+      maxLinksList.append(0)
+    for loc in dict1[code]:
+      wagonLoc = geomGrouped.get_group((loc[0], loc[1], loc[2]))
+      numTrigLinks = [int(x) for x in wagonLoc['trigLinks'].tolist()]
+      for j in range(len(numTrigLinks)):
+        if numTrigLinks[j] > maxLinksList[j]:
+          maxLinksList[j] = numTrigLinks[j]
+    return maxLinksList
+
+  maxLinks = {x:maxLinksCalculation(x, wagonCodesDict) for x in wagonCodesDict}
+
   numTrigLinksHDLT15 = 0
   numHD = 0
 
@@ -413,6 +488,7 @@ def main():
       wagonTemp = geomGrouped.get_group((id[0],id[1],id[2])) #geomBasic[(geomBasic['plane'] == id[0]) & (geomBasic['MB'] == id[1]) & (geomBasic['wagon'] == id[2])]#.sort_values('r',ascending=True)
       numTrigLinks = [int(x) for x in wagonTemp['trigLinks'].tolist()]
       totTrigLinks = sum(numTrigLinks)
+      totMaxLinks = sum(maxLinks[key])
       if key[0] == 0: numDataLinks = [int(x) for x in wagonTemp['dataLinks_ld'].tolist()]
       else          : numDataLinks = [int(x) for x in wagonTemp['dataLinks_hd'].tolist()]
       if key[0] == 1 and sum(numDataLinks) > 7: numDataLinksHDGT7 += 1
@@ -432,7 +508,7 @@ def main():
         numTrigLinksPartner = [int(x) for x in wagonTempPartner['trigLinks'].tolist()]
         totTrigLinksPartner = sum(numTrigLinksPartner)
         # Overflow links
-        if totTrigLinks > 7: #****
+        if totTrigLinks > 7:
           isNew = True
           x1 = totTrigLinks - 7
           x2 = -x1
@@ -514,32 +590,6 @@ def main():
     # Print message about how many HD wagons has more than 7 DAQ links
     #if key[0] == 1: print(numDataLinksHDGT7,'/',len(value),'('+'{:.1f}'.format(100 * numDataLinksHDGT7 / len(value)),'%) HD wagons with code',key,'have more than 7 DAQ links')
 
-  def maxLinksCalculation(code, dict1 = wagonCodesDict):
-    lenWagon = len(code[3::3])
-    maxLinksList = []
-    for i in range(lenWagon):
-      maxLinksList.append(0)
-    for loc in dict1[code]:
-      wagonLoc = geomGrouped.get_group((loc[0], loc[1], loc[2]))
-      numTrigLinks = [int(x) for x in wagonLoc['trigLinks'].tolist()]
-      for j in range(len(numTrigLinks)):
-        if numTrigLinks[j] > maxLinksList[j]:
-          maxLinksList[j] = numTrigLinks[j]
-    return maxLinksList
-  
-  def minLinksCalculation(code, dict1):
-    lenWagon = len(code[3::3])
-    minLinksList = []
-    for i in range(lenWagon):
-      minLinksList.append(5)
-    for loc in dict1[code]:
-      wagonLoc = geomGrouped.get_group((loc[0], loc[1], loc[2]))
-      numTrigLinks = [int(x) for x in wagonLoc['trigLinks'].tolist()]
-      for j in range(len(numTrigLinks)):
-        if numTrigLinks[j] < minLinksList[j] and numTrigLinks[j] != 0:
-          minLinksList[j] = numTrigLinks[j]
-    return minLinksList
-     
   # Recoding
   wagonCodesDictCopy = copy.deepcopy(wagonCodesDict)
   recodedCodesList = []
@@ -576,39 +626,26 @@ def main():
 
   # Run 4 times to allow 0-3 incoming links
   if True:
-    for iPass in range(4):
-      changes = 0
-      for metacode, codes in getGroupedCodes(incomingWagonCodesCopy).items():
-        for code in codes:
-          canAddLink = True
-          if code not in wagonCodesDict: continue
-          newCode = list(code)
-          newCode[2] -= 1
-          newCode = tuple(newCode)
-          for loc in incomingWagonCodesCopy[code]:
-            numLinks = sum([int(x) for x in geomGrouped.get_group((loc[0], loc[1], loc[2]))['trigLinks'].tolist()])
-            # Get partner info
-            locPartner = [loc[0],loc[1],int(not loc[2])]
-            #numLinksPartner = sum([int(x) for x in geomGrouped.get_group((locPartner[0], locPartner[1],locPartner[2]))['trigLinks'].tolist()])
-            index = 99999
-            for i,val in enumerate(wagonCodesDict.values()):
-              if locPartner in val:
-                index = i
-            if index == 99999: print('ERROR: Wagon partner with location',locPartner,'not found')
-            codePartner = list(wagonCodesDict.keys())[index]
-            newCodePartner = list(codePartner)
-            newCodePartner[2] += 1
-            newCodePartner = tuple(newCodePartner)
-            # Only allow an extra incoming link if 1) taking it gives <= 7 links, 2) taking it doesn't make > 3 xovers, 3) the new code already exists, and 4) all of the new partner codes also exist
-            if not ((numLinks + 1) <= 7 and (newCode[2]) >= -3 and newCode in wagonCodesDict and newCodePartner in wagonCodesDict and newCode != newCodePartner): 
-              canAddLink = False
-              break
-          if canAddLink: 
-            print(code,'can be changed to',newCode)
-            changes += 1
-            # Do the consolidation
-            for loc in incomingWagonCodesCopy[code]:
+    for deltaLinks in [1,2,3]:
+      #print('Trying to add {} incoming links'.format(deltaLinks))
+      for iPass in range(int(3/deltaLinks)):
+        changes = 0
+        newCodesPass = []
+        for metacode, codes in getGroupedCodes(incomingWagonCodesCopy).items():
+          for code in codes:
+            canAddLink = True
+            # Make sure this code still exists after any previous consolidations
+            if code not in wagonCodesDict: continue
+            # Make sure we haven't already consolidated to this code in this pass
+            if code in newCodesPass: continue
+            newCode = list(code)
+            newCode[2] -= deltaLinks
+            newCode = tuple(newCode)
+            for loc in wagonCodesDict[code]:
+              numLinks = sum([int(x) for x in geomGrouped.get_group((loc[0], loc[1], loc[2]))['trigLinks'].tolist()]) - code[2]
+              # Get partner info
               locPartner = [loc[0],loc[1],int(not loc[2])]
+              #numLinksPartner = sum([int(x) for x in geomGrouped.get_group((locPartner[0], locPartner[1],locPartner[2]))['trigLinks'].tolist()])
               index = 99999
               for i,val in enumerate(wagonCodesDict.values()):
                 if locPartner in val:
@@ -616,23 +653,45 @@ def main():
               if index == 99999: print('ERROR: Wagon partner with location',locPartner,'not found')
               codePartner = list(wagonCodesDict.keys())[index]
               newCodePartner = list(codePartner)
-              newCodePartner[2] += 1
+              newCodePartner[2] += deltaLinks
               newCodePartner = tuple(newCodePartner)
-              if newCodePartner in wagonCodesDict: wagonCodesDict[newCodePartner] += [locPartner]
-              else: 
-                print('ERROR: New partner wagon variety does not exist, cancelling out the benefit of consolidation!')
-                wagonCodesDict[newCodePartner] = [locPartner]
-              wagonCodesDict[codePartner].remove(locPartner)
-            wagonCodesDict[newCode] = wagonCodesDict[newCode] + wagonCodesDict[code]
-            wagonCodesDict.pop(code)
-            wagonCodesDict = {x:y for x, y in wagonCodesDict.items() if len(y) > 0}
-            #wagonCodesDictCopy = copy.deepcopy(wagonCodesDict)
-            #incomingWagonCodesDict = {x:wagonCodesDict[x] for x in wagonCodesDict.keys() if x[2] <= 0}
-            #incomingWagonCodesCopy = copy.deepcopy(incomingWagonCodesDict)
-            #print(incomingWagonCodesCopy) 
-            #print((0, 0, -2, 'F', 3, 3, 'd') in incomingWagonCodesCopy)
-          
-      print(changes,'can be consolidated in pass',iPass)
+              # Only allow an extra incoming link if 1) taking it gives <= 7 links, 2) taking it doesn't make > 3 xovers, 3) the new code already exists, and 4) all of the new partner codes also exist
+              if not ((numLinks + deltaLinks) <= 7 and newCode[2] >= -3 and newCode in wagonCodesDict and newCode != newCodePartner):
+              #if not (newCode in wagonCodesDict and newCode != newCodePartner):
+                canAddLink = False
+                break
+            if canAddLink: 
+              #print(code,'can be changed to',newCode)
+              changes += 1
+              # Do the consolidation
+              if False: 
+                for loc in incomingWagonCodesCopy[code]:
+                  locPartner = [loc[0],loc[1],int(not loc[2])]
+                  index = 99999
+                  for i,val in enumerate(wagonCodesDict.values()):
+                    if locPartner in val:
+                      index = i
+                  if index == 99999: print('ERROR: Wagon partner with location',locPartner,'not found')
+                  codePartner = list(wagonCodesDict.keys())[index]
+                  newCodePartner = list(codePartner)
+                  newCodePartner[2] += deltaLinks
+                  newCodePartner = tuple(newCodePartner)
+                  if newCodePartner in wagonCodesDict: wagonCodesDict[newCodePartner] += [locPartner]
+                  else: 
+                    print('ERROR: New partner wagon variety does not exist, cancelling out the benefit of consolidation!')
+                    wagonCodesDict[newCodePartner] = [locPartner]
+                  wagonCodesDict[codePartner].remove(locPartner)
+              wagonCodesDict[newCode] = wagonCodesDict[newCode] + wagonCodesDict[code]
+              wagonCodesDict.pop(code)
+              wagonCodesDict = {x:y for x, y in wagonCodesDict.items() if len(y) > 0}
+              newCodesPass.append(newCode)
+              #wagonCodesDictCopy = copy.deepcopy(wagonCodesDict)
+              #incomingWagonCodesDict = {x:wagonCodesDict[x] for x in wagonCodesDict.keys() if x[2] <= 0}
+              #incomingWagonCodesCopy = copy.deepcopy(incomingWagonCodesDict)
+              #print(incomingWagonCodesCopy) 
+              #print((0, 0, -2, 'F', 3, 3, 'd') in incomingWagonCodesCopy)
+            
+        #print(changes,'can be consolidated in pass',iPass)
 
   # Consolidate outgoing links
   
@@ -640,40 +699,27 @@ def main():
   outgoingWagonCodesDictCopy = copy.deepcopy(outgoingWagonCodesDict)
 
   if True:
-    # Run 4 times to allow 0-3 outgoing links
-    for iPass in range(4):
-      changes = 0
-      for metacode, codes in getGroupedCodes(outgoingWagonCodesDictCopy).items():
-        for code in codes:
-          canAddLink = True
-          if code not in wagonCodesDict: continue
-          newCode = list(code)
-          newCode[2] += 1
-          newCode = tuple(newCode)
-          for loc in outgoingWagonCodesDictCopy[code]:
-            numLinks = sum([int(x) for x in geomGrouped.get_group((loc[0], loc[1], loc[2]))['trigLinks'].tolist()])
-            # Get partner info
-            locPartner = [loc[0],loc[1],int(not loc[2])]
-            numLinksPartner = sum([int(x) for x in geomGrouped.get_group((locPartner[0], locPartner[1],locPartner[2]))['trigLinks'].tolist()])
-            index = 99999
-            for i,val in enumerate(wagonCodesDict.values()):
-              if locPartner in val:
-                index = i
-            if index == 99999: print('ERROR: Wagon partner with location',locPartner,'not found')
-            codePartner = list(wagonCodesDict.keys())[index]
-            newCodePartner = list(codePartner)
-            newCodePartner[2] -= 1
-            newCodePartner = tuple(newCodePartner)
-            # Only allow an extra outgoing link if 1) sending it gives <= 7 links on partner, 2) taking it doesn't make > 3 xovers, 3) the new code already exists, and 4) all of the new partner codes also exist
-            if not ((numLinksPartner + 1) <= 7 and (newCode[2]) <= 3 and newCode in wagonCodesDict and newCodePartner in wagonCodesDict and newCode != newCodePartner): 
-              canAddLink = False
-              break
-          if canAddLink: 
-            print(code,'can be changed to',newCode)
-            changes += 1
-            # Do the consolidation
-            for loc in outgoingWagonCodesDictCopy[code]:
+    for deltaLinks in [1,2,3]:
+      #print('Trying to add {} outgoing links'.format(deltaLinks))
+      # Run 4 times to allow 0-3 outgoing links
+      for iPass in range(int(3/deltaLinks)):
+        changes = 0
+        newCodesPass = []
+        for metacode, codes in getGroupedCodes(outgoingWagonCodesDictCopy).items():
+          for code in codes:
+            canAddLink = True
+            # Make sure this code still exists after any previous consolidations
+            if code not in wagonCodesDict: continue
+            # Make sure we haven't already consolidated to this code in this pass
+            if code in newCodesPass: continue
+            newCode = list(code)
+            newCode[2] += deltaLinks
+            newCode = tuple(newCode)
+            for loc in wagonCodesDict[code]:
+              #numLinks = sum([int(x) for x in geomGrouped.get_group((loc[0], loc[1], loc[2]))['trigLinks'].tolist()]) - code[2]
+              # Get partner info
               locPartner = [loc[0],loc[1],int(not loc[2])]
+              numLinksPartner = sum([int(x) for x in geomGrouped.get_group((locPartner[0], locPartner[1],locPartner[2]))['trigLinks'].tolist()]) + code[2]
               index = 99999
               for i,val in enumerate(wagonCodesDict.values()):
                 if locPartner in val:
@@ -681,18 +727,40 @@ def main():
               if index == 99999: print('ERROR: Wagon partner with location',locPartner,'not found')
               codePartner = list(wagonCodesDict.keys())[index]
               newCodePartner = list(codePartner)
-              newCodePartner[2] -= 1
+              newCodePartner[2] -= deltaLinks
               newCodePartner = tuple(newCodePartner)
-              if newCodePartner in wagonCodesDict: wagonCodesDict[newCodePartner] += [locPartner]
-              else: 
-                print('ERROR: New partner wagon variety does not exist, cancelling out the benefit of consolidation!')
-                wagonCodesDict[newCodePartner] = [locPartner]
-              wagonCodesDict[codePartner].remove(locPartner)
-            wagonCodesDict[newCode] = wagonCodesDict[newCode] + wagonCodesDict[code]
-            wagonCodesDict.pop(code)
-            wagonCodesDict = {x:y for x, y in wagonCodesDict.items() if len(y) > 0}
-          
-      print(changes,'can be consolidated in pass',iPass)
+              # Only allow an extra outgoing link if 1) sending it gives <= 7 links on partner, 2) taking it doesn't make > 3 xovers, 3) the new code already exists, and 4) all of the new partner codes also exist
+              #if not ((numLinksPartner + deltaLinks) <= 7 and (newCode[2]) <= 3 and newCode in wagonCodesDict and newCode != newCodePartner):
+              if not (newCode[2] <= 3 and newCode in wagonCodesDict and newCode != newCodePartner):
+                canAddLink = False
+                break
+            if canAddLink: 
+              #print(code,'can be changed to',newCode)
+              changes += 1
+              # Do the consolidation
+              if False:
+                for loc in outgoingWagonCodesDictCopy[code]:
+                  locPartner = [loc[0],loc[1],int(not loc[2])]
+                  index = 99999
+                  for i,val in enumerate(wagonCodesDict.values()):
+                    if locPartner in val:
+                      index = i
+                  if index == 99999: print('ERROR: Wagon partner with location',locPartner,'not found')
+                  codePartner = list(wagonCodesDict.keys())[index]
+                  newCodePartner = list(codePartner)
+                  newCodePartner[2] -= deltaLinks
+                  newCodePartner = tuple(newCodePartner)
+                  if newCodePartner in wagonCodesDict: wagonCodesDict[newCodePartner] += [locPartner]
+                  else: 
+                    print('ERROR: New partner wagon variety does not exist, cancelling out the benefit of consolidation!')
+                    wagonCodesDict[newCodePartner] = [locPartner]
+                  wagonCodesDict[codePartner].remove(locPartner)
+              wagonCodesDict[newCode] = wagonCodesDict[newCode] + wagonCodesDict[code]
+              wagonCodesDict.pop(code)
+              wagonCodesDict = {x:y for x, y in wagonCodesDict.items() if len(y) > 0}
+              newCodesPass.append(newCode)
+            
+        #print(changes,'can be consolidated in pass',iPass)
 
   codeCounter = Counter({tuple(key):len(val) for key,val in wagonCodesDict.items()})
 
@@ -811,8 +879,6 @@ def main():
   # Finding max. links on each module on each wagon type
   maxLinks = {x:maxLinksCalculation(x, wagonCodesDict) for x in wagonCodesDict}
 
-  # print(maxLinks)
-
   # Removed Wagons
   removedWagonsDict = {x:y for x, y in removedWagonsDict.items() if x in removedWagonsList}
   wagonMovementDict = {x:y for x, y in wagonMovementDict.items() if x in removedWagonsList}
@@ -826,7 +892,7 @@ def main():
   # Which links are getting sent where?
   outgoingMaxLinks = {x:maxLinks[x] for x in maxLinks if x[2] > 0}
   linksSummary = {x:[] for x in maxLinks if x[2] > 0}
-  
+ 
   for code in wagonCodesDict:
     if code[2] > 0:
       numOutgoingLinks = code[2]
@@ -847,12 +913,13 @@ def main():
         numUnaccountedFor -= 1
         # print('---')
       
-      if linksSummary[code] == [-2, 0] or linksSummary[code] == [0, -2]:
-        linksSummary[code] == [-1, -1]
+      # Below spreads out the outgoing links for two module wagons, but this is not necessary
+      #if linksSummary[code] == [-2, 0] or linksSummary[code] == [0, -2]:
+      #  linksSummary[code] = [-1, -1]
       for i in range(len(maxLinksList)):
         maxLinksList[i] += -1 * linksSummary[code][i]
       maxLinks[code] = maxLinksList
-    
+
     # elif code[2] < 0:
     #   numIncomingLinks = code[2]
     #   maxLinksList = maxLinks[code]
@@ -880,18 +947,6 @@ def main():
       maxLinksList = maxLinks[code]
       print("{0}: {1} + {2}".format(code, maxLinksList, linksInfoList), file = f)
 
-  #maxLinksSummary = {x:[] for x in linksSummary}
-  #for code in linksSummary:
-  #  if linksSummary[code] == [-2, 0] or linksSummary[code] == [0, -2]:
-  #    linksSummary[code] = [-1, -1]
-  #  for i in range(len(linksSummary[code])):
-  #    maxLinksSummary[code].append(str(maxLinks[code][i]) + "-" + str(-1 * linksSummary[code][i]))
-  #  maxLinks[code] = maxLinksSummary[code]
-
-  emptyCounter = Counter([tuple(i) for i in removedWagonsList])
-  for wagon in removedWagonsList:
-    emptyCounter[wagon] = 0
-  
   # Finding engine pos. for east wagons
   eastEnginePositions = {x:findEngine(x, wagonCodesDict, geomGrouped) for x in wagonCodesDict if x[1] == -1 and x[0] == 0}  
 
@@ -900,38 +955,39 @@ def main():
       lenWagon = len(code[3::3])
       eastEnginePositions[code] = (lenWagon - 1) - eastEnginePositions[code]
 
-  # Recoding as per new format
-  newCodeFormat = {}
-  for code in wagonCodesDict:
-      HDorLD = code[0]
-      EastorWest = 0 if code[1] == -1 else 1
-      enginePos = code[1] if code[1] != -1 else eastEnginePositions[code]
-      if code[2] < 0:
-        incomingNum = -1 * code[2]
-      else:
-        incomingNum = 0
-      preCode = (HDorLD, EastorWest, enginePos, incomingNum)
-
-      wagonTypes = code[3::3]
-      codeMinusTypes = tuple([x for x in code[3:] if x not in wagonTypes])
-      angleOrientationCodes = tuple([codeMinusTypes[i:i+2] for i in range(0, len(codeMinusTypes), 2)])
-      newCode = preCode
-      for i in range(len(wagonTypes)):
-        wagonType = wagonTypes[i]
-        maxLinksModule = maxLinks[code][i]
-        if type(maxLinksModule) == str:
-          maxLinksModule = int(maxLinksModule[0])
-        if code in linksSummary:
-          crossoverLinks = -1 * linksSummary[code][i]
-          engineLinks = maxLinksModule - crossoverLinks
+  if False:
+    # Recoding as per new format
+    newCodeFormat = {}
+    for code in wagonCodesDict:
+        HDorLD = code[0]
+        EastorWest = 0 if code[1] == -1 else 1
+        enginePos = code[1] if code[1] != -1 else eastEnginePositions[code]
+        if code[2] < 0:
+          incomingNum = -1 * code[2]
         else:
-          crossoverLinks = 0
-          engineLinks = maxLinksModule
-        angleOrientationCode = angleOrientationCodes[i] if i < (len(wagonTypes) - 1) else ()
-        newCode += (wagonType, engineLinks, crossoverLinks)
-        newCode += angleOrientationCode
-      newCodeFormat[code] = newCode
-  #print(newCodeFormat)
+          incomingNum = 0
+        preCode = (HDorLD, EastorWest, enginePos, incomingNum)
+
+        wagonTypes = code[3::3]
+        codeMinusTypes = tuple([x for x in code[3:] if x not in wagonTypes])
+        angleOrientationCodes = tuple([codeMinusTypes[i:i+2] for i in range(0, len(codeMinusTypes), 2)])
+        newCode = preCode
+        for i in range(len(wagonTypes)):
+          wagonType = wagonTypes[i]
+          maxLinksModule = maxLinks[code][i]
+          if type(maxLinksModule) == str:
+            maxLinksModule = int(maxLinksModule[0])
+          if code in linksSummary:
+            crossoverLinks = -1 * linksSummary[code][i]
+            engineLinks = maxLinksModule - crossoverLinks
+          else:
+            crossoverLinks = 0
+            engineLinks = maxLinksModule
+          angleOrientationCode = angleOrientationCodes[i] if i < (len(wagonTypes) - 1) else ()
+          newCode += (wagonType, engineLinks, crossoverLinks)
+          newCode += angleOrientationCode
+        newCodeFormat[code] = newCode
+    #print(newCodeFormat)
 
   # Setting engineType column in new geometry file
   engineTypeDict = {}
@@ -967,12 +1023,6 @@ def main():
   geom = np.around(geom, decimals = 3)
   cols = [x for x in geom.columns]
   np.savetxt(geomFilePath_WithEngine, geom, fmt = '%s', header = ' '.join(cols))
-
-  # geometryFile2 = 'removedWagons'
-  # with open('wagonDict/{}.txt'.format(geometryFile2), 'w') as f:
-  #   print(removedWagonsList, file = f) 
-
-  # wagonDrawer.wagonDrawer(emptyCounter, geometryFile2)
 
   # Print message about total number of HD wagons with <= 14 trigger links
   #print(numTrigLinksHDLT15,'out of',numHD,'(','{:.1f}'.format(numTrigLinksHDLT15 * 100.0 / numHD),'%) HD wagons have <= 14 trigger links')
@@ -1276,6 +1326,62 @@ def main():
   #eastEnginePositions = eastEnginePositionsCopy
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  # Split varieties if incoming links make a single link routing impossible
+  incomingWagonCodesDict = {x:wagonCodesDict[x] for x in wagonCodesDict.keys() if x[3] > 0}
+  for key,locs in incomingWagonCodesDict.items():
+    if sum(maxLinks[key]) + key[3] > 7:
+      linkConfigs = {}
+      for loc in locs:
+        wagonTemp = geomGrouped.get_group((loc[0],loc[1],loc[2]))
+        numTrigLinks = tuple([int(x) for x in wagonTemp['trigLinks'].tolist()])
+        if numTrigLinks in linkConfigs: linkConfigs[numTrigLinks] += [loc]
+        else:                               linkConfigs[numTrigLinks] = [loc]
+      # Merge any non-problematic link configurations into another one (first one in list)
+      for linkConfig in copy.deepcopy(linkConfigs):
+        if sum(linkConfig) + key[3] != 7:
+          mergeInto = next(x for x in linkConfigs if x != linkConfig)
+          linkConfigs[mergeInto] += linkConfigs[linkConfig]
+          del linkConfigs[linkConfig]
+      for linkConfig,locs in linkConfigs.items():
+        newCode = list(key)
+        for i,modLinks in enumerate(linkConfig):
+          newCode[i*5+5] = format(modLinks,'x')
+        newCode = tuple(newCode)
+        if newCode in wagonCodesDict: wagonCodesDict[newCode] += locs
+        else:                         wagonCodesDict[newCode] = locs
+      del wagonCodesDict[key]
+
+  codeCounter = Counter({tuple(key):len(val) for key,val in wagonCodesDict.items()})
+  maxLinks = {x:maxLinksCalculation(x, wagonCodesDict) for x in wagonCodesDict}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
   if not os.path.exists('output/geometriesWagon/{}'.format(geomVersion)): os.makedirs('output/geometriesWagon/{}'.format(geomVersion))
   f = open('output/geometriesWagon/{}/geometryWagon.txt'.format(geomVersion),'w')
 
@@ -1332,7 +1438,7 @@ def main():
 
   f.close()
 
-  #codeCounterTemp = {k: v for k,v in codeCounter.items() if len(k) == 12 and sum([i == 'F' for i in k]) == 2 and k[1] == 0 and k[7] == 0}
+  #codeCounterTemp = {k: v for k,v in codeCounter.items() if len(k) == 12 and sum([i == 'F' for i in k]) == 2 and k[1] == 0 and k[7] == 0 and k[8] == 0}
   #codeCounter = codeCounterTemp
 
   #print(codeCounter)
@@ -1348,10 +1454,32 @@ def main():
   with open('wagonDict/wagonDict_{}.txt'.format(geometryFile),'w') as f:
     print(wagonCodesDict,file=f)
 
+  # Print wagon info
+  wagonCodesDict = dict(sorted(wagonCodesDict.items(),key=lambda x:(x[0][0],len(x[0]),len(x[1])),reverse=True))
+  with open('wagonInfo/wagonInfo_{}.txt'.format(geomVersion),'w') as f:
+    for code,locs in wagonCodesDict.items():
+      if len(locs) > 10: continue
+      print('-'*20,''.join([str(x) for x in code]),'-'*20,file=f)
+      print('No. of instances:',len(locs),file=f)
+      print('Locations:',sorted(locs,key=lambda x:x[0]),file=f)
+      partnerCodes = []
+      for loc in locs:
+        index = 99999
+        for i,val in enumerate(wagonCodesDict.values()):
+          if [loc[0],loc[1],int(not loc[2])] in val:
+            index = i
+        partnerCodes.append(''.join(str(i) for i in list(wagonCodesDict.keys())[index]))
+      print('Partner codes and counts:',Counter(partnerCodes),file=f)
+      print('-'*(40+len(''.join([str(x) for x in code]))),'\n',file=f)
+
+  # Select only varieties with <= 10 instances
+  #for key,val in list(wagonCodesDict.items()):
+  #  if len(val) > 10: del wagonCodesDict[key]
+  #codeCounter = Counter({tuple(key):len(val) for key,val in wagonCodesDict.items()})
+  #maxLinks = {x:maxLinksCalculation(x, wagonCodesDict) for x in wagonCodesDict}  
+
   # Sort by HD/LD then no. of modules then no. of instances 
   codeCounter = dict(sorted(codeCounter.items(), key=lambda item: (item[0][0],len(item[0]),item[1]), reverse=True))
-
-  #for code in codeCounter: print('\'{}\'\t : \'\','.format(''.join([str(x) for x in code])))
 
   # Draw and save the wagon summary (see wagonDrawer.py)
   wagonDrawer.wagonDrawer(codeCounter,geomVersion,maxLinks)
