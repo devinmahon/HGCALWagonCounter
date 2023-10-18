@@ -1052,8 +1052,6 @@ layerstart = 1
 layerend = 2
 xmax = 5000#2000
 ymax = 3000#2000
-xoff = 850
-yoff = 100
 # radius
 r = 40
 d = r * math.cos(math.pi/6)
