@@ -87,6 +87,19 @@ def recode(code):
       return code
     return reverseCode(code)
 
+def getUVDiff(plane,angle):
+
+  angle %= 6
+
+  if plane > 26 or plane % 2:
+    uDiff = {0: 1, 1: 1, 2: 0, 3: -1, 4: -1, 5:  0}
+    vDiff = {0: 0, 1: 1, 2: 1, 3:  0, 4: -1, 5: -1}
+  else:
+    uDiff = {0: -1, 1:  0, 2: 1, 3:  1, 4:  0, 5: -1}
+    vDiff = {0:  0, 1:  1, 2: 1, 3:  0, 4: -1, 5: -1}
+
+  return uDiff[angle],vDiff[angle]
+
 def findEngine(code,wagonCodesDict,geomGrouped):
 
   if code[1] != -1:
@@ -104,37 +117,26 @@ def findEngine(code,wagonCodesDict,geomGrouped):
 
   u,v,irot,plane = earliestWagonPartner.loc[earliestWagonPartner['isEngine'],['u','v','irot','plane']].values.flatten().tolist()
  
-  if plane > 26 or plane % 2: 
-    uDiff = {0: 1, 1: 1, 2: 0, 3: -1, 4: -1, 5:  0}
-    vDiff = {0: 0, 1: 1, 2: 1, 3:  0, 4: -1, 5: -1} 
-    uEastEngine = u + uDiff[irot]
-    vEastEngine = v + vDiff[irot]
-  else:
-    uDiff = {0: -1, 1:  0, 2: 1, 3:  1, 4:  0, 5: -1}
-    vDiff = {0:  0, 1:  1, 2: 1, 3:  0, 4: -1, 5: -1}
-    uEastEngine = u + uDiff[irot]
-    vEastEngine = v + vDiff[irot]
-
+  uEastEngine,vEastEngine = [sum(x) for x in zip([u,v],list(getUVDiff(plane,irot)))]
 
   coords = earliestWagon[['u','v']].values.tolist()
   index = [i for i in range(len(coords)) if coords[i] == [uEastEngine,vEastEngine]][0]
 
   return index
 
-def findEastEngineModule(plane,uWest,vWest,irotWest,geomGrouped):
+def findEastEngineModule(plane,uWest,vWest,irotWest):
 
-  if plane > 26 or plane % 2:
-    uDiff = {0: 1, 1: 1, 2: 0, 3: -1, 4: -1, 5:  0}
-    vDiff = {0: 0, 1: 1, 2: 1, 3:  0, 4: -1, 5: -1}
-    uEast = uWest + uDiff[irotWest]
-    vEast = vWest + vDiff[irotWest]
-  else:
-    uDiff = {0: -1, 1:  0, 2: 1, 3:  1, 4:  0, 5: -1}
-    vDiff = {0:  0, 1:  1, 2: 1, 3:  0, 4: -1, 5: -1}
-    uEast = uWest + uDiff[irotWest]
-    vEast = vWest + vDiff[irotWest]
+  uEastEngine,vEastEngine = [sum(x) for x in zip([uWest,vWest],list(getUVDiff(plane,irotWest)))]
+  return uEastEngine,vEastEngine
 
-  return uEast,vEast
+def nextModule(plane,u,v,irot,angle,orient):
+
+  uNext,vNext = [sum(x) for x in zip([u,v],list(getUVDiff(plane,angle+irot)))]
+  return uNext,vNext,(irot+orient)%6
+
+def reverseAngleOrient(angle,orient):
+
+  return (angle + 3 - orient) % 6,(orient * -1) % 6
 
 ##################################################
 # MAIN
@@ -912,37 +914,54 @@ def main():
       #geomTempPartnerIndex = geomBasic.loc[(geomBasic['plane'] == tempIndex[0]) & (geomBasic['MB']  == tempIndex[1]) & (geomBasic['wagon'] == tempIndex[2])]
       geomTempIndex = geomGrouped.get_group((tempIndex[0],tempIndex[1],tempIndex[2]))
       geomTempPartnerIndex = geomGrouped.get_group((tempIndex[0],tempIndex[1],not tempIndex[2]))
-      plane,icassette = geomTempIndex[['plane','icassette']].iloc[0]
+      plane,icassette,MB,wagon = geomTempIndex[['plane','icassette','MB','wagon']].iloc[0]
       if int(tempCodeString[1]):
-        u,v,irot,x0,y0 = geomTempIndex[['u','v','irot','x0','y0']].loc[geomTempIndex['isEngine']].iloc[0]
+        u,v,irot,x0,y0,trig0,daqLD0,daqHD0 = geomTempIndex[['u','v','irot','x0','y0','trigLinks','dataLinks_ld','dataLinks_hd']].loc[geomTempIndex['isEngine']].iloc[0]
       else:
         uWest,vWest,irotWest = [int(x) for x in geomTempPartnerIndex[['u','v','irot']].loc[geomTempPartnerIndex['isEngine']].iloc[0]]
-        u,v = findEastEngineModule(plane,uWest,vWest,irotWest,geomGrouped)
-        irot,x0,y0 = geomTempIndex[['irot','x0','y0']].loc[(geomTempIndex['u'] == u) & (geomTempIndex['v'] == v)].iloc[0]
+        u,v = findEastEngineModule(plane,uWest,vWest,irotWest)
+        irot,x0,y0,trig0,daqLD0,daqHD0 = geomTempIndex[['irot','x0','y0','trigLinks','dataLinks_ld','dataLinks_hd']].loc[(geomTempIndex['u'] == u) & (geomTempIndex['v'] == v)].iloc[0]
       u,v,irot = [int(x) for x in [u,v,irot]]
       uList = list('-'*4)
       vList = list('-'*4)
-      #if plane == 1 and (u,v) == (7,4): print(geomTempIndex)
-      #for 
+      irotList = list('-'*4)
+      nActiveTrig = trig0
+      nActiveData = daqLD0 if int(tempCodeString[0]) == 0 else daqHD0
+      if int(tempCodeString[2]) == 0:
+        uList[0],vList[0],irotList[0] = [u,v,irot]
+      else:
+        uPrev,vPrev,irotPrev = [u,v,irot]
+        for i in reversed(range(int(tempCodeString[2]))):
+          angleRev,orientRev = reverseAngleOrient(int(tempCodeString[5*i+7]),int(tempCodeString[5*i+8]))
+          uPrev,vPrev,irotPrev = nextModule(plane,uPrev,vPrev,irotPrev,angleRev,orientRev)
+        uList[0],vList[0],irotList[0] = [uPrev,vPrev,irotPrev]
+      for i in range(len(tempCodeString)//5-1):
+        uNext,vNext,irotNext = nextModule(plane,uList[i],vList[i],irotList[i],int(tempCodeString[5*i+7]),int(tempCodeString[5*i+8]))
+        uList[i+1],vList[i+1],irotList[i+1] = uNext,vNext,irotNext
+        trigTemp,daqLDTemp,daqHDTemp = geomTempIndex[['trigLinks','dataLinks_ld','dataLinks_hd']].loc[(geomTempIndex['u'] == uNext) & (geomTempIndex['v'] == vNext)].iloc[0]
+        nActiveTrig += trigTemp
+        nActiveData += daqLDTemp if int(tempCodeString[0]) == 0 else daqHDTemp
       xFX11,yFX11 = [61.2,23.0]
       x0FX11 = x0 + xFX11 * np.cos(np.pi/3*irot) + yFX11 * np.sin(np.pi/3*irot)
       y0FX11 = y0 + xFX11 * np.sin(np.pi/3*irot) - yFX11 * np.cos(np.pi/3*irot)
       nModules = int((len(tempCodeString)-2)/5)
       nTrigTotal = int(tempCodeString[3]) + \
-                   sum([int(tempCodeString[5*i+5]) for i in range(len(tempCodeString)//5)]) - \
+                   sum([int(tempCodeString[5*i+5]) for i in range(len(tempCodeString)//5)]) + \
                    sum([int(tempCodeString[5*i+6]) for i in range(len(tempCodeString)//5)])
+      nTrigXOutTotal = sum([int(tempCodeString[5*i+6]) for i in range(len(tempCodeString)//5)])
+      nDataTotal = 7 if int(tempCodeString[0]) == 0 else 14
       if tempCodeString in wagonNameDict: wagonName = wagonNameDict[tempCodeString]
       else: 
         print('ERROR: Wagon type code for {} not found')
         wagonName = 'XXXXXX'
       f.write('{}\n'.format(' '.join(str(x) for x in [	plane,u,v,wagonName,round(x0FX11,3),					# 1-5
-							round(y0FX11,3),irot,nModules,'-','-',					# 6-10
-							'-','-','-','-','-',							# 11-15
-							'-','-','-','-','-',							# 16-20
-							'-','-',icassette,nTrigTotal,'-',					# 21-25
-							'-','-','-','-','-',							# 26-30
-							'-','-','-','-','-',							# 31-35
-							'-','-','-','-','-',							# 36-40
+							round(y0FX11,3),irot,nModules,uList[0],vList[0],			# 6-10
+							uList[1],vList[1],uList[2],vList[2],uList[3],				# 11-15
+							vList[3],'-','-','-','-',						# 16-20
+							'-','-',icassette,nTrigTotal,int(nActiveTrig),				# 21-25
+							nDataTotal,int(nActiveData),int(tempCodeString[3]),nTrigXOutTotal,MB,	# 26-30
+							wagon,0,0,'-','-',							# 31-35
+							'-',int(tempCodeString[0]),'-','-','-',					# 36-40
 							'-',tempCodeString,'-','-','-',						# 41-45
 							'-','-','-','-','-',							# 46-50
 							'-','-'])))								# 51-52
