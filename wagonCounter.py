@@ -88,6 +88,7 @@ def recode(code):
     return reverseCode(code)
 
 def findEngine(code,wagonCodesDict,geomGrouped):
+
   if code[1] != -1:
     return code[1]
 
@@ -109,26 +110,45 @@ def findEngine(code,wagonCodesDict,geomGrouped):
     uEastEngine = u + uDiff[irot]
     vEastEngine = v + vDiff[irot]
   else:
-    uDiff = {0: -1, 1:  0, 2: 1, 3: -1, 4:  0, 5: -1}
-    vDiff = {0:  0, 1: -1, 2: 1, 3:  0, 4: -1, 5: -1}
+    uDiff = {0: -1, 1:  0, 2: 1, 3:  1, 4:  0, 5: -1}
+    vDiff = {0:  0, 1:  1, 2: 1, 3:  0, 4: -1, 5: -1}
     uEastEngine = u + uDiff[irot]
     vEastEngine = v + vDiff[irot]
+
 
   coords = earliestWagon[['u','v']].values.tolist()
   index = [i for i in range(len(coords)) if coords[i] == [uEastEngine,vEastEngine]][0]
 
   return index
 
+def findEastEngineModule(plane,uWest,vWest,irotWest,geomGrouped):
+
+  if plane > 26 or plane % 2:
+    uDiff = {0: 1, 1: 1, 2: 0, 3: -1, 4: -1, 5:  0}
+    vDiff = {0: 0, 1: 1, 2: 1, 3:  0, 4: -1, 5: -1}
+    uEast = uWest + uDiff[irotWest]
+    vEast = vWest + vDiff[irotWest]
+  else:
+    uDiff = {0: -1, 1:  0, 2: 1, 3:  1, 4:  0, 5: -1}
+    vDiff = {0:  0, 1:  1, 2: 1, 3:  0, 4: -1, 5: -1}
+    uEast = uWest + uDiff[irotWest]
+    vEast = vWest + vDiff[irotWest]
+
+  return uEast,vEast
+
 ##################################################
 # MAIN
 ##################################################
 def main():
 
+  # Rounding (decimal places)
+  dec = 3
+
   # Configuration parameters
   threesSeparate = False
   halvesSemisSame = False
   halvesSemisFivesSame = True
-  LDHDBoth = 2
+  LDHDBoth = 0
 
   # Specify the geometry file to be used
   #geomVersion = 'v15.3_NadjaOct2023'
@@ -659,67 +679,57 @@ def main():
   codeCounter = Counter({i:j for i,j in codeCounter.items() if j != 0})
 
   wagonNameDict = {
-  '1130d7030Fb030F7030F50'	: 'WH31A1',
-  '1130d5040F5020F5030F50'	: 'WH31B1',
-  '1120F9000F6000F40'		: 'WH30A1',
-  '1120g9030F8030F50'		: 'WH21A1',
-  '1120F7040F6020F60'		: 'WH30B1',
-  '1110F0030F0050F00'		: 'WH30B2',
-  '1110F5000F50'		: 'WH20A1',
-  '0100F3033d20'		: 'WW11A1',
-  '0100F3030F2033d20'		: 'WW21A1',
-  '0100F3014F2032d20'		: 'WW21A2',
-  '0000F3010d2050d20'		: 'WE12A1',
-  '0100F2022d2020d20'		: 'WW12A1',
-  '0000F0022F0000d00'		: 'WE21A3',
-  '0100F4014F30'		: 'WW20D1',
-  '0000F2000F2000d20'		: 'WE21A1',
-  '0100F4032d20'		: 'WW11C1',
-  '0000F4022d20'		: 'WE11A2',
-  '0100F2014F2030F20'		: 'WW30A3',
-  '0000F2010d2050F20'		: 'WE21A2',
-  '0100F2030F2032d20'		: 'WW21D1',
-  '0000F2000F2000F20'		: 'WE30A1',
-  '0000F2014F2012F20'		: 'WE30A4',
-  '0010F2030F2022F20'		: 'WE30A2',
-  '0000F2011d2045d20'		: 'WE12B1',
-  '0100F2021d2031d20'		: 'WW12A2',
-  '0000F2011d2045F20'		: 'WE21A5',
-  '0100F2021d2035F20'		: 'WW21A3',
-  '0110F2000F2011d20'		: 'WW21A4',
-  '0000F2010d20'		: 'WE11B2',
-  '0010F2030F2022d20'		: 'WE21A6',
-  '0100F2022F2024F20'		: 'WW30A3',
-  '0020d2041F2030F20'		: 'WE21A7',
-  '0000F2014F2012d20'		: 'WE21A8',
-  '0010d2041F20'		: 'WE11B1',
-  '0000F2022F20'		: 'WE20D1',
-  '0110d2033F2014F20'		: 'WE21A4',
-  '0102F3030F20'		: 'WW20B1',
-  '0100F3130F41'		: 'WW20A1',
-  '0001F4000d20'		: 'WE11A1',
-  '0001F3000F2000d10'		: 'WE21B1',
-  '0101F3030F30'		: 'WW20C1',
-  '0101F3030F2033d20'		: 'WW21C1',
-  '0100F02'			: 'WW10C1',
-  '0101F50'			: 'WW10A1',
-  '0103F40'			: 'WW10B1',
-  '0000F03'			: 'WE10B1',
-  '0100F3122d2021d20'		: 'WW12B1',
-  '0001F50'			: 'WE10A1',
-  '0102F2032d20'		: 'WW11B1',
-  '0030F1130F2022F2024F20'	: 'WE40A2',
-  '0111d2035F2022d20'		: 'WW12C1',
-  '0101F2030F2030F20'		: 'WW30A1',
-  '0000F1100F2000F2000d20'	: 'WE31A1',
-  '0000F1114F2012F2010d20'	: 'WE31A2',
-  '0111F2000F2014F20'		: 'WW30A4',
-  '0030d1141F2030F2030F20'	: 'WE31B1',
-  '0002F2000F30'		: 'WE20C1',
-  '0001F3000F30'		: 'WE20B1',
-  '0000F3200F40'		: 'WE20A1',
-  '0000F3100F30'		: 'WE20E1',
-  '0000F1100F2000F2000F20'	: 'WE40A1',
+    '0000F1100F2000F2000F20'	: 'WE40A1',
+    '0000F1100F2000F2005d20'	: 'WE31A1',
+    '0030d1152F2030F2030F20'	: 'WE31A2',
+    '0030F1130F2022F2024F20'	: 'WE40A2',
+    '0000F1114F2012F2015d20'	: 'WE31A3',
+    '0101F2030F2030F20'		: 'WW30A1',
+    '0100F3030F2031d20'		: 'WW21A1',
+    '0001F2000F2005d20'		: 'WE21A1',
+    '0000F2000F2000F20'		: 'WE30A1',
+    '0001F3000F2005d10'		: 'WE21B1',
+    '0000F3015d2000d20'		: 'WE12A1',
+    '0100F3121d2030d20'		: 'WW12A1',
+    '0010F2030F2022F20'		: 'WE30A2',
+    '0100F2014F2030F20'		: 'WW30B1',
+    '0000F2014F2012F20'		: 'WE30A3',
+    '0101F2030F2031d20'		: 'WW21B1',
+    '0000F2015d2001F20'		: 'WE21C1',
+    '0100F2022F2024F20'		: 'WW30B2',
+    '0111F2000F2014F20'		: 'WW30A2',
+    '0100F3014F2031d20'		: 'WE21D1',
+    '0000F0022F0005d00'		: 'WW21C1',
+    '0100F2020d2041d20'		: 'WE12B1',
+    '0000F2010d2055d20'		: 'WW12B1',
+    '0101F3030F2031d10'		: 'WW21D1',
+    '0110d2044F2014F20'		: 'WW21E1',
+    '0000F2010d2050F20'		: 'WE21C2',
+    '0100F2020d2040F20'		: 'WW21E2',
+    '0110F2000F2010d20'		: 'WW21E3',
+    '0010F2030F2021d20'		: 'WE21C3',
+    '0000F2014F2011d20'		: 'WE21C4',
+    '0111d2040F2021d20'		: 'WW12C1',
+    '0100F3130F41'		: 'WW20A1',
+    '0000F3200F40'		: 'WE20A1',
+    '0101F4031d20'		: 'WW11A1',
+    '0001F4005d20'		: 'WE11A1',
+    '0001F3000F30'		: 'WE20B1',
+    '0010F3103F40'		: 'WE20C1',
+    '0102F3030F20'		: 'WW20B1',
+    '0100F4014F30'		: 'WW20C1',
+    '0010d2052F20'		: 'WE11B1',
+    '0101F3030F30'		: 'WW20D1',
+    '0000F4021d20'		: 'WE11C1',
+    '0111d2044F20'		: 'WW11B1',
+    '0000F2015d20'		: 'WE11B2',
+    '0000F2022F20'		: 'WE20D1',
+    '0102F2031d20'		: 'WW11C1',
+    '0002F2000F30'		: 'WE20E1',
+    '0101F50'			: 'WW10A1',
+    '0001F50'			: 'WE10A1',
+    '0000F03'			: 'WE10B1',
+    '0103F30'			: 'WW10B1',
   }
 
   if not os.path.exists('output/geometriesWagon/{}'.format(geomVersion)): os.makedirs('output/geometriesWagon/{}'.format(geomVersion))
@@ -891,24 +901,51 @@ def main():
   f.write('plane u v itype x0 y0 irot nvertices vx_0 vy_0 vx_1 vy_1 vx_2 vy_2 vx_3 vy_3 vx_4 vy_4 vx_5 vy_5 vx_6 vy_6 icassette trigRate trigLinks dataRate_ld dataLinks_ld dataRate_hd dataLinks_hd MB wagon isEngine nROCs power mrot phi HDorLD hash hash_hdld engine_trig_fibres engine_data_fibres engine_ctrl_fibres dataPp0 trigPp0 dataPp0_type trigPp0_type dataPp1 trigPp1 dataPp1_type trigPp1_type dataPp2 DAQ\n')
 
   for tempCode,indices in wagonCodesDict.items():
-
-    #iif tempCode[1] == -1: continue
-    #if not (len(tempCode) - 1) / 3 == 2: continue
-    #print(tempCode)
-    #print(indices)
-
+    tempCodeString = ''.join(str(x) for x in tempCode)
     for index in indices:
 
       tempIndex = index
 
       #u,v,irot = geomBasic.loc[(geomBasic['plane'] == tempIndex[0]) & (geomBasic['MB']  == tempIndex[1]) & (geomBasic['wagon'] == tempIndex[2]) & (geomBasic['isEngine']),['u','v','irot']].values.flatten().tolist()
       #geomTempIndex = geomBasic.loc[(geomBasic['plane'] == tempIndex[0]) & (geomBasic['MB']  == tempIndex[1]) & (geomBasic['wagon'] == tempIndex[2]) & (geomBasic['isEngine'])]
-      geomTempIndex = geomBasic.loc[(geomBasic['plane'] == tempIndex[0]) & (geomBasic['MB']  == tempIndex[1]) & (geomBasic['wagon'] == tempIndex[2])]
-      plane,u,v,irot,icassette = geomTempIndex[['plane','u','v','irot','icassette']].iloc[0]
-
-      if ''.join(str(x) for x in tempCode) in wagonNameDict: wagonName = wagonNameDict[''.join(str(x) for x in tempCode)]
-      else: wagonName = 'XXXXXX'
-      f.write('{}\n'.format(' '.join(str(x) for x in [plane,u,v,wagonName,'-','-','-','-','-','-','-','-','-','-','-','-','-','-','-','-','-','-',icassette,'-','-','-','-','-','-','-','-','-','-','-','-','-','-','-','-','-','-',''.join(str(y) for y in tempCode),'-','-','-','-','-','-','-','-','-','-'])))
+      #geomTempIndex = geomBasic.loc[(geomBasic['plane'] == tempIndex[0]) & (geomBasic['MB']  == tempIndex[1]) & (geomBasic['wagon'] == tempIndex[2])]
+      #geomTempPartnerIndex = geomBasic.loc[(geomBasic['plane'] == tempIndex[0]) & (geomBasic['MB']  == tempIndex[1]) & (geomBasic['wagon'] == tempIndex[2])]
+      geomTempIndex = geomGrouped.get_group((tempIndex[0],tempIndex[1],tempIndex[2]))
+      geomTempPartnerIndex = geomGrouped.get_group((tempIndex[0],tempIndex[1],not tempIndex[2]))
+      plane,icassette = geomTempIndex[['plane','icassette']].iloc[0]
+      if int(tempCodeString[1]):
+        u,v,irot,x0,y0 = geomTempIndex[['u','v','irot','x0','y0']].loc[geomTempIndex['isEngine']].iloc[0]
+      else:
+        uWest,vWest,irotWest = [int(x) for x in geomTempPartnerIndex[['u','v','irot']].loc[geomTempPartnerIndex['isEngine']].iloc[0]]
+        u,v = findEastEngineModule(plane,uWest,vWest,irotWest,geomGrouped)
+        irot,x0,y0 = geomTempIndex[['irot','x0','y0']].loc[(geomTempIndex['u'] == u) & (geomTempIndex['v'] == v)].iloc[0]
+      u,v,irot = [int(x) for x in [u,v,irot]]
+      uList = list('-'*4)
+      vList = list('-'*4)
+      #if plane == 1 and (u,v) == (7,4): print(geomTempIndex)
+      #for 
+      xFX11,yFX11 = [61.2,23.0]
+      x0FX11 = x0 + xFX11 * np.cos(np.pi/3*irot) + yFX11 * np.sin(np.pi/3*irot)
+      y0FX11 = y0 + xFX11 * np.sin(np.pi/3*irot) - yFX11 * np.cos(np.pi/3*irot)
+      nModules = int((len(tempCodeString)-2)/5)
+      nTrigTotal = int(tempCodeString[3]) + \
+                   sum([int(tempCodeString[5*i+5]) for i in range(len(tempCodeString)//5)]) - \
+                   sum([int(tempCodeString[5*i+6]) for i in range(len(tempCodeString)//5)])
+      if tempCodeString in wagonNameDict: wagonName = wagonNameDict[tempCodeString]
+      else: 
+        print('ERROR: Wagon type code for {} not found')
+        wagonName = 'XXXXXX'
+      f.write('{}\n'.format(' '.join(str(x) for x in [	plane,u,v,wagonName,round(x0FX11,3),					# 1-5
+							round(y0FX11,3),irot,nModules,'-','-',					# 6-10
+							'-','-','-','-','-',							# 11-15
+							'-','-','-','-','-',							# 16-20
+							'-','-',icassette,nTrigTotal,'-',					# 21-25
+							'-','-','-','-','-',							# 26-30
+							'-','-','-','-','-',							# 31-35
+							'-','-','-','-','-',							# 36-40
+							'-',tempCodeString,'-','-','-',						# 41-45
+							'-','-','-','-','-',							# 46-50
+							'-','-'])))								# 51-52
 
   f.close()
 
@@ -983,6 +1020,9 @@ def main():
 
   # Sort by HD/LD then no. of modules then no. of instances 
   codeCounter = dict(sorted(codeCounter.items(), key=lambda item: (item[0][0],len(item[0]),item[1]), reverse=True))
+
+  #for key,item in codeCounter.items():
+  #  print(''.join([str(x) for x in key]))
 
   # Draw and save the wagon summary (see wagonDrawer.py)
   wagonDrawer.wagonDrawer(codeCounter,geomVersion,maxLinks)
