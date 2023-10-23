@@ -907,20 +907,18 @@ def main():
     for index in indices:
 
       tempIndex = index
-
-      #u,v,irot = geomBasic.loc[(geomBasic['plane'] == tempIndex[0]) & (geomBasic['MB']  == tempIndex[1]) & (geomBasic['wagon'] == tempIndex[2]) & (geomBasic['isEngine']),['u','v','irot']].values.flatten().tolist()
-      #geomTempIndex = geomBasic.loc[(geomBasic['plane'] == tempIndex[0]) & (geomBasic['MB']  == tempIndex[1]) & (geomBasic['wagon'] == tempIndex[2]) & (geomBasic['isEngine'])]
-      #geomTempIndex = geomBasic.loc[(geomBasic['plane'] == tempIndex[0]) & (geomBasic['MB']  == tempIndex[1]) & (geomBasic['wagon'] == tempIndex[2])]
-      #geomTempPartnerIndex = geomBasic.loc[(geomBasic['plane'] == tempIndex[0]) & (geomBasic['MB']  == tempIndex[1]) & (geomBasic['wagon'] == tempIndex[2])]
       geomTempIndex = geomGrouped.get_group((tempIndex[0],tempIndex[1],tempIndex[2]))
+
       geomTempPartnerIndex = geomGrouped.get_group((tempIndex[0],tempIndex[1],not tempIndex[2]))
       plane,icassette,MB,wagon = geomTempIndex[['plane','icassette','MB','wagon']].iloc[0]
-      if int(tempCodeString[1]):
+      if int(tempCodeString[1]): # West
         u,v,irot,x0,y0,trig0,daqLD0,daqHD0 = geomTempIndex[['u','v','irot','x0','y0','trigLinks','dataLinks_ld','dataLinks_hd']].loc[geomTempIndex['isEngine']].iloc[0]
-      else:
+        nDataTotal = 3
+      else: # East
         uWest,vWest,irotWest = [int(x) for x in geomTempPartnerIndex[['u','v','irot']].loc[geomTempPartnerIndex['isEngine']].iloc[0]]
         u,v = findEastEngineModule(plane,uWest,vWest,irotWest)
         irot,x0,y0,trig0,daqLD0,daqHD0 = geomTempIndex[['irot','x0','y0','trigLinks','dataLinks_ld','dataLinks_hd']].loc[(geomTempIndex['u'] == u) & (geomTempIndex['v'] == v)].iloc[0]
+        nDataTotal = 4
       u,v,irot = [int(x) for x in [u,v,irot]]
       uList = list('-'*4)
       vList = list('-'*4)
@@ -949,7 +947,8 @@ def main():
                    sum([int(tempCodeString[5*i+5]) for i in range(len(tempCodeString)//5)]) + \
                    sum([int(tempCodeString[5*i+6]) for i in range(len(tempCodeString)//5)])
       nTrigXOutTotal = sum([int(tempCodeString[5*i+6]) for i in range(len(tempCodeString)//5)])
-      nDataTotal = 7 if int(tempCodeString[0]) == 0 else 14
+      wagonRot = (irot + 3) % 6 if int(tempCodeString[1]) else irot
+      if nActiveData > nDataTotal: print('WARNING: {} wagon (layer {}, MB {}) has >4 DAQ links, requiring the use of a xover, which is not expected!'.format('West' if int(tempCodeString[1]) else 'East',plane,MB))
       if tempCodeString in wagonNameDict: wagonName = wagonNameDict[tempCodeString]
       else: 
         print('ERROR: Wagon type code for {} not found')
@@ -960,7 +959,7 @@ def main():
 							vList[3],'-','-','-','-',						# 16-20
 							'-','-',icassette,nTrigTotal,int(nActiveTrig),				# 21-25
 							nDataTotal,int(nActiveData),int(tempCodeString[3]),nTrigXOutTotal,MB,	# 26-30
-							wagon,0,0,'-','-',							# 31-35
+							wagon,0,0,'-',wagonRot,							# 31-35
 							'-',int(tempCodeString[0]),'-','-','-',					# 36-40
 							'-',tempCodeString,'-','-','-',						# 41-45
 							'-','-','-','-','-',							# 46-50
@@ -979,7 +978,13 @@ def main():
 
   geomEngine = geomBasic[geomBasic['isEngine']]
   for i,engine in geomEngine.iterrows():
-    plane,u,v,irot,icassette = engine['plane'],engine['u'],engine['v'],engine['irot'],engine['icassette']
+    plane,u,v,irot,icassette,x0,y0 = engine[['plane','u','v','irot','icassette','x0','y0']]
+    uEast,vEast = findEastEngineModule(plane,u,v,irot)
+    x0East,y0East = geomBasic[(geomBasic['plane'] == plane) & (geomBasic['u'] == uEast) & (geomBasic['v'] == vEast)][['x0','y0']].iloc[0]
+    uCenter = (u+uEast)/2
+    vCenter = (v+vEast)/2
+    x0Center = (x0+x0East)/2
+    y0Center = (y0+y0East)/2
     engineType = ''
     if engine['HDorLD'] == 0:
       if irot == 0: engineType = 'EL10E0' if engine['x0'] > 0 else 'EL10W0'
@@ -991,7 +996,17 @@ def main():
       if irot == 0 or irot == 5: engineType = 'EH10W0'
       elif irot == 3 or irot == 4: engineType = 'EH10E0'
       else: print('ERROR: Invalid irot for engine {}'.format(i))
-    f.write('{}\n'.format(' '.join(str(x) for x in [plane,'-','-',engineType,'-','-','-','-','-','-',u,v,'-','-','-','-','-','-','-','-','-','-',icassette,'-','-','-','-','-','-','-','-','-','-','-','-','-',engine['HDorLD'],'-','-','-','-','-','-','-','-','-','-','-','-','-','-','-'])))
+    f.write('{}\n'.format(' '.join(str(x) for x in [	plane,round(uCenter,1),round(vCenter,1),engineType,round(x0Center,3),	# 1-5
+							round(y0Center,3),'-','-',uEast,vEast,					# 6-10
+							u,v,'-','-','-',							# 11-15
+							'-','-','-','-','-',							# 16-20
+							'-','-',icassette,'-','-',						# 21-25
+							'-','-','-','-','-',							# 26-30
+							'-',1,'-','-','-',							# 31-35
+							'-',engine['HDorLD'],'-','-','-',					# 36-40
+							'-','-','-','-','-',							# 41-45
+							'-','-','-','-','-',							# 46-50
+							'-','-'])))								# 51-52
 
   #geomEngineHD = geomBasic[(geomBasic['HDorLD'] == 1) & (geomBasic['isEngine'])]
 
