@@ -43,7 +43,7 @@ def main():
       if isDash:
         code.append(-1 * x)
         isDash = 0
-      elif len(code) and isinstance(code[-1],str) and code[-1].isalpha() and isinstance(x,int):
+      elif len(code) and isinstance(code[-1],str) and code[-1].isalpha() and isinstance(x,int) and not isinstance(code[-2],str):
         code.append(str(x))
       else:
         code.append(x)
@@ -52,12 +52,15 @@ def main():
     print('Wagon locations:')
     print('[layer,MB,wagon]:',sorted(wagonDict[code],key = lambda x: x[0]))
 
-    partnerCodes = []
-    for loc in wagonDict[code]:
-      partnerCodes.append(findCode(wagonDict,[loc[0],loc[1],int(not loc[2])]))
+    # Print partners for LD
+    if code[0] == 0:
 
-    print('Partner codes and counts:')
-    print(Counter(partnerCodes))
+      partnerCodes = []
+      for loc in wagonDict[code]:
+        partnerCodes.append(findCode(wagonDict,[loc[0],loc[1],int(not loc[2])]))
+
+      print('Partner codes and counts:')
+      print(Counter(partnerCodes))
 
 if __name__ == '__main__':
   main()
