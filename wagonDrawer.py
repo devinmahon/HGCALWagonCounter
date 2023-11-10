@@ -5,7 +5,7 @@ Created on Sat Mar 20 12:53:46 2021
 @author: Troilus D'Troy'
 """
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageChops, ImageOps
 import math
 import numpy as np
 
@@ -84,50 +84,51 @@ def hexdraw(bow, x, y, des, rot, mb, eng, maxLinks = 0,EW = 1):
                           (cx, cy-r)), fill=MBColor(bow, mb, des), outline=(0, 0, 0))
             # draw.polygon(((cx,cy+r),(cx-.433*r,cy+3/4*r),(cx,cy+3/4*r)),\
             #                 fill=(0,0,0),outline=(0,0,0))
-            if maxLinksType == int:
-                draw.text((cx - 0.425*r, cy - 0.05*r), str(maxLinks), font = font)
-            else:
-                draw.text((cx - 0.575*r, cy - 0.05*r), str(maxLinks), font = font) 
+            #if maxLinksType == int:
+            #    draw.text((cx - 0.425*r, cy - 0.05*r), str(maxLinks), font = font)
+            #else:
+            #    draw.text((cx - 0.575*r, cy - 0.05*r), str(maxLinks), font = font) 
         elif rot == 5:
             draw.polygon(((cx, cy+r), (cx-.866*r, cy+r/2), (cx-.866*r, cy-r/2),
                           (cx+.866*r, cy+r/2)), fill=MBColor(bow, mb, des), outline=(0, 0, 0))
-            if maxLinksType == int:
-                draw.text((cx - 0.20*r, cy + 0.25 * r), str(maxLinks), font = font)
-            else:
-                draw.text((cx - 0.35*r, cy + 0.25 * r), str(maxLinks), font = font)
+            #if maxLinksType == int:
+            #    draw.text((cx - 0.20*r, cy + 0.25 * r), str(maxLinks), font = font)
+            #else:
+            #    draw.text((cx - 0.35*r, cy + 0.25 * r), str(maxLinks), font = font)
         elif rot == 0:
             draw.polygon(((cx, cy+r), (cx-.866*r, cy+r/2), (cx+.866*r, cy-r/2),
                           (cx+.866*r, cy+r/2)), fill=MBColor(bow, mb, des), outline=(0, 0, 0))
-            if maxLinksType == int:
-                draw.text((cx + 0.10*r, cy + 0.25*r), str(maxLinks), font = font)
-            else:
-                draw.text((cx - 0.05*r, cy + 0.25*r), str(maxLinks), font = font)
+            #if maxLinksType == int:
+            #    draw.text((cx + 0.10*r, cy + 0.25*r), str(maxLinks), font = font)
+            #else:
+            #    draw.text((cx - 0.05*r, cy + 0.25*r), str(maxLinks), font = font)
         elif rot == 1:
             draw.polygon(((cx, cy+r), (cx, cy-r), (cx+.866*r, cy-r/2),
                           (cx+.866*r, cy+r/2)), fill=MBColor(bow, mb, des), outline=(0, 0, 0))
             # draw.polygon(((cx,cy+r),(cx,cy+3/4*r),(cx+.433*r,cy+3/4*r)),\
             #                 fill=(0,0,0),outline=(0,0,0))
-            if maxLinksType == int:
-                draw.text((cx + 0.325*r, cy - 0.05*r), str(maxLinks), font = font)
-            else:
-                draw.text((cx + 0.175*r, cy - 0.05*r), str(maxLinks), font = font)
+            #if maxLinksType == int:
+            #    draw.text((cx + 0.325*r, cy - 0.05*r), str(maxLinks), font = font)
+            #else:
+            #    draw.text((cx + 0.175*r, cy - 0.05*r), str(maxLinks), font = font)
         elif rot == 2:
             draw.polygon(((cx-.866*r, cy-r/2), (cx, cy-r), (cx+.866*r, cy-r/2),
                           (cx+.866*r, cy+r/2)), fill=MBColor(bow, mb, des), outline=(0, 0, 0))
             # the 2nd coord is still wrong a bit
             # draw.polygon(((cx+.866*r,cy+r/2),(cx+r*.70,cy+.4*r),(cx+.866*r,cy)),\
             #             fill=(0,0,0),outline=(0,0,0))
-            if maxLinksType == int:
-                draw.text((cx + 0.10*r, cy - 0.45 * r), str(maxLinks), font = font)
-            else:
-                draw.text((cx - 0.05*r, cy - 0.45 * r), str(maxLinks), font = font)
+            #if maxLinksType == int:
+            #    draw.text((cx + 0.10*r, cy - 0.45 * r), str(maxLinks), font = font)
+            #else:
+            #    draw.text((cx - 0.05*r, cy - 0.45 * r), str(maxLinks), font = font)
         elif rot == 3:
             draw.polygon(((cx-.866*r, cy+r/2), (cx-.866*r, cy-r/2), (cx, cy-r),
                           (cx+.866*r, cy-r/2)), fill=MBColor(bow, mb, des), outline=(0, 0, 0))
-            if maxLinksType == int:
-                draw.text((cx - 0.20*r, cy - 0.45 * r), str(maxLinks), font = font)
-            else:
-                draw.text((cx - 0.35*r, cy - 0.45 * r), str(maxLinks), font = font)
+            #if maxLinksType == int:
+            #    draw.text((cx - 0.20*r, cy - 0.45 * r), str(maxLinks), font = font)
+            #else:
+            #    draw.text((cx - 0.35*r, cy - 0.45 * r), str(maxLinks), font = font)
+        draw.text((cx-0.2*r,cy-0.5*r), str(maxLinks), font = font,fill='black')
     #elif des == 'bI' or des == 'bIe' or des == 'bMe' or des == 'bOe':
     elif 'b' in des:
         rot = (rot+4)%6
@@ -297,52 +298,10 @@ def draworfull(cx, cy, r, rot):
 
 
 def MBColor(bow, MB, des):
-    colorsld = [(153, 255, 255), (255, 153, 153), (153, 204, 255), (255, 204, 153),
-                (153, 153, 255), (255, 255, 153), (204,
-                                                   153, 255), (204, 255, 153), (204, 102, 0),
-                (255, 153, 255), (153, 255, 153), (255, 153,
-                                                   204), (153, 255, 204), (224, 224, 224),
-                (153, 255, 255), (255, 153, 153), (153, 204, 255), (255, 204, 153),
-                (153, 153, 255), (255, 255, 153), (204,
-                                                   153, 255), (204, 255, 153), (204, 102, 0),
-                (255, 153, 255), (153, 255, 153), (255, 153,
-                                                   204), (153, 255, 204), (224, 224, 224),
-                (153, 255, 255), (255, 153, 153), (153, 204, 255), (255, 204, 153),
-                (153, 153, 255), (255, 255, 153), (204,
-                                                   153, 255), (204, 255, 153), (204, 102, 0),
-                (255, 153, 255), (153, 255, 153), (255, 153, 204), (153, 255, 204), (224, 224, 224)]
-    colorshd = [(53, 155, 155), (155, 53, 53), (53, 104, 155), (155, 104, 53),
-                (53, 53, 155), (155, 155, 53), (104,
-                                                53, 155), (104, 155, 53), (104, 2, 0),
-                (155, 53, 155), (53, 155, 53), (155, 53,
-                                                104), (53, 155, 104), (124, 124, 124),
-                (53, 155, 155), (155, 53, 53), (53, 104, 155), (155, 104, 53),
-                (53, 53, 155), (155, 155, 53), (104,
-                                                53, 155), (104, 155, 53), (104, 2, 0),
-                (155, 53, 155), (53, 155, 53), (155, 53,
-                                                104), (53, 155, 104), (124, 124, 124),
-                (53, 155, 155), (155, 53, 53), (53, 104, 155), (155, 104, 53),
-                (53, 53, 155), (155, 155, 53), (104,
-                                                53, 155), (104, 155, 53), (104, 2, 0),
-                (155, 53, 155), (53, 155, 53), (155, 53, 104), (53, 155, 104), (124, 124, 124)]
-    # the data has some weird namings with MBs that jump from ~15 to restart at 100
-    # they start at 100 for the section between 60-120 deg that they duplicated
-    # the first 28 layers used to only be 60 deg drawings
-    if bow == 0:
-        mb = int(MB)
-        while mb > 41:
-            mb -= 41
-        if des == 'FI' or des == 'FIe' or des == 'aIe' or des == 'bI' or des == 'bIe' or des == 'dIe' or des == 'gIe':
-            pick = colorshd[mb]
-        else:
-            pick = colorsld[mb]
-    elif bow == 1:
-        pick = (0, 200, 0)
-    elif bow == 2:
-        pick = (220, 220, 220)
-    elif bow == 3:
-        pick = (0, 100, 0)
-    return pick
+    if bow == 1: return (220,220,0)
+    elif bow == 2: return (100,200,0)
+    elif bow == 3: return (0,100,0)
+    else: return (0,0,0)
 # =============================================================================
 # Repositioning Wagon for evaluation
 
@@ -1059,9 +1018,9 @@ d = r * math.cos(math.pi/6)
 #bow = 0
 im2 = Image.new('RGB', (xmax, ymax), (256, 256, 256))
 draw = ImageDraw.Draw(im2)
-font = ImageFont.truetype('Keyboard.ttf',30)
+font = ImageFont.truetype('SFNSMono.ttf',25)
+fontBig = ImageFont.truetype('SFNSMono.ttf',35)
 #font = ImageFont.load_default()
-
 
 # Draw Summary
 # counters
@@ -1075,15 +1034,27 @@ maxrows = 20
 x0 = 200
 y0 = 120
 colSpacing = 500
-rowSpacing = 110
+rowSpacing = 120
 
-def wagonDrawer(wagonCounter, geomVersion, maxLinksDict = {}):
-  
+# Resize pad nicely
+def resizePad(im,padding):
+  bg = Image.new(im.mode, im.size, im.getpixel((0,0)))
+  diff = ImageChops.difference(im, bg)
+  diff = ImageChops.add(diff, diff, 2.0, -100)
+  bbox = diff.getbbox()
+  if bbox:
+    im = im.crop(bbox)
+    im = ImageOps.expand(im,border=int(padding*min(im.size)),fill='white')
+    return im
+
+def wagonDrawer(wagonCounter,geomVersion,maxLinksDict,wagonNameDict):
+ 
   row, col = 0, 0
   ySpaces = 0
-  ySpaceExtra = 1.5 * r #1.5 * r #120
+  ySpaceExtra = 1.5 * r #1.5 * r #1.5 * r #120
   nCharsPerGroup = 5
   nCharsPreCodes = 4
+  bottom = 0
   for wagon in list(wagonCounter.keys()):
     
     if maxLinksDict != {}:
@@ -1101,15 +1072,12 @@ def wagonDrawer(wagonCounter, geomVersion, maxLinksDict = {}):
 
     EW = wagonTemp[1]
 
-    bow = 3 if wagonTemp[0] else 1
-    #print(y0,row,col,ySpaces)
+    if wagonTemp[0] == 1: bow = 3
+    elif wagonTemp[1] == 0: bow = 1
+    else: bow = 2
     x = x0 + colSpacing * col
-    y = y0 + rowSpacing * row #+ ySpaces * ySpaceExtra
-    #print('x',x,'y',y)
-    #centers = [(x,y,wagonTemp[2],0,'False' if len(wagonTemp) > 3 else ('True' if wagonTemp[1] else 'False'))]
+    y = bottom + rowSpacing
     centers = [(x,y,wagonTemp[4],0,'True' if wagonTemp[2] == 0 else 'False', maxLinksList[0])]
-    # print(centers)
-    #hexdraw(x,y,wagonTemp[2],0,1,'False' if len(wagonTemp) > 3 else ('True' if wagonTemp[1] else 'False'))
     angle = 0
     orient = 0
     if len(wagonTemp) > nCharsPreCodes + 2:
@@ -1126,44 +1094,29 @@ def wagonDrawer(wagonCounter, geomVersion, maxLinksDict = {}):
         x += 2 * d * math.cos(angle * math.pi / 3)
         y -= 2 * d * math.sin(angle * math.pi / 3)
   
-        #if any(i in codeGroup[2] for i in ['a','b','g']):
-        #  orient = (orient + int(codeGroup[0])) % 6
-  
-        orientAdj = 0
-        if False and any(i in codeGroup[4] for i in ['a','b','d','g']):
-          #orient = (orient + 4) % 6
-          orientAdj = 4
-          if codeGroup[4] == 'd':
-            #orient = (orient + 1) % 6
-            orientAdj += 1
-        centers.append((x,y,codeGroup[4],(orient + orientAdj) % 6,drawEngine,maxLinksList[i + 1]))
+        centers.append((x,y,codeGroup[4],orient % 6,drawEngine,maxLinksList[i + 1]))
   
     xMin = np.min([i[0] for i in centers])
     yMax = np.max([i[1] for i in centers])
     yMin = np.min([i[1] for i in centers])
     yRange = yMax - yMin
-    ySpaces += math.floor(yRange / (1.5 * r)) # rowSpacing)
-    if math.floor(yRange / (1.5 * r)) > 0: row += 2
-    #ySpaces += ySpacesNew
-    #print('ySpaces',ySpaces)
-    #if centers[0][1] == yMax:
+    ySpaces = math.floor(yRange / (1.5 * r)) - wagonTemp[2]
+    if ySpaces < 0: ySpaces = 0
     centers = [(i[0] + centers[0][0] - xMin,i[1] + ySpaces * ySpaceExtra,i[2],i[3],i[4],i[5]) for i in centers]
-    #print(centers)
-    #print('-------------------------')
-    #centers = [(i[0] + centers[0][0] - xMin,i[1] + ySpaces*ySpaceExtra,i[2],i[3],i[4]) for i in centers]
-    # print(centers)
     for center in centers:
       hexdraw(bow,center[0],center[1],center[2],center[3],1,center[4],center[5],EW)
     
     centers.sort(key=lambda centers: centers[1],reverse=True)
  
-    draw.text((50 + colSpacing * col,centers[0][1] + 10),str(wagonCounter.get(wagon)),font=font,fill='black')
-    draw.text((50 + colSpacing * col,centers[0][1] + 40),''.join(str(i) for i in wagon),font=font,fill='black')
+    draw.text((50 + colSpacing * col,centers[0][1] + 35),wagonNameDict[''.join(str(i) for i in wagon)],font=fontBig,fill='black')
+    draw.text((50 + colSpacing * col,centers[0][1] + 70),'(' + ''.join(str(i) for i in wagon) + ')',font=font,fill='black')
+    draw.text((50 + colSpacing * col,centers[0][1] + 95),'N = ' + str(wagonCounter.get(wagon)),font=fontBig,fill='black')
   
-    row += 1
-    if centers[0][1] > 0.8 * (ymax - y0):
-      row = 0
+    bottom = centers[0][1] + 95
+    #row += 1
+    if bottom > (ymax - 180 - 2 * r - rowSpacing):
+      bottom = 0
       col += 1
       ySpaces = 0
-  
+
   im2.save('output/wagonSummaries/WagonSummary_{}.jpg'.format(str(geomVersion)), quality=95)
