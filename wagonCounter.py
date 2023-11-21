@@ -238,8 +238,8 @@ def main():
   # Configuration parameters
   threesSeparate = False
   LDHalvesSemisFivesSame = True
-  HDSemisSame = False
-  LDHDBoth = 0
+  HDSemisSame = True
+  LDHDBoth = 2
 
   # Specify the geometry file to be used
   #geomVersion = 'v15.3_NadjaOct2023'
@@ -757,9 +757,9 @@ def main():
     '1000F4000F5000F50'		: 'WH30B1',
     '1000F6000F7040F60'		: 'WH30C1',
     '1000F4000F5040F50'		: 'WH30D1',
-    '1000F5000F7000F9004d70'	: 'WH31A1',
-    '1000F0000F0000F0005d00'	: 'WH31B1',
-    '1000F5000F5000a4040F50'	: 'WH31C1',
+    '1000F5000F7000F9005d70'	: 'WH31A1',
+    #'1000F0000F0000F0005d00'	: 'WH31B1',
+    '1000F5000F5000a4040F50'	: 'WH31B1',
     '1000F5000F50'		: 'WH20A1',
     '1000F6000F9000g80'		: 'WH21A1',
     '1000F0000F0000g00'		: 'WH21B1',
@@ -817,11 +817,6 @@ def main():
     '0103F30'			: 'WW10B1',
   }    
 
-  if not os.path.exists('output/geometriesWagon/{}'.format(geomVersion)): os.makedirs('output/geometriesWagon/{}'.format(geomVersion))
-  f = open('output/geometriesWagon/{}/geometryWagon.txt'.format(geomVersion),'w')
-
-  f.write('plane u v itype x0 y0 irot nvertices vx_0 vy_0 vx_1 vy_1 vx_2 vy_2 vx_3 vy_3 vx_4 vy_4 vx_5 vy_5 vx_6 vy_6 icassette trigRate trigLinks dataRate_ld dataLinks_ld dataRate_hd dataLinks_hd MB wagon isEngine nROCs power mrot phi HDorLD hash hash_hdld engine_trig_fibres engine_data_fibres engine_ctrl_fibres dataPp0 trigPp0 dataPp0_type trigPp0_type dataPp1 trigPp1 dataPp1_type trigPp1_type dataPp2 DAQ\n')
-
   for tempCode,indices in wagonCodesDict.items():
 
     if tempCode[1] == -1: continue
@@ -833,19 +828,11 @@ def main():
 
       tempIndex = index
 
-      #u,v,irot = geomBasic.loc[(geomBasic['plane'] == tempIndex[0]) & (geomBasic['MB']  == tempIndex[1]) & (geomBasic['wagon'] == tempIndex[2]) & (geomBasic['isEngine']),['u','v','irot']].values.flatten().tolist()
       geomTempIndex = geomBasic.loc[(geomBasic['plane'] == tempIndex[0]) & (geomBasic['MB']  == tempIndex[1]) & (geomBasic['wagon'] == tempIndex[2]) & (geomBasic['isEngine'])]
       u,v,irot = geomTempIndex[['u','v','irot']].iloc[0]
 
-      if ''.join(str(x) for x in tempCode) in wagonNameDict: wagonName = wagonNameDict[''.join(str(x) for x in tempCode)]
-      else: wagonName = 'XXXXXX'
-      f.write('{} {} {} {}\n'.format(geomTempIndex.iloc[0]['plane'],u,v,wagonName))
-
-      #print('M0:',u,v)
-      #print('irot',irot)
       angleCode,orientCode = tempCode[4],tempCode[5]
       angleCode = (angleCode + irot) % 6
-      #print('angleCode',angleCode)
       if angleCode == 0: 
         u += 1
       elif angleCode == 1:
@@ -1040,6 +1027,11 @@ def main():
 
   f.write('plane u v itype x0 y0 irot nvertices vx_0 vy_0 vx_1 vy_1 vx_2 vy_2 vx_3 vy_3 vx_4 vy_4 vx_5 vy_5 vx_6 vy_6 icassette trigRate trigLinks dataRate_ld dataLinks_ld dataRate_hd dataLinks_hd MB wagon isEngine nROCs power mrot phi HDorLD hash hash_hdld engine_trig_fibres engine_data_fibres engine_ctrl_fibres dataPp0 trigPp0 dataPp0_type trigPp0_type dataPp1 trigPp1 dataPp1_type trigPp1_type dataPp2 DAQ\n')
 
+  if not os.path.exists('output/wagonInfo/{}'.format(geomVersion)): os.makedirs('output/wagonInfo/{}'.format(geomVersion))
+  fInfo = open('output/wagonInfo/{}/wagonInfoHD.tex'.format(geomVersion),'w')
+
+  fInfo.write('\\begin{tabular}{|c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|}\n')
+
   for tempCode,indices in wagonCodesDict.items():
     tempCodeString = ''.join(str(x) for x in tempCode)
     isHD = int(tempCodeString[0])
@@ -1134,7 +1126,7 @@ def main():
                      sum([int(tempCodeString[5*i+6],16) for i in range(len(tempCodeString)//5)])
         nTrigXOutTotal = sum([int(tempCodeString[5*i+6]) for i in range(len(tempCodeString)//5)])
         wagonRot = irot
-        if nActiveData > nDataTotal: print('WARNING: {} wagon (layer {}, MB {}) has too many DAQ links, {} counted, but only {} supported!'.format('West' if int(tempCodeString[1]) else 'East',plane,MB,nActiveData,nDataTotal))
+        if nActiveData > nDataTotal and nActiveTrig != 0: print('WARNING: {} wagon (layer {}, MB {}) has too many DAQ links, {} counted, but only {} supported!'.format('West' if int(tempCodeString[1]) else 'East',plane,MB,nActiveData,nDataTotal))
         if tempCodeString in wagonNameDict: wagonName = wagonNameDict[tempCodeString]
         else: 
           print('ERROR: Wagon type code for {} not found'.format(tempCodeString))
@@ -1152,7 +1144,17 @@ def main():
 							'-','-','-','-','-',							# 46-50
 							'-','-'])))								# 51-52
 
+    
+    fInfo.write('{}\\\\\n'.format('&'.join([	wagonName,'-',
+						'-','-','-',
+                                                '-','-','-',
+                                                '-','-','-',
+                                                '-','-','-',
+						tempCodeString,'-'])))
+
   f.close()
+  fInfo.write('\\end{tabular}')
+  fInfo.close()
 
   #geomWagon = pd.read_csv('output/geometriesWagon/{}/geometryWagon.txt'.format(geomVersion),delim_whitespace=True)
 

@@ -16,13 +16,9 @@ import numpy as np
 
 font = ImageFont.load_default()
 
-def hexdraw(bow, x, y, des, rot, mb, eng, maxLinks = 0,EW = 1):
-    cx = x
-    cy = y
+def hexdraw(bow, cx, cy, des, rot, mb, eng, maxLinks = 0,EW = 1,index = 0,drawSmall=None):
     rot = float(rot)
     maxLinksType = type(maxLinks)
-    #if des == 'F' or des == 'FI' or des == 'FIe' or des == 'FMI' or des == 'FO'\
-            #or des == 'FOe' or des == 'FM' or des == 'FMe':
     if 'F' in des:
         # draw full hex
         if rot == 0 or rot == 1 or rot == 2 or rot == 3 or rot == 4 or rot == 5:
@@ -30,6 +26,10 @@ def hexdraw(bow, x, y, des, rot, mb, eng, maxLinks = 0,EW = 1):
                           (cx, cy-r), (cx+.866*r, cy-r/2), (cx+.866*r, cy+r/2)),
                          fill=MBColor(bow, mb, des), outline=(0, 0, 0))
             draw.text((cx-0.2*r,cy-0.5*r), str(maxLinks), font = font,fill='black')
+            drawSmall.polygon(((cx, cy+r), (cx-.866*r, cy+r/2), (cx-.866*r, cy-r/2),
+                          (cx, cy-r), (cx+.866*r, cy-r/2), (cx+.866*r, cy+r/2)),
+                         fill=MBColor(bow, mb, des), outline=(0, 0, 0))
+            drawSmall.text((cx-0.2*r,cy-0.5*r), str(index), font = font,fill='black')
         # orientation
         draworfull(cx, cy, r, rot)
         # draw engine
@@ -300,7 +300,7 @@ def draworfull(cx, cy, r, rot):
 def MBColor(bow, MB, des):
     if bow == 1: return (220,220,0)
     elif bow == 2: return (100,200,0)
-    elif bow == 3: return (0,100,0)
+    elif bow == 3: return (0,150,0)
     else: return (0,0,0)
 # =============================================================================
 # Repositioning Wagon for evaluation
@@ -1016,7 +1016,8 @@ r = 40
 d = r * math.cos(math.pi/6)
 # board drawing or wagon drawing
 #bow = 0
-im2 = Image.new('RGB', (xmax, ymax), (256, 256, 256))
+bkgColor = (255,255,255)
+im2 = Image.new('RGB', (xmax, ymax), bkgColor)
 draw = ImageDraw.Draw(im2)
 font = ImageFont.truetype('SFNSMono.ttf',25)
 fontBig = ImageFont.truetype('SFNSMono.ttf',35)
@@ -1103,9 +1104,21 @@ def wagonDrawer(wagonCounter,geomVersion,maxLinksDict,wagonNameDict):
     ySpaces = math.floor(yRange / (1.5 * r)) - wagonTemp[2]
     if ySpaces < 0: ySpaces = 0
     centers = [(i[0] + centers[0][0] - xMin,i[1] + ySpaces * ySpaceExtra,i[2],i[3],i[4],i[5]) for i in centers]
-    for center in centers:
-      hexdraw(bow,center[0],center[1],center[2],center[3],1,center[4],center[5],EW)
+
+    imSmall = Image.new('RGB', (xmax, ymax), bkgColor)
+    drawSmall = ImageDraw.Draw(imSmall)
+
+    for index,center in enumerate(centers):
+      hexdraw(bow,center[0],center[1],center[2],center[3],1,center[4],center[5],EW,index,drawSmall)
     
+    padding = 5
+    bg = Image.new(imSmall.mode,imSmall.size,bkgColor)
+    bbox = ImageChops.difference(imSmall,bg).getbbox()
+    bbox = tuple([sum(x) for x in zip(list(bbox),[-padding,-padding,padding,padding])])
+    imSmall = imSmall.crop(bbox)
+  
+    imSmall.save('output/wagonImages/{}.jpg'.format(wagonNameDict[''.join(str(i) for i in wagon)]),quality=95)
+
     centers.sort(key=lambda centers: centers[1],reverse=True)
  
     draw.text((50 + colSpacing * col,centers[0][1] + 35),wagonNameDict[''.join(str(i) for i in wagon)],font=fontBig,fill='black')
