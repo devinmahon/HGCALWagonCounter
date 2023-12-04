@@ -244,7 +244,7 @@ def main():
   # Specify the geometry file to be used
   #geomVersion = 'v15.3_NadjaOct2023'
   #geometryPath = 'geometries/{}/'.format(geomVersion)
-  geomVersion = 'v15.4'
+  geomVersion = 'v16.1'
   geometryPath = '../hgcal_modmap/geometries/{}/'.format(geomVersion)
   geometryFile = 'geometry.hgcal'
 
@@ -1192,8 +1192,14 @@ def main():
       vCenter = (v+vLD)/2
       x0Center = (x0+x0LD)/2
       y0Center = (y0+y0LD)/2
-      if irot == irotLD: engineType = 'EH10H0'
-      elif (irot+3)%6 == irotLD: engineType = 'EH10F0'
+      if irot == irotLD: 
+        engineType = 'EH10H0'
+        nTrigTotal = 14
+        nDataTotal = 7
+      elif (irot+3)%6 == irotLD: 
+        engineType = 'EH10F0'
+        nTrigTotal = 28
+        nDataTotal = 14
       else: print('ERROR: Unexpected relative rotations between HD and LD modules for HD engine (plane = {}, u = {}, v = {})'.format(plane,u,v))
     f.write('{}\n'.format(' '.join(str(x) for x in [	plane,round(uCenter,1),round(vCenter,1),engineType,round(x0Center,3),			# 1-5
 							round(y0Center,3),irot,engineType[-2],u if isHD else uEast,v if isHD else vEast,	# 6-10
