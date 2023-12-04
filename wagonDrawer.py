@@ -86,7 +86,7 @@ def hexdraw(bow, cx, cy, des, rot, mb, eng, maxLinks = 0,EW = 1,index = 0,drawSm
     draw.polygon(coords,fill=MBColor(bow, mb, des), outline=(0, 0, 0))
     draw.text((cx-0.2*r,cy-0.5*r), str(maxLinks), font = font,fill='black')
     drawSmall.polygon(coords,fill=MBColor(bow, mb, des), outline=(0, 0, 0))
-    drawSmall.text((cx-0.2*r,cy-0.5*r), str(index), font = font,fill='black')
+    drawSmall.text((cx-0.2*r,cy-0.5*r), str(index+1), font = font,fill='black')
 
     if 'F' in des: 
       draworfull(cx, cy, r, rot, draw)
