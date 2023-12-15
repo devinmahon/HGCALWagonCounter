@@ -783,10 +783,10 @@ def main():
     '0000F2015d2001F20'		: 'WE21C1',
     '0100F2022F2024F20'		: 'WW30B2', # West T
     '0111F2000F2014F20'		: 'WW30A2',
-    '0100F3014F2031d20'		: 'WE21D1',
-    '0000F0022F0005d00'		: 'WW21C1',
-    '0100F2020d2041d20'		: 'WE12B1',
-    '0000F2010d2055d20'		: 'WW12B1',
+    '0100F3014F2031d20'		: 'WW21C1',
+    '0000F0022F0005d00'		: 'WE21D1',
+    '0100F2020d2041d20'		: 'WW12B1',
+    '0000F2010d2055d20'		: 'WE12B1',
     '0101F3030F2031d10'		: 'WW21D1',
     '0110d2044F2014F20'		: 'WW21E1',
     '0000F2010d2050F20'		: 'WE21C2',
@@ -1025,12 +1025,12 @@ def main():
   #os.system('cp {}{}.txt output/geometries/{}/geometry.hgcal.txt'.format(geometryPath,geometryFile,geomVersion))
   f = open('output/geometries/{}/geometry_simotherboards.hgcal.txt'.format(geomVersion),'w')
 
-  f.write('plane u v itype x0 y0 irot nvertices vx_0 vy_0 vx_1 vy_1 vx_2 vy_2 vx_3 vy_3 vx_4 vy_4 vx_5 vy_5 vx_6 vy_6 icassette trigRate trigLinks dataRate_ld dataLinks_ld dataRate_hd dataLinks_hd MB wagon isEngine nROCs power mrot phi HDorLD hash hash_hdld engine_trig_fibres engine_data_fibres engine_ctrl_fibres dataPp0 trigPp0 dataPp0_type trigPp0_type dataPp1 trigPp1 dataPp1_type trigPp1_type dataPp2 DAQ\n')
+  f.write('plane u v itype typecode x0 y0 irot nvertices vx_0 vy_0 vx_1 vy_1 vx_2 vy_2 vx_3 vy_3 vx_4 vy_4 vx_5 vy_5 vx_6 vy_6 icassette trigRate trigLinks dataRate_ld dataLinks_ld dataRate_hd dataLinks_hd MB wagon isEngine nROCs power mrot phi HDorLD hash hash_hdld engine_trig_fibres engine_data_fibres engine_ctrl_fibres dataPp0 trigPp0 dataPp0_type trigPp0_type dataPp1 trigPp1 dataPp1_type trigPp1_type dataPp2 DAQ')
 
   if not os.path.exists('output/wagonInfo/{}'.format(geomVersion)): os.makedirs('output/wagonInfo/{}'.format(geomVersion))
   fInfo = open('output/wagonInfo/{}/wagonInfoHD.tex'.format(geomVersion),'w')
 
-  fInfo.write('\\begin{tabular}{|c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|}\n')
+  fInfo.write('\\begin{tabular}{|c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|}')
 
   for tempCode,indices in wagonCodesDict.items():
     tempCodeString = ''.join(str(x) for x in tempCode)
@@ -1132,20 +1132,20 @@ def main():
           print('ERROR: Wagon type code for {} not found'.format(tempCodeString))
           wagonName = 'XXXXXX'
 
-      f.write('{}\n'.format(' '.join(str(x) for x in [	plane,u,v,wagonName,round(x0FX11,3) if not isHD else '-',		# 1-5
-							round(y0FX11,3) if not isHD else '-',irot,nModules,uList[0],vList[0],	# 6-10
-							uList[1],vList[1],uList[2],vList[2],uList[3],				# 11-15
-							vList[3],'-','-','-','-',						# 16-20
-							'-','-',icassette,nTrigTotal,int(nActiveTrig),				# 21-25
-							nDataTotal,int(nActiveData),int(tempCodeString[3]),nTrigXOutTotal,MB,	# 26-30
-							wagon,0,0,'-',wagonRot,							# 31-35
-							'-',int(tempCodeString[0]),'-','-','-',					# 36-40
-							'-',tempCodeString,'-','-','-',						# 41-45
-							'-','-','-','-','-',							# 46-50
-							'-','-'])))								# 51-52
+      f.write('\n{}'.format(' '.join(str(x) for x in [	plane,u,v,wagonName,wagonName,round(x0FX11,3) if not isHD else '-',	# 1-6
+							round(y0FX11,3) if not isHD else '-',irot,nModules,uList[0],vList[0],	# 7-11
+							uList[1],vList[1],uList[2],vList[2],uList[3],				# 12-16
+							vList[3],'-','-','-','-',						# 17-21
+							'-','-',icassette,nTrigTotal,int(nActiveTrig),				# 22-26
+							nDataTotal,int(nActiveData),int(tempCodeString[3]),nTrigXOutTotal,MB,	# 27-31
+							wagon,0,0,'-',wagonRot,							# 32-36
+							'-',int(tempCodeString[0]),'-','-','-',					# 37-41
+							'-',tempCodeString,'-','-','-',						# 42-46
+							'-','-','-','-','-',							# 47-51
+							'-','-'])))								# 52-53
 
     
-    fInfo.write('{}\\\\\n'.format('&'.join([	wagonName,'-',
+    fInfo.write('\\n{}\\\\'.format('&'.join([	wagonName,'-',
 						'-','-','-',
                                                 '-','-','-',
                                                 '-','-','-',
@@ -1201,17 +1201,17 @@ def main():
         nTrigTotal = 28
         nDataTotal = 14
       else: print('ERROR: Unexpected relative rotations between HD and LD modules for HD engine (plane = {}, u = {}, v = {})'.format(plane,u,v))
-    f.write('{}\n'.format(' '.join(str(x) for x in [	plane,round(uCenter,1),round(vCenter,1),engineType,round(x0Center,3),			# 1-5
-							round(y0Center,3),irot,engineType[-2],u if isHD else uEast,v if isHD else vEast,	# 6-10
-							uLD if isHD else u,vLD if isHD else v,'-','-','-',					# 11-15
-							'-','-','-','-','-',									# 16-20
-							'-','-',icassette,nTrigTotal,'-',							# 21-25
-							nDataTotal,'-','-','-','-',								# 26-30
-							'-',1,'-','-','-',									# 31-35
-							'-',engine['HDorLD'],'-','-','-',							# 36-40
-							'-','-','-','-','-',									# 41-45
-							'-','-','-','-','-',									# 46-50
-							'-','-'])))										# 51-52
+    f.write('\n{}'.format(' '.join(str(x) for x in [	plane,round(uCenter,1),round(vCenter,1),engineType,engineType,round(x0Center,3),	# 1-6
+							round(y0Center,3),irot,engineType[-2],u if isHD else uEast,v if isHD else vEast,	# 7-11
+							uLD if isHD else u,vLD if isHD else v,'-','-','-',					# 12-16
+							'-','-','-','-','-',									# 17-21
+							'-','-',icassette,nTrigTotal,'-',							# 22-26
+							nDataTotal,'-','-','-','-',								# 27-31
+							'-',1,'-','-','-',									# 32-36
+							'-',engine['HDorLD'],'-','-','-',							# 37-41
+							'-','-','-','-','-',									# 42-46
+							'-','-','-','-','-',									# 47-51
+							'-','-'])))										# 52-53
 
   f.close()
 
