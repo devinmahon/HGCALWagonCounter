@@ -233,11 +233,21 @@ def maxLinksCalculation(code,codeFormat,linkType,wagonCodesDict,geomGrouped,reco
 ##################################################
 def main():
 
+  # Specify the geometry file to be used
+  geomVersion = 'v16.1'
+  geometryPath = '../hgcal_modmap/geometries/{}/'.format(geomVersion)
+  geometryFile = 'geometry.hgcal'
+
   parser = argparse.ArgumentParser(description='Wagon Variety Analyzer')
+  parser.add_argument('--geomVersion',type=str,default=geomVersion,help='Geometry version')
+  parser.add_argument('--geomPath',type=str,default=geometryPath,help='Directory containing geometry file')
   parser.add_argument('--noImages',action='store_true',default=False,help='Turns off saving of wagon images')
   parser.add_argument('--noWagonDict',action='store_true',default=False,help='Turns off writing of wagon dictionary file (locations of all instances)')
   parser.add_argument('--noTables',action='store_true',default=False,help='Turns off writing of LaTeX tables with wagon info')
   args = parser.parse_args()
+  
+  geomVersion = args.geomVersion
+  geometryPath = args.geomPath
 
   # Rounding (decimal places)
   dec = 3
@@ -247,11 +257,6 @@ def main():
   LDHalvesSemisFivesSame = True
   HDSemisSame = True
   LDHDBoth = 2
-
-  # Specify the geometry file to be used
-  geomVersion = 'v16.1'
-  geometryPath = '../hgcal_modmap/geometries/{}/'.format(geomVersion)
-  geometryFile = 'geometry.hgcal'
 
   # Extract required columns
   geom = pd.read_csv('{0}{1}.txt'.format(geometryPath,geometryFile),delim_whitespace=True)
