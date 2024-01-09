@@ -9,6 +9,7 @@ import copy
 import os
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
+import argparse
 
 pd.set_option('display.max_columns', None)
 
@@ -232,6 +233,12 @@ def maxLinksCalculation(code,codeFormat,linkType,wagonCodesDict,geomGrouped,reco
 ##################################################
 def main():
 
+  parser = argparse.ArgumentParser(description='Wagon Variety Analyzer')
+  parser.add_argument('--noImages',action='store_true',default=False,help='Turns off saving of wagon images')
+  parser.add_argument('--noWagonDict',action='store_true',default=False,help='Turns off writing of wagon dictionary file (locations of all instances)')
+  parser.add_argument('--noTables',action='store_true',default=False,help='Turns off writing of LaTeX tables with wagon info')
+  args = parser.parse_args()
+
   # Rounding (decimal places)
   dec = 3
 
@@ -242,8 +249,6 @@ def main():
   LDHDBoth = 2
 
   # Specify the geometry file to be used
-  #geomVersion = 'v15.3_NadjaOct2023'
-  #geometryPath = 'geometries/{}/'.format(geomVersion)
   geomVersion = 'v16.1'
   geometryPath = '../hgcal_modmap/geometries/{}/'.format(geomVersion)
   geometryFile = 'geometry.hgcal'
@@ -305,14 +310,6 @@ def main():
   #geomBasic = geomBasic[(geomBasic['plane'] <= 28) | (geomBasic['plane'] >= 37)]
   if LDHDBoth == 0: 	geomBasic = geomBasic[geomBasic['HDorLD'] == 0]
   elif LDHDBoth == 1: 	geomBasic = geomBasic[geomBasic['HDorLD'] == 1]
-
-  # Remove impossible wagons
-  #removeWagons = [[3,2,0],[3,102,0],[5,2,0],[5,102,0],[3,0,0],[3,100,0],[5,0,0],[5,100,0]]
-  #for w in removeWagons:
-  #  geomBasic = geomBasic.drop(geomBasic[(geomBasic['plane'] == w[0]) & (geomBasic['MB'] == w[1]) & (geomBasic['wagon'] == w[2])].index)
-
-  #geomBasic = geomBasic[((geomBasic['plane'] < 4) & (geomBasic['MB'] < 4)) | ((geomBasic['plane'] == 1) & (geomBasic['MB'] == 11))]
-  #geomBasic = geomBasic[(geomBasic['plane'] <= 4)]
 
   # Group modules by plane (layer), MB index, and wagon index
   geomGrouped = geomBasic.sort_values('r',ascending=True).groupby(['plane','MB','wagon'])
@@ -692,50 +689,8 @@ def main():
         maxLinksList[i] += -1 * linksSummary[code][i]
       maxLinks[code] = maxLinksList
 
-  linksRoutingSummaryFile = 'link-routing-summary'
-  with open("{}.txt".format(linksRoutingSummaryFile), 'w') as f:
-    for code in linksSummary:
-      linksInfoList = linksSummary[code]
-      maxLinksList = maxLinks[code]
-      print("{0}: {1} + {2}".format(code, maxLinksList, linksInfoList), file = f)
-
   # Finding engine pos. for east wagons
   eastEnginePositions = {x:findEngine(x,'A',wagonCodesDict[x][0],geomGrouped,recodedCodesList) for x in wagonCodesDict if x[1] == -1 and x[0] == 0}
-
-  # Setting engineType column in new geometry file
-  engineTypeDict = {}
-  for code in wagonCodesDict:
-    if code[1] == -1:
-      position = eastEnginePositions[code]
-    else:
-      position = code[1]
-    for location in wagonCodesDict[code]:
-      wagon = geomGrouped.get_group((location[0], location[1], location[2]))
-      plane = [x for x in wagon['plane'].tolist()]
-      u = [x for x in wagon['u'].tolist()]
-      v = [x for x in wagon['v'].tolist()]
-      for i in range(len(plane)):
-        module_loc = (plane[i], u[i], v[i])
-        if i == position and code[1] == -1:
-          engineTypeDict[module_loc] = 'E'
-        elif i == position and code[1] != -1:
-          engineTypeDict[module_loc] = 'W'
-        else:
-          engineTypeDict[module_loc] = 'N'
-  
-  geom.insert(44, 'engineType', ['N' for i in range(len(geom['plane']))])
-  for i in range(len(geom['engineType'])):
-    ele = geom['engineType'][i]
-    ele_coords = (geom['plane'][i], geom['u'][i], geom['v'][i])
-    if ele_coords in engineTypeDict:
-      geom.loc[i,'engineType'] = engineTypeDict[ele_coords]
-
-  geometryPath = geometryPath
-  geometryFile_WithEngine = 'geom_with_east.hgcal'
-  geomFilePath_WithEngine = '{0}{1}.txt'.format(geometryPath, geometryFile_WithEngine)
-  geom = np.around(geom, decimals = 3)
-  cols = [x for x in geom.columns]
-  np.savetxt(geomFilePath_WithEngine, geom, fmt = '%s', header = ' '.join(cols))
 
   # Print message about total number of HD wagons with <= 14 trigger links
   #print(numTrigLinksHDLT15,'out of',numHD,'(','{:.1f}'.format(numTrigLinksHDLT15 * 100.0 / numHD),'%) HD wagons have <= 14 trigger links')
@@ -895,8 +850,9 @@ def main():
       if key+(i,) in maxTrigLinksPerFiber:
         plt.text(0.2,i+0.5,str(maxTrigLinksPerFiber[key+(i,)]),fontsize=14) 
 
-    plt.savefig('output/fiberHistograms/hist_{}.png'.format(''.join([str(x) for x in key])))
-    plt.clf()
+    if not args.noImages: 
+      plt.savefig('output/fiberHistograms/hist_{}.png'.format(''.join([str(x) for x in key])))
+      plt.clf()
 
   # Add link distribtion to codes
   wagonCodesDictCopy = copy.deepcopy(wagonCodesDict)
@@ -1019,18 +975,15 @@ def main():
     maxLinks = {x:maxLinksCalculation(x,'B','trigLinks',wagonCodesDict,geomGrouped,recodedCodesList) for x in wagonCodesDict}  
   
   # Output geometry files
-  #if not os.path.exists('output/geometriesWagon/{}'.format(geomVersion)): os.makedirs('output/geometriesWagon/{}'.format(geomVersion))
-  #f = open('output/geometriesWagon/{}/geometryWagon.txt'.format(geomVersion),'w')
   if not os.path.exists('output/geometries/{}'.format(geomVersion)): os.makedirs('output/geometries/{}'.format(geomVersion))
-  #os.system('cp {}{}.txt output/geometries/{}/geometry.hgcal.txt'.format(geometryPath,geometryFile,geomVersion))
   f = open('output/geometries/{}/geometry_simotherboards.hgcal.txt'.format(geomVersion),'w')
 
   f.write('plane u v itype typecode x0 y0 irot nvertices vx_0 vy_0 vx_1 vy_1 vx_2 vy_2 vx_3 vy_3 vx_4 vy_4 vx_5 vy_5 vx_6 vy_6 icassette trigRate trigLinks dataRate_ld dataLinks_ld dataRate_hd dataLinks_hd MB wagon isEngine nROCs power mrot phi HDorLD hash hash_hdld engine_trig_fibres engine_data_fibres engine_ctrl_fibres dataPp0 trigPp0 dataPp0_type trigPp0_type dataPp1 trigPp1 dataPp1_type trigPp1_type dataPp2 DAQ')
 
-  if not os.path.exists('output/wagonInfo/{}'.format(geomVersion)): os.makedirs('output/wagonInfo/{}'.format(geomVersion))
-  fInfo = open('output/wagonInfo/{}/wagonInfoHD.tex'.format(geomVersion),'w')
-
-  fInfo.write('\\begin{tabular}{|c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|}')
+  if not args.noTables:
+    if not os.path.exists('output/wagonInfo/{}'.format(geomVersion)): os.makedirs('output/wagonInfo/{}'.format(geomVersion))
+    fInfo = open('output/wagonInfo/{}/wagonInfoHD.tex'.format(geomVersion),'w')
+    fInfo.write('\\begin{tabular}{|c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|}')
 
   for tempCode,indices in wagonCodesDict.items():
     tempCodeString = ''.join(str(x) for x in tempCode)
@@ -1145,7 +1098,7 @@ def main():
 							'-','-'])))								# 52-53
 
     
-    fInfo.write('\\n{}\\\\'.format('&'.join([	wagonName,'-',
+    if not args.noTables: fInfo.write('\\n{}\\\\'.format('&'.join([	wagonName,'-',
 						'-','-','-',
                                                 '-','-','-',
                                                 '-','-','-',
@@ -1153,8 +1106,9 @@ def main():
 						tempCodeString,'-'])))
 
   f.close()
-  fInfo.write('\\end{tabular}')
-  fInfo.close()
+  if not args.noTables:
+    fInfo.write('\\end{tabular}')
+    fInfo.close()
 
   #geomWagon = pd.read_csv('output/geometriesWagon/{}/geometryWagon.txt'.format(geomVersion),delim_whitespace=True)
 
@@ -1228,8 +1182,9 @@ def main():
   #print(uniqueWagonCodesLD)
 
   # Save dictionary to file
-  with open('wagonDict/wagonDict_{}.txt'.format(geometryFile),'w') as f:
-    print(wagonCodesDict,file=f)
+  if not args.noWagonDict:
+    with open('wagonDict/wagonDict_{}.txt'.format(geometryFile),'w') as f:
+      print(wagonCodesDict,file=f)
 
   # Print wagon info
   #wagonCodesDict = dict(sorted(wagonCodesDict.items(),key=lambda x:(x[0][0],len(x[0]),len(x[1])),reverse=True))
@@ -1284,7 +1239,7 @@ def main():
   codeCounter = dict(sorted(codeCounter.items(), key=lambda item: (item[0][0],len(item[0]),item[1]), reverse=True))
 
   # Draw and save the wagon summary (see wagonDrawer.py)
-  wagonDrawer.wagonDrawer(codeCounter,geomVersion,maxLinks,wagonNameDict)
+  if not args.noImages: wagonDrawer.wagonDrawer(codeCounter,geomVersion,maxLinks,wagonNameDict)
 
 if __name__ == '__main__':
   main()
