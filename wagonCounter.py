@@ -234,9 +234,9 @@ def maxLinksCalculation(code,codeFormat,linkType,wagonCodesDict,geomGrouped,reco
 def main():
 
   # Specify the geometry file to be used
-  geomVersion = 'v16.1'
+  geomVersion = 'v16.4'
   geometryPath = '../hgcal_modmap/geometries/{}/'.format(geomVersion)
-  geometryFile = 'geometry.hgcal'
+  geometryFile = 'geometry_sipmontile.hgcal'
 
   parser = argparse.ArgumentParser(description='Wagon Variety Analyzer')
   parser.add_argument('--geomVersion',type=str,default=geomVersion,help='Geometry version')
@@ -261,6 +261,9 @@ def main():
   # Extract required columns
   geom = pd.read_csv('{0}{1}.txt'.format(geometryPath,geometryFile),delim_whitespace=True)
   geomBasic = geom[['plane','u','v','x0','y0', 'vx_0', 'vy_0', 'vx_1', 'vy_1', 'vx_2', 'vy_2', 'vx_3', 'vy_3', 'vx_4', 'vy_4', 'vx_5', 'vy_5', 'vx_6', 'vy_6', 'itype','irot','MB','wagon','isEngine','HDorLD','trigLinks','dataLinks_ld','dataLinks_hd','icassette']].copy()
+
+  # Remove tile modules (TM)
+  geomBasic = geomBasic[~geomBasic['itype'].str.contains('TM')]
 
   geomBasic['irot'] = geomBasic['irot'].astype('int')
 
@@ -705,24 +708,14 @@ def main():
 
   wagonNameDict = {
     # HD
-    #'1000F5000F7000Fb004d70'	: 'WH31A1', # Straight 3 + semi L
-    #'1000F5000F7000Fb005d70'    : 'WH31TEMP1', # Straight 3 + semi R
-    #'1000F0000F0000F0005d00'    : 'WH31TEMP2', # Straight 3 + semi R
-    #'1000F5000F5000a5040F50'	: 'WH31B1', # Python 3 + semi
-    #'1000F6000F7040F60'		: 'WH30A1', # T
-    #'1000F5000F7000Fb0'		: 'WH30B1', # Straight 3
-    #'1000F6000F9000ga0'		: 'WH21A1', # Straight 2 + bottom
-    #'1000F5000F50'		: 'WH20A1', # Straight 2
     '1000F5000F7000Fb0'		: 'WH30A1',
     '1000F4000F5000F50'		: 'WH30B1',
     '1000F6000F7040F60'		: 'WH30C1',
     '1000F4000F5040F50'		: 'WH30D1',
     '1000F5000F7000F9005d70'	: 'WH31A1',
-    #'1000F0000F0000F0005d00'	: 'WH31B1',
     '1000F5000F5000a4040F50'	: 'WH31B1',
     '1000F5000F50'		: 'WH20A1',
     '1000F6000F9000g80'		: 'WH21A1',
-    '1000F0000F0000g00'		: 'WH21B1',
     # LD
     '0000F1100F2000F2000F20'	: 'WE40A1',
     '0000F1100F2000F2005d20'	: 'WE31A1',
@@ -752,24 +745,25 @@ def main():
     '0000F2010d2050F20'		: 'WE21C2',
     '0100F2020d2040F20'		: 'WW21E2',
     '0110F2000F2010d20'		: 'WW21E3',
+    '0100F2030F2032d20'		: 'WW21E4',
     '0010F2030F2021d20'		: 'WE21C3',
     '0000F2014F2011d20'		: 'WE21C4',
     '0101F2010d2031d20'		: 'WW12C1',
+    '0020d2052F2030F20'		: 'WE21C5',
+    '0010d2052F2022F20'		: 'WE21C6',
     '0100F3130F41'		: 'WW20A1', # W2A
     '0000F3100F41'		: 'WE20A1', # E2A
-    '0101F4031d20'		: 'WW11A1',
+    '0100F4031d20'              : 'WW11A1', # Used to be '0101F4031d20' before v16.3
     '0001F4005d20'		: 'WE11A1',
     '0001F3000F30'		: 'WE20B1', # E2B
-    '0010F3103F40'		: 'WE20C1',
     '0102F3030F20'		: 'WW20B1',
     '0100F4014F30'		: 'WW20C1',
     '0010d2052F20'		: 'WE11B1',
     '0101F3030F30'		: 'WW20D1',
     '0000F4021d20'		: 'WE11C1',
     '0101F2032d20'		: 'WW11B1',
+    '0100F2032d20'		: 'WW11B1', # Used to be '0101F2032d20' before v16.3
     '0000F2015d20'		: 'WE11B2',
-    '0000F2022F20'		: 'WE20D1',
-    '0102F2031d20'		: 'WW11C1',
     '0002F3000F20'		: 'WE20E1',
     '0101F50'			: 'WW10A1', # W1A
     '0001F50'			: 'WE10A1', # E1A
@@ -990,6 +984,7 @@ def main():
     fInfo = open('output/wagonInfo/{}/wagonInfoHD.tex'.format(geomVersion),'w')
     fInfo.write('\\begin{tabular}{|c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|}')
 
+  wagonNameStatus = {y:False for x,y in wagonNameDict.items()} # Track whether name has been used
   for tempCode,indices in wagonCodesDict.items():
     tempCodeString = ''.join(str(x) for x in tempCode)
     isHD = int(tempCodeString[0])
@@ -1039,7 +1034,9 @@ def main():
         nTrigXOutTotal = sum([int(tempCodeString[5*i+6]) for i in range(len(tempCodeString)//5)])
         wagonRot = (irot + 3) % 6 if int(tempCodeString[1]) else irot
         if nActiveData > nDataTotal: print('WARNING: {} wagon (layer {}, MB {}) has >4 DAQ links, requiring the use of a xover, which is not expected!'.format('West' if int(tempCodeString[1]) else 'East',plane,MB))
-        if tempCodeString in wagonNameDict: wagonName = wagonNameDict[tempCodeString]
+        if tempCodeString in wagonNameDict: 
+          wagonName = wagonNameDict[tempCodeString]
+          wagonNameStatus[wagonName] = True 
         else: 
           print('ERROR: Wagon type code for {} not found'.format(tempCodeString))
           wagonName = 'XXXXXX'
@@ -1085,7 +1082,9 @@ def main():
         nTrigXOutTotal = sum([int(tempCodeString[5*i+6]) for i in range(len(tempCodeString)//5)])
         wagonRot = irot
         if nActiveData > nDataTotal and nActiveTrig != 0: print('WARNING: {} wagon (layer {}, MB {}) has too many DAQ links, {} counted, but only {} supported!'.format('West' if int(tempCodeString[1]) else 'East',plane,MB,nActiveData,nDataTotal))
-        if tempCodeString in wagonNameDict: wagonName = wagonNameDict[tempCodeString]
+        if tempCodeString in wagonNameDict: 
+          wagonName = wagonNameDict[tempCodeString]
+          wagonNameStatus[wagonName] = True
         else: 
           print('ERROR: Wagon type code for {} not found'.format(tempCodeString))
           wagonName = 'XXXXXX'
@@ -1114,6 +1113,9 @@ def main():
   if not args.noTables:
     fInfo.write('\\end{tabular}')
     fInfo.close()
+
+  for key,val in wagonNameStatus.items():
+    if not val: print('WARNING: Unused wagon name ({})'.format(key))
 
   #geomWagon = pd.read_csv('output/geometriesWagon/{}/geometryWagon.txt'.format(geomVersion),delim_whitespace=True)
 
