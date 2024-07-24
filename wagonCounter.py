@@ -10,6 +10,7 @@ import os
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
 import argparse
+from tabulate import tabulate
 
 pd.set_option('display.max_columns', None)
 
@@ -970,9 +971,175 @@ def main():
 
     wagonCodesDict = wagonCodesDictCopy  
     wagonCodesDict = {x:y for x, y in wagonCodesDict.items() if len(y) > 0} # Remove empty entries
-    codeCounter = Counter({tuple(key):len(val) for key,val in wagonCodesDict.items()})
-    maxLinks = {x:maxLinksCalculation(x,'B','trigLinks',wagonCodesDict,geomGrouped,recodedCodesList) for x in wagonCodesDict}  
-  
+
+  # Manual consolidations
+  consolDict = {	(0,1,0,1,'F','5',0):	[(0,1,0,3,'F','3',0)],} # WW10A1 <-- WW10B1
+  for key,items in consolDict.items(): 
+    for item in items:
+      wagonCodesDict[key] += wagonCodesDict[item]
+      wagonCodesDict.pop(item)
+
+  codeCounter = Counter({tuple(key):len(val) for key,val in wagonCodesDict.items()})
+  maxLinks = {x:maxLinksCalculation(x,'B','trigLinks',wagonCodesDict,geomGrouped,recodedCodesList) for x in wagonCodesDict}
+  maxDAQLinksLD = {x:maxLinksCalculation(x,'B','dataLinks_ld',wagonCodesDict,geomGrouped,recodedCodesList) for x in wagonCodesDict}
+  maxDAQLinksHD = {x:maxLinksCalculation(x,'B','dataLinks_hd',wagonCodesDict,geomGrouped,recodedCodesList) for x in wagonCodesDict}
+  maxDAQLinks = {}
+  for key,val in maxDAQLinksLD.items():
+    if key[0] == 0: maxDAQLinks[key] = maxDAQLinksLD[key]
+    elif key[0] == 1: maxDAQLinks[key] = maxDAQLinksHD[key]
+    else: print('ERROR: Unknown first code in {}'.format(key))
+
+  # Make LD wagon info tables
+  # Index changes so that module with engine has index 1
+  indexChanges = {	'WE40A2': [2,1,3,0],
+			'WE31A2': [3,2,1,0],
+			'WE30A2': [1,0,2],
+			'WE21C3': [1,0,2],
+			'WE21C5': [2,1,0],
+			'WE21C6': [1,0,2],
+			'WE11B1': [1,0],
+			'WW21E3': [1,0,2],
+			'WW21E1': [1,0,2],
+			'WW30A2': [1,0,2],}
+  if not args.noTables:
+
+    if not os.path.exists('output/latex/{}'.format(geomVersion)): os.makedirs('output/latex/{}'.format(geomVersion))
+    f = open('output/latex/{}/LDWagonInfo.tex'.format(geomVersion),'w')
+
+    f.write('\\documentclass[10pt]{article}\n')
+    f.write('\\renewcommand{\\familydefault}{\\ttdefault}\n')
+    f.write('\\usepackage[margin=1in]{geometry}\n')
+    f.write('\\usepackage{hyperref}\n')
+    f.write('\\usepackage{multicol}\n')
+    f.write('\\setlength\columnsep{15pt}\n')
+    f.write('\\usepackage{tocloft}\n')
+    f.write('\\renewcommand{\cftsecleader}{\cftdotfill{\cftdotsep}}\n')
+    f.write('\\setlength{\cftbeforesecskip}{0pt}\n')
+    f.write('\\renewcommand{\contentsname}{}\n')
+    f.write('\\setcounter{secnumdepth}{0}\n')
+    f.write('\\setcounter{tocdepth}{2}\n')
+    f.write('\\hypersetup{linktoc=all}\n')
+    f.write('\\usepackage{graphicx}\n')
+    f.write('\\parindent=0pt\n')
+    f.write('\\parskip=20pt\n')
+    f.write('\\begin{document}\n')
+    f.write('\\begin{center}\n')
+    f.write('{\huge LD Wagon Info}\n')
+    f.write('\\end{center}\n')
+    f.write('\\begin{multicols}{2}\n')
+    f.write('\\tableofcontents\n')
+    f.write('\\end{multicols}\n')
+    f.write('\\newpage\n')
+
+    for key,_ in sorted(wagonCodesDict.items(),key=lambda x:(len(x[0]),x[0][1]),reverse=True):
+      codeString = ''.join([str(x) for x in key])
+      code = codeString
+      if int(code[0]) != 0: continue
+      nXin = int(code[3])
+      isWest = int(code[1])
+      code = code[5:]
+      code = [code[i:i+2] for i in range(0, len(code), 5)]
+      code = [[int(x[0]),int(x[1])] for x in code]
+      f.write('\\section{{{} ({})}}\n\n'.format(wagonNameDict[codeString],codeString))
+      trigRouting  = []
+      DAQRouting   = []
+      xOverRouting = []
+
+      linkList = maxLinks[key]
+      if wagonNameDict[codeString] in indexChanges: 
+        for i in range(len(linkList)):
+          linkList[i] = linkList[indexChanges[wagonNameDict[codeString]][i]]
+      for Mi,nT in enumerate(linkList):
+         for Ti in range(nT):
+           if (Ti + 1) > code[Mi][0]: 	xOverRouting.append('M{}.{}'.format(Mi+1,Ti))
+           else:			trigRouting.append('M{}.{}'.format(Mi+1,Ti))
+
+      linkList = maxDAQLinks[key]
+      if wagonNameDict[codeString] in indexChanges:
+        for i in range(len(linkList)):
+          linkList[i] = linkList[indexChanges[wagonNameDict[codeString]][i]]
+      for Mi,nD in enumerate(linkList):
+        for Di in range(nD):
+          DAQRouting.append('M{}.{}'.format(Mi+1,Di))
+
+      for i in range(nXin): trigRouting.append('X.{}'.format(i))
+
+      trigRouting[len(trigRouting):]  = ['-' for x in range(7 - len(trigRouting))]
+      if not isWest: DAQRouting = ['-'] * 3 + DAQRouting
+      DAQRouting[len(DAQRouting):]   = ['-' for x in range(7 - len(DAQRouting))]
+      xOverRouting[len(xOverRouting):] = ['-' for x in range(3 - len(xOverRouting))]
+      if len(trigRouting) != 7 and DAQRouting != 7 and xOverRouting != 3: print('ERROR: Incorrect length of routing arrays')
+      if not isWest: DAQRouting = [DAQRouting[i] for i in [0,1,2,6,3,4,5]]
+
+      trigRoutingDict = {'TRIG\_ELINK{}\_{}'.format('W' if isWest else 'E',i):x for (i,x) in zip(np.arange(len(trigRouting)),trigRouting) if x != '-'}
+      xOverOutRoutingDict = {'XING\_ELINK\_{}'.format(i):x for (i,x) in zip(np.arange(len(xOverRouting)),xOverRouting) if x != '-'}
+
+      modTrigRoutingDict = {}
+      xOverInRoutingDict = {}
+      for link,mod in trigRoutingDict.items():
+        if 'M' in mod: modTrigRoutingDict[mod] = link
+        elif 'X' in mod: xOverInRoutingDict[mod] = link
+      for link,mod in xOverOutRoutingDict.items():
+        if 'M' in mod: modTrigRoutingDict[mod] = link
+      modTrigRoutingDict = sorted(modTrigRoutingDict.items(),key=lambda x: x[0])
+      xOverInRoutingDict = sorted(xOverInRoutingDict.items(),key=lambda x: x[0])
+
+      modDAQRoutingDict = {x:'DAQ\_ELINK{}\_{}'.format('W' if isWest else 'E',i) for (i,x) in zip(np.arange(len(DAQRouting)),DAQRouting) if x != '-'}
+      modDAQRoutingDict = sorted(modDAQRoutingDict.items(),key=lambda x: x[0])
+
+      modTrigRoutingDict = [list(x) for x in modTrigRoutingDict]
+      xOverInRoutingDict   = [list(x) for x in xOverInRoutingDict]
+      modDAQRoutingDict  = [list(x) for x in modDAQRoutingDict]
+
+      f.write('Trig lpGBT\n\n\\vspace{-10pt}\n')
+      headers = ['Index'] + list(np.arange(7))
+      table = [[''] + trigRouting]
+      f.write(tabulate(table,headers,tablefmt="latex_raw",))
+      f.write('\n\n')
+
+      f.write('DAQ lpGBT\n\n\\vspace{-10pt}\n')
+      headers = ['Index (Wagon Label)'] + ['0(W0)','1(W1)','2(W2)','3(X)','4(E0)','5(E1)','6(E2)']
+      table = [[''] + DAQRouting]
+      f.write(tabulate(table,headers,tablefmt="latex_raw",))
+      f.write('\n\n')
+
+      f.write('Crossover\n\n\\vspace{-10pt}\n')
+      headers = ['Index'] + list(np.arange(3))
+      table = [[''] + xOverRouting]
+      f.write(tabulate(table,headers,tablefmt="latex_raw"))
+      f.write('\n\n')
+
+      headers = ['Module Indices','Trigger Link Distribution','DAQ Link Distribution']
+      table = [['\includegraphics[width=0.2\\textwidth]{{/Users/devinmahon/Documents/CMS/wagonCounter/output/wagonImages/indices/{}.jpg}}'.format(wagonNameDict[codeString]),'\includegraphics[width=0.2\\textwidth]{{/Users/devinmahon/Documents/CMS/wagonCounter/output/wagonImages/trig/{}.jpg}}'.format(wagonNameDict[codeString]),'\includegraphics[width=0.2\\textwidth]{{/Users/devinmahon/Documents/CMS/wagonCounter/output/wagonImages/DAQ/{}.jpg}}'.format(wagonNameDict[codeString])]]
+      f.write(tabulate(table,headers,tablefmt="latex_raw"))
+      f.write('\n\n')
+
+      if modTrigRoutingDict:
+        f.write('Trig links sorted by module\n\n\\vspace{-10pt}\n')
+        headers = ['Module Trig Link','Trig Link']
+        table = modTrigRoutingDict
+        f.write(tabulate(table,headers,tablefmt="latex_raw"))
+        f.write('\n\n')
+
+      if modDAQRoutingDict: 
+        f.write('DAQ links sorted by module\n\n\\vspace{-10pt}\n')
+        headers = ['Module DAQ Link','DAQ Link']
+        table = modDAQRoutingDict
+        f.write(tabulate(table,headers,tablefmt="latex_raw"))
+        f.write('\n\n')
+
+      if xOverInRoutingDict:
+        f.write('Incoming crossover trig links sorted by link no.\n\n\\vspace{-10pt}\n')
+        headers = ['Crossover Trig Link','Trig Link']
+        table = xOverInRoutingDict
+        f.write(tabulate(table,headers,tablefmt="latex_raw"))
+        f.write('\n\n')
+
+      f.write('\n\\newpage\n')
+
+    f.write('\\end{document}')
+    f.close()
+
   # Output geometry files
   if not os.path.exists('output/geometries/{}'.format(geomVersion)): os.makedirs('output/geometries/{}'.format(geomVersion))
   f = open('output/geometries/{}/geometry_simotherboards.hgcal.txt'.format(geomVersion),'w')
@@ -1215,8 +1382,8 @@ def main():
   #maxDAQLinks = {x:maxLinksCalculation(x,'B','dataLinks_ld',wagonCodesDict,geomGrouped,recodedCodesList) for x in wagonCodesDict}
   #for key,val in maxDAQLinks.items():
   #  keyString = ''.join([str(x) for x in key])
-  #  if keyString not in ['0001F50','0101F50','0000F3100F41','0001F3000F30','0100F3130F41','0000F2000F2000F20','0101F2030F2030F20']: continue
-  #  print('{}: {}'.format(keyString,val))
+  #  if not keyString[0] == '0': continue
+  #  print('{}: {} {}'.format(keyString,maxLinks[key],val))
 
   # Select only varieties with <= 10 instances
   #for key,val in list(wagonCodesDict.items()):
@@ -1245,8 +1412,19 @@ def main():
   # Sort by HD/LD then no. of modules then no. of instances 
   codeCounter = dict(sorted(codeCounter.items(), key=lambda item: (item[0][0],len(item[0]),item[1]), reverse=True))
 
+  # Count no. of LD wagons with partials
+  #NNoPart = 0
+  #NPart = 0
+  #for code,N in codeCounter.items():
+  #  c = ''.join([str(x) for x in code])
+  #  if c[0] != '0': continue
+  #  if c[3] == '0': NNoPart += N
+  #  else: NPart += N
+  #print('Wagons with no partials:',NNoPart)
+  #print('Wagons with partials:',NPart)
+
   # Draw and save the wagon summary (see wagonDrawer.py)
-  if not args.noImages: wagonDrawer.wagonDrawer(codeCounter,geomVersion,maxLinks,wagonNameDict)
+  if not args.noImages: wagonDrawer.wagonDrawer(codeCounter,geomVersion,maxLinks,maxDAQLinks,wagonNameDict,indexChanges)
 
 if __name__ == '__main__':
   main()

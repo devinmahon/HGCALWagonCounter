@@ -16,10 +16,10 @@ import numpy as np
 
 font = ImageFont.load_default()
 
-def hexdraw(bow, cx, cy, des, rot, mb, eng, maxLinks = 0,EW = 1,index = 0,drawSmall=None):
+def hexdraw(bow, cx, cy, des, rot, mb, eng, maxTrigLinks = 0, maxDAQLinks = 0,EW = 1,index = 0,drawIndex=None,drawTrig=None,drawDAQ=None):
 
     rot = float(rot)
-    maxLinksType = type(maxLinks)
+    maxLinksType = type(maxTrigLinks)
 
     if 'F' in des:
       coords = ((cx, cy+r), (cx-.866*r, cy+r/2), (cx-.866*r, cy-r/2),
@@ -84,16 +84,24 @@ def hexdraw(bow, cx, cy, des, rot, mb, eng, maxLinks = 0,EW = 1,index = 0,drawSm
       elif rot == 4: coords = ((cx, cy+r), (cx-.866*r, cy+r/2), (cx-.866*r, cy-r/2),(cx, cy-r), (cx+r/2, cy-r/2), (cx+r/2, cy+r/2))
 
     draw.polygon(coords,fill=MBColor(bow, mb, des), outline=(0, 0, 0))
-    draw.text((cx-0.2*r,cy-0.5*r), str(maxLinks), font = font,fill='black')
-    drawSmall.polygon(coords,fill=MBColor(bow, mb, des), outline=(0, 0, 0))
-    drawSmall.text((cx-0.2*r,cy-0.5*r), str(index+1), font = font,fill='black')
+    draw.text((cx-0.2*r,cy-0.5*r), str(maxTrigLinks), font = font,fill='black')
+    drawIndex.polygon(coords,fill=MBColor(bow, mb, des), outline=(0, 0, 0))
+    drawIndex.text((cx-0.2*r,cy-0.5*r), str(index+1), font = font,fill='black')
+    drawTrig.polygon(coords,fill=MBColor(bow, mb, des), outline=(0, 0, 0))
+    drawTrig.text((cx-0.2*r,cy-0.5*r), str(maxTrigLinks), font = font,fill='black')
+    drawDAQ.polygon(coords,fill=MBColor(bow, mb, des), outline=(0, 0, 0))
+    drawDAQ.text((cx-0.2*r,cy-0.5*r), str(maxDAQLinks), font = font,fill='black')
 
     if 'F' in des: 
       draworfull(cx, cy, r, rot, draw)
-      draworfull(cx, cy, r, rot, drawSmall)
+      draworfull(cx, cy, r, rot, drawIndex)
+      draworfull(cx, cy, r, rot, drawTrig)
+      draworfull(cx, cy, r, rot, drawDAQ)
       if eng == 'True':
         draw.polygon(coordsEng,fill=(255, 51, 51), outline=(0, 0, 0))
-        drawSmall.polygon(coordsEng,fill=(255, 51, 51), outline=(0, 0, 0))
+        drawIndex.polygon(coordsEng,fill=(255, 51, 51), outline=(0, 0, 0))
+        drawTrig.polygon(coordsEng,fill=(255, 51, 51), outline=(0, 0, 0))
+        drawDAQ.polygon(coordsEng,fill=(255, 51, 51), outline=(0, 0, 0))
 
 # =============================================================================
 # draws orientation arrow on hex in irot direction for full black arrowhead
@@ -594,122 +602,6 @@ def wname(MB, slope):
     return name
 
 # =============================================================================
-# lets move all wagon drawing functions here and call as needed
-# into dynamic spaces
-
-
-def wagondraw(x, y, wname):
-
-    xf = x
-    yf = y
-    diag = 0
-
-    wname = wname[2:]
-
-    shape = wname[0]
-    wname = wname[2:]
-
-    wl = 0
-    n = 0
-
-    while n < len(wname):
-
-        # draw triangle wagons, need a counter that draws their placement fixed
-        if shape == 'T':
-            # hexshape
-            if wname[n] == 'F':
-                des = 'FO'
-            elif wname[n] == 'a':
-                des = 'aOe'
-            elif wname[n] == 'b':
-                des = 'bOe'
-            elif wname[n] == 'd':
-                des = 'dOe'
-            elif wname[n] == 'g':
-                des = 'gOe'
-
-            rot = wname[n+1]
-
-            # Need exception for if indexes for E/R dont exist for last hex
-            if n+2 < len(wname):
-                # engine check
-                if wname[n+2] == 'E':
-                    eng = 'True'
-                    n += 1
-                else:
-                    eng = 'False'
-            else:
-                eng = 'False'
-
-            if wl == 0:
-                x = xf
-                y = yf
-            elif wl == 1:
-                x = xf+70
-                y = yf
-            elif wl == 2:
-                x = xf+35
-                y = yf-60
-
-        # draw linear wagons.  placement is dynamic
-        elif shape == 'L' or shape == 'U':
-
-            # hexshape
-            if wname[n] == 'F':
-                des = 'FO'
-            elif wname[n] == 'a':
-                des = 'aOe'
-            elif wname[n] == 'b':
-                des = 'bOe'
-            elif wname[n] == 'd':
-                des = 'dOe'
-            elif wname[n] == 'g':
-                des = 'gOe'
-
-            rot = wname[n+1]
-
-            if diag == 0:
-                x = xf+70*wl
-            elif diag == 1:
-                x = xf+70*wl-35
-                y = yf-60
-            elif diag == 2:
-                x = xf+70*wl-35
-                y = yf+60
-
-            # Need exception for if indexes for E/R dont exist for last hex
-            if n+2 < len(wname):
-                # engine check
-                if wname[n+2] == 'E':
-                    eng = 'True'
-                    n += 1
-                    if n+2 < len(wname) and wname[n+2] == 'R':
-                        diag = int(wname[n+3])
-                        n += 2
-                # offlinear
-                elif wname[n+2] == 'R':
-                    diag = int(wname[n+3])
-                    eng = 'False'
-                    n += 2
-                else:
-                    eng = 'False'
-                    diag = 0
-            else:
-                eng = 'False'
-                diag = 0
-
-        # print(des,rot,eng,diag,x,y)
-
-        hexdraw(x, y, des, rot, 1, eng)
-        # increase wagon length count to offset new hexes
-        wl += 1
-
-        n += 2
-        if n >= len(wname):
-            break
-
-
-# =============================================================================
 def VertToiRot(ls):
     # correct irot for partials only
     vslopes = []
@@ -873,7 +765,7 @@ def resizePad(im,padding):
     im = ImageOps.expand(im,border=int(padding*min(im.size)),fill='white')
     return im
 
-def wagonDrawer(wagonCounter,geomVersion,maxLinksDict,wagonNameDict):
+def wagonDrawer(wagonCounter,geomVersion,maxLinksTrigDict,maxLinksDAQDict,wagonNameDict,indexChanges):
  
   row, col = 0, 0
   ySpaces = 0
@@ -883,12 +775,19 @@ def wagonDrawer(wagonCounter,geomVersion,maxLinksDict,wagonNameDict):
   bottom = 0
   for wagon in list(wagonCounter.keys()):
     
-    if maxLinksDict != {}:
-        maxLinksList = maxLinksDict[wagon]
+    if maxLinksTrigDict != {}:
+        maxLinksTrigList = maxLinksTrigDict[wagon]
     else:
-        maxLinksList = []
+        maxLinksTrigList = []
         for i in wagonCounter:
-            maxLinksList.append(0)
+            maxLinksTrigList.append(0)
+
+    if maxLinksDAQDict != {}:
+        maxLinksDAQList = maxLinksDAQDict[wagon]
+    else:
+        maxLinksDAQList = []
+        for i in wagonCounter:
+            maxLinksDAQList.append(0)
 
     # Remove x-over index 
     #wagonTemp = wagon[0:2] + wagon[3:]
@@ -903,7 +802,7 @@ def wagonDrawer(wagonCounter,geomVersion,maxLinksDict,wagonNameDict):
     else: bow = 2
     x = x0 + colSpacing * col
     y = bottom + rowSpacing
-    centers = [(x,y,wagonTemp[4],0,'True' if wagonTemp[2] == 0 else 'False', maxLinksList[0])]
+    centers = [(x,y,wagonTemp[4],0,'True' if wagonTemp[2] == 0 else 'False', maxLinksTrigList[0],maxLinksDAQList[0])]
     angle = 0
     orient = 0
     if len(wagonTemp) > nCharsPreCodes + 2:
@@ -920,7 +819,7 @@ def wagonDrawer(wagonCounter,geomVersion,maxLinksDict,wagonNameDict):
         x += 2 * d * math.cos(angle * math.pi / 3)
         y -= 2 * d * math.sin(angle * math.pi / 3)
   
-        centers.append((x,y,codeGroup[4],orient % 6,drawEngine,maxLinksList[i + 1]))
+        centers.append((x,y,codeGroup[4],orient % 6,drawEngine,maxLinksTrigList[i + 1],maxLinksDAQList[i + 1]))
   
     xMin = np.min([i[0] for i in centers])
     yMax = np.max([i[1] for i in centers])
@@ -928,21 +827,45 @@ def wagonDrawer(wagonCounter,geomVersion,maxLinksDict,wagonNameDict):
     yRange = yMax - yMin
     ySpaces = math.floor(yRange / (1.5 * r)) - wagonTemp[2]
     if ySpaces < 0: ySpaces = 0
-    centers = [(i[0] + centers[0][0] - xMin,i[1] + ySpaces * ySpaceExtra,i[2],i[3],i[4],i[5]) for i in centers]
+    centers = [(i[0] + centers[0][0] - xMin,i[1] + ySpaces * ySpaceExtra,i[2],i[3],i[4],i[5],i[6]) for i in centers]
 
-    imSmall = Image.new('RGB', (xmax, ymax), bkgColor)
-    drawSmall = ImageDraw.Draw(imSmall)
+    imIndex = Image.new('RGB', (xmax, ymax), bkgColor)
+    imTrig = Image.new('RGB', (xmax, ymax), bkgColor)
+    imDAQ = Image.new('RGB', (xmax, ymax), bkgColor)
+    drawIndex = ImageDraw.Draw(imIndex)
+    drawTrig = ImageDraw.Draw(imTrig)
+    drawDAQ = ImageDraw.Draw(imDAQ)
 
     for index,center in enumerate(centers):
-      hexdraw(bow,center[0],center[1],center[2],center[3],1,center[4],center[5],EW,index,drawSmall)
-    
+      wagonNameTemp = wagonNameDict[''.join(str(i) for i in wagon)]
+      indexTemp = index if wagonNameTemp not in indexChanges else indexChanges[wagonNameTemp][index]
+      hexdraw(bow,center[0],center[1],center[2],center[3],1,center[4],center[5],center[6],EW,indexTemp,drawIndex,drawTrig,drawDAQ)
+
+    # Save index images  
     padding = 5
-    bg = Image.new(imSmall.mode,imSmall.size,bkgColor)
-    bbox = ImageChops.difference(imSmall,bg).getbbox()
+    bg = Image.new(imIndex.mode,imIndex.size,bkgColor)
+    bbox = ImageChops.difference(imIndex,bg).getbbox()
     bbox = tuple([sum(x) for x in zip(list(bbox),[-padding,-padding,padding,padding])])
-    imSmall = imSmall.crop(bbox)
-  
-    imSmall.save('output/wagonImages/{}.jpg'.format(wagonNameDict[''.join(str(i) for i in wagon)]),quality=95)
+    imIndex = imIndex.crop(bbox)
+    imIndex.save('output/wagonImages/indices/{}.jpg'.format(wagonNameDict[''.join(str(i) for i in wagon)]),quality=95)
+
+    # Save trig images
+    padding = 5
+    bg = Image.new(imTrig.mode,imTrig.size,bkgColor)
+    bbox = ImageChops.difference(imTrig,bg).getbbox()
+    bbox = tuple([sum(x) for x in zip(list(bbox),[-padding,-padding,padding,padding])])
+    imTrig = imTrig.crop(bbox)
+    imTrig.save('output/wagonImages/trig/{}.jpg'.format(wagonNameDict[''.join(str(i) for i in wagon)]),quality=95)
+
+    # Save DAQ images
+    padding = 5
+    bg = Image.new(imDAQ.mode,imDAQ.size,bkgColor)
+    bbox = ImageChops.difference(imDAQ,bg).getbbox()
+    bbox = tuple([sum(x) for x in zip(list(bbox),[-padding,-padding,padding,padding])])
+    imDAQ = imDAQ.crop(bbox)
+    imDAQ.save('output/wagonImages/DAQ/{}.jpg'.format(wagonNameDict[''.join(str(i) for i in wagon)]),quality=95)
+
+    # Write additional text on summary
 
     centers.sort(key=lambda centers: centers[1],reverse=True)
  
