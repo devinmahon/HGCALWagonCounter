@@ -262,6 +262,7 @@ def main():
   # Extract required columns
   geom = pd.read_csv('{0}{1}.txt'.format(geometryPath,geometryFile),delim_whitespace=True)
   geomBasic = geom[['plane','u','v','x0','y0', 'vx_0', 'vy_0', 'vx_1', 'vy_1', 'vx_2', 'vy_2', 'vx_3', 'vy_3', 'vx_4', 'vy_4', 'vx_5', 'vy_5', 'vx_6', 'vy_6', 'itype','irot','MB','wagon','isEngine','HDorLD','trigLinks','dataLinks_ld','dataLinks_hd','icassette']].copy()
+  geomBasic['itypeName'] = geomBasic['itype']
 
   # Remove tile modules (TM)
   geomBasic = geomBasic[~geomBasic['itype'].str.contains('TM')]
@@ -281,14 +282,20 @@ def main():
     # LD Halves (a[O|M]e + T/B)
     geomBasic.loc[(geomBasic['itype'].str.contains('aOe|aMe')) & (geomBasic['itype'].str[-1] == 'B'),'irot'] += 5
     geomBasic.loc[(geomBasic['itype'].str.contains('aOe|aMe')) & (geomBasic['itype'].str[-1] == 'T'),'irot'] += 1
-  
+    geomBasic.loc[(geomBasic['itype'].str.contains('aOe|aMe')) & (geomBasic['itype'].str[-1] == 'B'),'itypeName'] = 'Half Bottom'
+    geomBasic.loc[(geomBasic['itype'].str.contains('aOe|aMe')) & (geomBasic['itype'].str[-1] == 'T'),'itypeName'] = 'Half Top'
+
     # LD Semis (d[O|M]e + R/L)
     geomBasic.loc[(geomBasic['itype'].str.contains('dOe|dMe')) & (geomBasic['itype'].str[-1] == 'R'),'irot'] += 0
     geomBasic.loc[(geomBasic['itype'].str.contains('dOe|dMe')) & (geomBasic['itype'].str[-1] == 'L'),'irot'] += 3
+    geomBasic.loc[(geomBasic['itype'].str.contains('dOe|dMe')) & (geomBasic['itype'].str[-1] == 'R'),'itypeName'] = 'Semi Right'
+    geomBasic.loc[(geomBasic['itype'].str.contains('dOe|dMe')) & (geomBasic['itype'].str[-1] == 'L'),'itypeName'] = 'Semi Left'
   
     # LD Fives (b[O|M|OM]e + RL/LR)
     geomBasic.loc[(geomBasic['itype'].str.contains('bOe|bMe|bOMe')) & (geomBasic['itype'].str[-2:] == 'RL'),'irot'] += 3
     geomBasic.loc[(geomBasic['itype'].str.contains('bOe|bMe|bOMe')) & (geomBasic['itype'].str[-2:] == 'LR'),'irot'] += 3
+    geomBasic.loc[(geomBasic['itype'].str.contains('bOe|bMe|bOMe')) & (geomBasic['itype'].str[-2:] == 'RL'),'itypeName'] = 'Five RL'
+    geomBasic.loc[(geomBasic['itype'].str.contains('bOe|bMe|bOMe')) & (geomBasic['itype'].str[-2:] == 'LR'),'itypeName'] = 'Five LR'
 
     geomBasic.loc[geomBasic['itype'].str.contains('aOe|aMe'),'itype'] = 'd'
     geomBasic.loc[geomBasic['itype'].str.contains('bOe|bMe|bOMe'),'itype'] = 'd'
@@ -762,7 +769,6 @@ def main():
     '0010d2052F20'		: 'WE11B1',
     '0101F3030F30'		: 'WW20D1',
     '0000F4021d20'		: 'WE11C1',
-    '0101F2032d20'		: 'WW11B1',
     '0100F2032d20'		: 'WW11B1', # Used to be '0101F2032d20' before v16.3
     '0000F2015d20'		: 'WE11B2',
     '0002F3000F20'		: 'WE20E1',
@@ -972,6 +978,22 @@ def main():
     wagonCodesDict = wagonCodesDictCopy  
     wagonCodesDict = {x:y for x, y in wagonCodesDict.items() if len(y) > 0} # Remove empty entries
 
+  # Compute partial and zipper info
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
   # Manual consolidations
   consolDict = {	(0,1,0,1,'F','5',0):	[(0,1,0,3,'F','3',0)],} # WW10A1 <-- WW10B1
   for key,items in consolDict.items(): 
@@ -979,6 +1001,7 @@ def main():
       wagonCodesDict[key] += wagonCodesDict[item]
       wagonCodesDict.pop(item)
 
+  # Final counts
   codeCounter = Counter({tuple(key):len(val) for key,val in wagonCodesDict.items()})
   maxLinks = {x:maxLinksCalculation(x,'B','trigLinks',wagonCodesDict,geomGrouped,recodedCodesList) for x in wagonCodesDict}
   maxDAQLinksLD = {x:maxLinksCalculation(x,'B','dataLinks_ld',wagonCodesDict,geomGrouped,recodedCodesList) for x in wagonCodesDict}
@@ -988,157 +1011,6 @@ def main():
     if key[0] == 0: maxDAQLinks[key] = maxDAQLinksLD[key]
     elif key[0] == 1: maxDAQLinks[key] = maxDAQLinksHD[key]
     else: print('ERROR: Unknown first code in {}'.format(key))
-
-  # Make LD wagon info tables
-  # Index changes so that module with engine has index 1
-  indexChanges = {	'WE40A2': [2,1,3,0],
-			'WE31A2': [3,2,1,0],
-			'WE30A2': [1,0,2],
-			'WE21C3': [1,0,2],
-			'WE21C5': [2,1,0],
-			'WE21C6': [1,0,2],
-			'WE11B1': [1,0],
-			'WW21E3': [1,0,2],
-			'WW21E1': [1,0,2],
-			'WW30A2': [1,0,2],}
-  if not args.noTables:
-
-    if not os.path.exists('output/latex/{}'.format(geomVersion)): os.makedirs('output/latex/{}'.format(geomVersion))
-    f = open('output/latex/{}/LDWagonInfo.tex'.format(geomVersion),'w')
-
-    f.write('\\documentclass[10pt]{article}\n')
-    f.write('\\renewcommand{\\familydefault}{\\ttdefault}\n')
-    f.write('\\usepackage[margin=1in]{geometry}\n')
-    f.write('\\usepackage{hyperref}\n')
-    f.write('\\usepackage{multicol}\n')
-    f.write('\\setlength\columnsep{15pt}\n')
-    f.write('\\usepackage{tocloft}\n')
-    f.write('\\renewcommand{\cftsecleader}{\cftdotfill{\cftdotsep}}\n')
-    f.write('\\setlength{\cftbeforesecskip}{0pt}\n')
-    f.write('\\renewcommand{\contentsname}{}\n')
-    f.write('\\setcounter{secnumdepth}{0}\n')
-    f.write('\\setcounter{tocdepth}{2}\n')
-    f.write('\\hypersetup{linktoc=all}\n')
-    f.write('\\usepackage{graphicx}\n')
-    f.write('\\parindent=0pt\n')
-    f.write('\\parskip=20pt\n')
-    f.write('\\begin{document}\n')
-    f.write('\\begin{center}\n')
-    f.write('{\huge LD Wagon Info}\n')
-    f.write('\\end{center}\n')
-    f.write('\\begin{multicols}{2}\n')
-    f.write('\\tableofcontents\n')
-    f.write('\\end{multicols}\n')
-    f.write('\\newpage\n')
-
-    for key,_ in sorted(wagonCodesDict.items(),key=lambda x:(len(x[0]),x[0][1]),reverse=True):
-      codeString = ''.join([str(x) for x in key])
-      code = codeString
-      if int(code[0]) != 0: continue
-      nXin = int(code[3])
-      isWest = int(code[1])
-      code = code[5:]
-      code = [code[i:i+2] for i in range(0, len(code), 5)]
-      code = [[int(x[0]),int(x[1])] for x in code]
-      f.write('\\section{{{} ({})}}\n\n'.format(wagonNameDict[codeString],codeString))
-      trigRouting  = []
-      DAQRouting   = []
-      xOverRouting = []
-
-      linkList = maxLinks[key]
-      if wagonNameDict[codeString] in indexChanges: 
-        for i in range(len(linkList)):
-          linkList[i] = linkList[indexChanges[wagonNameDict[codeString]][i]]
-      for Mi,nT in enumerate(linkList):
-         for Ti in range(nT):
-           if (Ti + 1) > code[Mi][0]: 	xOverRouting.append('M{}.{}'.format(Mi+1,Ti))
-           else:			trigRouting.append('M{}.{}'.format(Mi+1,Ti))
-
-      linkList = maxDAQLinks[key]
-      if wagonNameDict[codeString] in indexChanges:
-        for i in range(len(linkList)):
-          linkList[i] = linkList[indexChanges[wagonNameDict[codeString]][i]]
-      for Mi,nD in enumerate(linkList):
-        for Di in range(nD):
-          DAQRouting.append('M{}.{}'.format(Mi+1,Di))
-
-      for i in range(nXin): trigRouting.append('X.{}'.format(i))
-
-      trigRouting[len(trigRouting):]  = ['-' for x in range(7 - len(trigRouting))]
-      if not isWest: DAQRouting = ['-'] * 3 + DAQRouting
-      DAQRouting[len(DAQRouting):]   = ['-' for x in range(7 - len(DAQRouting))]
-      xOverRouting[len(xOverRouting):] = ['-' for x in range(3 - len(xOverRouting))]
-      if len(trigRouting) != 7 and DAQRouting != 7 and xOverRouting != 3: print('ERROR: Incorrect length of routing arrays')
-      if not isWest: DAQRouting = [DAQRouting[i] for i in [0,1,2,6,3,4,5]]
-
-      trigRoutingDict = {'TRIG\_ELINK{}\_{}'.format('W' if isWest else 'E',i):x for (i,x) in zip(np.arange(len(trigRouting)),trigRouting) if x != '-'}
-      xOverOutRoutingDict = {'XING\_ELINK\_{}'.format(i):x for (i,x) in zip(np.arange(len(xOverRouting)),xOverRouting) if x != '-'}
-
-      modTrigRoutingDict = {}
-      xOverInRoutingDict = {}
-      for link,mod in trigRoutingDict.items():
-        if 'M' in mod: modTrigRoutingDict[mod] = link
-        elif 'X' in mod: xOverInRoutingDict[mod] = link
-      for link,mod in xOverOutRoutingDict.items():
-        if 'M' in mod: modTrigRoutingDict[mod] = link
-      modTrigRoutingDict = sorted(modTrigRoutingDict.items(),key=lambda x: x[0])
-      xOverInRoutingDict = sorted(xOverInRoutingDict.items(),key=lambda x: x[0])
-
-      modDAQRoutingDict = {x:'DAQ\_ELINK{}\_{}'.format('W' if isWest else 'E',i) for (i,x) in zip(np.arange(len(DAQRouting)),DAQRouting) if x != '-'}
-      modDAQRoutingDict = sorted(modDAQRoutingDict.items(),key=lambda x: x[0])
-
-      modTrigRoutingDict = [list(x) for x in modTrigRoutingDict]
-      xOverInRoutingDict   = [list(x) for x in xOverInRoutingDict]
-      modDAQRoutingDict  = [list(x) for x in modDAQRoutingDict]
-
-      f.write('Trig lpGBT\n\n\\vspace{-10pt}\n')
-      headers = ['Index'] + list(np.arange(7))
-      table = [[''] + trigRouting]
-      f.write(tabulate(table,headers,tablefmt="latex_raw",))
-      f.write('\n\n')
-
-      f.write('DAQ lpGBT\n\n\\vspace{-10pt}\n')
-      headers = ['Index (Wagon Label)'] + ['0(W0)','1(W1)','2(W2)','3(X)','4(E0)','5(E1)','6(E2)']
-      table = [[''] + DAQRouting]
-      f.write(tabulate(table,headers,tablefmt="latex_raw",))
-      f.write('\n\n')
-
-      f.write('Crossover\n\n\\vspace{-10pt}\n')
-      headers = ['Index'] + list(np.arange(3))
-      table = [[''] + xOverRouting]
-      f.write(tabulate(table,headers,tablefmt="latex_raw"))
-      f.write('\n\n')
-
-      headers = ['Module Indices','Trigger Link Distribution','DAQ Link Distribution']
-      table = [['\includegraphics[width=0.2\\textwidth]{{/Users/devinmahon/Documents/CMS/wagonCounter/output/wagonImages/indices/{}.jpg}}'.format(wagonNameDict[codeString]),'\includegraphics[width=0.2\\textwidth]{{/Users/devinmahon/Documents/CMS/wagonCounter/output/wagonImages/trig/{}.jpg}}'.format(wagonNameDict[codeString]),'\includegraphics[width=0.2\\textwidth]{{/Users/devinmahon/Documents/CMS/wagonCounter/output/wagonImages/DAQ/{}.jpg}}'.format(wagonNameDict[codeString])]]
-      f.write(tabulate(table,headers,tablefmt="latex_raw"))
-      f.write('\n\n')
-
-      if modTrigRoutingDict:
-        f.write('Trig links sorted by module\n\n\\vspace{-10pt}\n')
-        headers = ['Module Trig Link','Trig Link']
-        table = modTrigRoutingDict
-        f.write(tabulate(table,headers,tablefmt="latex_raw"))
-        f.write('\n\n')
-
-      if modDAQRoutingDict: 
-        f.write('DAQ links sorted by module\n\n\\vspace{-10pt}\n')
-        headers = ['Module DAQ Link','DAQ Link']
-        table = modDAQRoutingDict
-        f.write(tabulate(table,headers,tablefmt="latex_raw"))
-        f.write('\n\n')
-
-      if xOverInRoutingDict:
-        f.write('Incoming crossover trig links sorted by link no.\n\n\\vspace{-10pt}\n')
-        headers = ['Crossover Trig Link','Trig Link']
-        table = xOverInRoutingDict
-        f.write(tabulate(table,headers,tablefmt="latex_raw"))
-        f.write('\n\n')
-
-      f.write('\n\\newpage\n')
-
-    f.write('\\end{document}')
-    f.close()
 
   # Output geometry files
   if not os.path.exists('output/geometries/{}'.format(geomVersion)): os.makedirs('output/geometries/{}'.format(geomVersion))
@@ -1152,15 +1024,19 @@ def main():
     fInfo.write('\\begin{tabular}{|c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|}')
 
   wagonNameStatus = {y:False for x,y in wagonNameDict.items()} # Track whether name has been used
+  partialDict = {}
+  partialNamesDict = {'Semi Right': 0,'Semi Left': 0,'Half Top': 0,'Half Bottom': 0,'Five LR': 0,'Five RL':0}
   for tempCode,indices in wagonCodesDict.items():
     tempCodeString = ''.join(str(x) for x in tempCode)
+    partialDict[wagonNameDict[tempCodeString]] = {i:partialNamesDict.copy() for i in range(int(wagonNameDict[tempCodeString][2]) + int(wagonNameDict[tempCodeString][3]))}
     isHD = int(tempCodeString[0])
     for index in indices:
 
       tempIndex = index
       geomTempIndex = geomGrouped.get_group((tempIndex[0],tempIndex[1],tempIndex[2]))
 
-      if not isHD: # LD
+      # LD wagons
+      if not isHD:
         geomTempPartnerIndex = geomGrouped.get_group((tempIndex[0],tempIndex[1],not tempIndex[2]))
         plane,icassette,MB,wagon = geomTempIndex[['plane','icassette','MB','wagon']].iloc[0]
         if int(tempCodeString[1]): # West
@@ -1208,7 +1084,12 @@ def main():
           print('ERROR: Wagon type code for {} not found'.format(tempCodeString))
           wagonName = 'XXXXXX'
 
-      else: # HD
+        # Record partial info across instances
+        for i,(uTemp,vTemp) in enumerate(list(zip(uList,vList))):
+          if uTemp == '-' or vTemp == '-': continue
+          if geomTempIndex.loc[(geomTempIndex['u'] == uTemp) & (geomTempIndex['v'] == vTemp),'itype'].iloc[0][0] != 'F':
+            partialDict[wagonNameDict[tempCodeString]][i][geomTempIndex.loc[(geomTempIndex['u'] == uTemp) & (geomTempIndex['v'] == vTemp),'itypeName'].iloc[0]] += 1 
+      else: # HD wagons
 
         plane,icassette,MB,wagon,u,v,irot,x0,y0,trig0,daqLD0,daqHD0 = geomTempIndex[['plane','icassette','MB','wagon','u','v','irot','x0','y0','trigLinks','dataLinks_ld','dataLinks_hd']].loc[geomTempIndex['isEngine']].iloc[0]
         uLD,vLD,temp = nextModule(plane,u,v,irot,angle=3,orient=0)
@@ -1281,8 +1162,11 @@ def main():
     fInfo.write('\\end{tabular}')
     fInfo.close()
 
+  print(partialDict)
+
   for key,val in wagonNameStatus.items():
     if not val: print('WARNING: Unused wagon name ({})'.format(key))
+
 
   #geomWagon = pd.read_csv('output/geometriesWagon/{}/geometryWagon.txt'.format(geomVersion),delim_whitespace=True)
 
@@ -1343,9 +1227,243 @@ def main():
 
   f.close()
 
-  #codeCounterTemp = {k: v for k,v in codeCounter.items() if len(k) == 12 and sum([i == 'F' for i in k]) == 2 and k[1] == 0 and k[7] == 0 and k[8] == 0}
-  #codeCounter = codeCounterTemp
+  # Make LD wagon info tables
+  # Index changes so that module with engine has index 1
+  indexChanges = {	# "Discontinous" wagons
+			'WE40A2': [2,1,3,0],
+			'WE31A2': [3,2,1,0],
+			'WE30A2': [1,0,2],
+			'WE21C3': [1,0,2],
+			'WE21C5': [2,1,0],
+			'WE21C6': [1,0,2],
+			'WE11B1': [1,0],
+			'WW21E3': [1,0,2],
+			'WW21E1': [1,0,2],
+			'WW30A2': [1,0,2],
+			# Re-indexing some wagons to start straight
+			'WE12A1': [0,2,1],
+                        'WE12B1': [0,2,1],
+                        'WE21C1': [0,2,1],
+                        'WE21C2': [0,2,1],
+                        'WE21C4': [0,2,1],
+                        'WE30A3': [0,2,1],
+                        'WE31A3': [0,2,1,3],
+                        'WW12A1': [0,2,1],
+                        'WW12B1': [0,2,1],
+                        'WW21E2': [0,2,1],
+                        'WW30B2': [0,2,1],
+		}
+  if not args.noTables:
 
+    if not os.path.exists('output/latex/{}'.format(geomVersion)): os.makedirs('output/latex/{}'.format(geomVersion))
+    f = open('output/latex/{}/LDWagonInfo.tex'.format(geomVersion),'w')
+
+    f.write('\\documentclass[10pt]{article}\n')
+    f.write('\\renewcommand{\\familydefault}{\\ttdefault}\n')
+    f.write('\\usepackage[margin=1in]{geometry}\n')
+    f.write('\\usepackage{hyperref}\n')
+    f.write('\\usepackage{tikz}\n')
+    f.write('\\usepackage{multicol}\n')
+    f.write('\\setlength\columnsep{15pt}\n')
+    f.write('\\usepackage{tocloft}\n')
+    f.write('\\renewcommand{\cftsecleader}{\cftdotfill{\cftdotsep}}\n')
+    f.write('\\setlength{\cftbeforesecskip}{0pt}\n')
+    f.write('\\renewcommand{\contentsname}{}\n')
+    f.write('\\setcounter{secnumdepth}{0}\n')
+    f.write('\\setcounter{tocdepth}{2}\n')
+    f.write('\\hypersetup{linktoc=all}\n')
+    f.write('\\usepackage{graphicx}\n')
+    f.write('\\parindent=0pt\n')
+    f.write('\\parskip=15pt\n')
+    f.write('\\begin{document}\n')
+    f.write('\\begin{center}\n')
+    f.write('{\huge LD Wagon Design Information}\n')
+    f.write('\\end{center}\n')
+    f.write('\\begin{multicols}{2}\n')
+    f.write('\\tableofcontents\n')
+    f.write('\\end{multicols}\n')
+    f.write('\\newpage\n')
+
+    for key,_ in sorted(wagonCodesDict.items(),key=lambda x:(wagonNameDict[''.join([str(y) for y in x[0]])]),reverse=False):
+      codeString = ''.join([str(x) for x in key])
+      code = codeString
+      nFull = int(wagonNameDict[codeString][2])
+      nPartials = int(wagonNameDict[codeString][3])
+      nModules = nFull + nPartials
+      if int(code[0]) != 0: continue
+      nXin = int(code[3])
+      isWest = int(code[1])
+      code = code[5:]
+      code = [code[i:i+2] for i in range(0, len(code), 5)]
+      code = [[int(x[0]),int(x[1])] for x in code]
+
+      f.write('\\begin{tikzpicture}[overlay, remember picture]\n')
+      f.write('\\node[xshift=-2in,yshift=-2.05in] at (current page.north east) {{\IfFileExists{{/Users/devinmahon/Documents/CMS/wagonCounter/output/wagonImages/cartoons/{}.png}}{{\includegraphics[width=0.85in,height=0.85in,keepaspectratio]{{/Users/devinmahon/Documents/CMS/wagonCounter/output/wagonImages/cartoons/{}.png}}}}{{\includegraphics[width=0.85in,height=0.85in,keepaspectratio]{{/Users/devinmahon/Downloads/NotFound.png}}}}}};\n'.format(wagonNameDict[codeString],wagonNameDict[codeString]))
+      f.write('\\node[xshift=-2in,yshift=-1.5in] at (current page.north east) {Variant Cartoon};\n')
+      f.write('\\node (rect) at ([xshift=-2in,yshift=-1.95in] current page.north east) [draw,thick,minimum width=1.2in,minimum height=1.1in] {};\n')
+      f.write('\\end{tikzpicture}\n\n')
+
+      f.write('\\section{{{} ({})}}\n\n'.format(wagonNameDict[codeString],codeString))
+      f.write('\\vspace{-20pt}\n')
+      f.write('N = {} full detector\n\n'.format(codeCounter[key] * 6))
+
+      trigRouting  = []
+      DAQRouting   = []
+      xOverRouting = []
+
+      linkList = maxLinks[key]
+      if wagonNameDict[codeString] in indexChanges: 
+        for i in range(len(linkList)):
+          linkList[i] = linkList[indexChanges[wagonNameDict[codeString]][i]]
+      for Mi,nT in enumerate(linkList):
+         for Ti in range(nT):
+           if (Ti + 1) > code[Mi][0]: 	xOverRouting.append('M{}.{}'.format(Mi+1,Ti))
+           else:			trigRouting.append('M{}.{}'.format(Mi+1,Ti))
+
+      linkList = maxDAQLinks[key]
+      if wagonNameDict[codeString] in indexChanges:
+        for i in range(len(linkList)):
+          linkList[i] = linkList[indexChanges[wagonNameDict[codeString]][i]]
+      for Mi,nD in enumerate(linkList):
+        for Di in range(nD):
+          DAQRouting.append('M{}.{}'.format(Mi+1,Di))
+
+      for i in range(nXin): trigRouting.append('X.{}'.format(i))
+
+      trigRouting[len(trigRouting):]  = ['-' for x in range(7 - len(trigRouting))]
+      if not isWest: trigRouting = list(reversed(trigRouting))
+      if not isWest: DAQRouting = ['-'] * 3 + DAQRouting
+      DAQRouting[len(DAQRouting):]   = ['-' for x in range(7 - len(DAQRouting))]
+      xOverRouting[len(xOverRouting):] = ['-' for x in range(3 - len(xOverRouting))]
+      if len(trigRouting) != 7 and DAQRouting != 7 and xOverRouting != 3: print('ERROR: Incorrect length of routing arrays')
+      if not isWest: DAQRouting = [DAQRouting[i] for i in [0,1,2,6,3,4,5]]
+
+      trigRoutingDict = {'TRIG\_ELINK{}\_{}'.format('W' if isWest else 'E',i):x for (i,x) in zip(np.arange(len(trigRouting)),trigRouting) if x != '-'}
+      xOverOutRoutingDict = {'XING\_ELINK\_{}'.format(i):x for (i,x) in zip(np.arange(len(xOverRouting)),xOverRouting) if x != '-'}
+
+      modTrigRoutingDict = {}
+      xOverInRoutingDict = {}
+      for link,mod in trigRoutingDict.items():
+        if 'M' in mod: modTrigRoutingDict[mod] = link
+        elif 'X' in mod: xOverInRoutingDict[mod] = link
+      for link,mod in xOverOutRoutingDict.items():
+        if 'M' in mod: modTrigRoutingDict[mod] = link
+      modTrigRoutingDict = sorted(modTrigRoutingDict.items(),key=lambda x: x[0])
+      xOverInRoutingDict = sorted(xOverInRoutingDict.items(),key=lambda x: x[0])
+
+      modDAQRoutingDict = {x:'DAQ\_ELINK{}\_{}'.format('W' if isWest else 'E',i) for (i,x) in zip(np.arange(len(DAQRouting)),DAQRouting) if x != '-'}
+      modDAQRoutingDict = sorted(modDAQRoutingDict.items(),key=lambda x: x[0])
+
+      modTrigRoutingDict = [list(x) for x in modTrigRoutingDict]
+      xOverInRoutingDict   = [list(x) for x in xOverInRoutingDict]
+      modDAQRoutingDict  = [list(x) for x in modDAQRoutingDict]
+
+      f.write('Trig lpGBT\n\n\\vspace{-10pt}\n')
+      headers = ['Index'] + list(np.arange(7))
+      table = [[''] + trigRouting]
+      f.write(tabulate(table,headers,tablefmt="latex_raw",))
+      f.write('\n\n')
+
+      f.write('DAQ lpGBT\n\n\\vspace{-10pt}\n')
+      headers = ['Index (Wagon Label)'] + ['0(W0)','1(W1)','2(W2)','3(X)','4(E0)','5(E1)','6(E2)']
+      table = [[''] + DAQRouting]
+      f.write(tabulate(table,headers,tablefmt="latex_raw",))
+      f.write('\n\n')
+
+      f.write('Crossover\n\n\\vspace{-10pt}\n')
+      headers = ['Index'] + list(np.arange(3))
+      table = [[''] + xOverRouting]
+      f.write(tabulate(table,headers,tablefmt="latex_raw"))
+      f.write('\n\n')
+
+      headers = ['Module Indices','Trigger Link Distribution','DAQ Link Distribution']
+      table = [['\includegraphics[width=0.2\\textwidth]{{/Users/devinmahon/Documents/CMS/wagonCounter/output/wagonImages/indices/{}.jpg}}'.format(wagonNameDict[codeString]),'\includegraphics[width=0.2\\textwidth]{{/Users/devinmahon/Documents/CMS/wagonCounter/output/wagonImages/trig/{}.jpg}}'.format(wagonNameDict[codeString]),'\includegraphics[width=0.2\\textwidth]{{/Users/devinmahon/Documents/CMS/wagonCounter/output/wagonImages/DAQ/{}.jpg}}'.format(wagonNameDict[codeString])]]
+      f.write(tabulate(table,headers,tablefmt="latex_raw"))
+      f.write('\n\n')
+
+      if sum([n for index,pTypes in partialDict[wagonNameDict[codeString]].items() for pType,n in pTypes.items()]):
+
+        zipperDict = {}
+        zipperTypeDict = {    	'Semi Right':   'HS',
+                                'Semi Left':    'HS',
+                                'Half Top':     'HS',
+                                'Half Bottom':  'HS',
+                                'Five LR':      'LR',
+                                'Five RL':      'RL',}
+
+        f.write('\\begin{multicols}{2}\n\n')
+        f.write('\\raggedcolumns\n')
+        f.write('Partial Types\n\n\\vspace{-10pt}\n')
+        for index,typeCounts in partialDict[wagonNameDict[codeString]].items():
+          if sum([n for pType,n in typeCounts.items()]):
+            indexTemp = index
+            if wagonNameDict[codeString] in indexChanges: indexTemp = indexChanges[wagonNameDict[codeString]][index]
+            headers = ['Module {}'.format(indexTemp+1),'Zipper','N Full Detector']
+            table = []
+            for pType,pCount in typeCounts.items():
+              if pCount == 0: continue
+              if indexTemp != nFull and wagonNameDict[codeString] not in ['WE21C6','WW21E1']: zipperShape = 'N'
+              elif isWest:
+                if pType in ['Semi Right','Half Top','Five LR']: zipperShape = 'N'
+                elif pType in ['Semi Left','Half Bottom','Five RL']: 
+                  if (codeString[4] == 'F' and int(codeString[7]) not in [0,3]) or wagonNameDict[codeString] == 'WW21E3': zipperShape = 'N'
+                  else: zipperShape = 'R'
+                else: print('ERROR: Unexpected partial type: {}'.format(pType)) 
+              else: # East
+                if pType in ['Semi Right','Half Top','Five LR']: 
+                  if codeString[4] == 'F' and int(codeString[7]) not in [0,3]: zipperShape = 'N'
+                  else: zipperShape = 'L'
+                elif pType in ['Semi Left','Half Bottom','Five RL']: zipperShape = 'N' 
+                else: print('ERROR: Unexpected partial type: {}'.format(pType))
+              zipperType = zipperTypeDict[pType] + zipperShape + ('G' if nModules == 4 else '0')
+              if zipperType in zipperDict: zipperDict[zipperType] += pCount * 6
+              else: zipperDict[zipperType] = pCount * 6
+              table.append([pType,zipperType,str(pCount * 6)])
+            f.write(tabulate(table,headers,tablefmt="latex_raw"))
+            f.write('\n\n')
+
+        f.write('\\columnbreak\n')
+        f.write('Zipper Types\n\n\\vspace{-10pt}\n')
+        headers = ['Zipper','N Full Detector']
+        table = []
+        for zipperName,zipperCount in zipperDict.items():
+          table.append([zipperName,zipperCount])
+        f.write(tabulate(table,headers,tablefmt="latex_raw"))
+        f.write('\n\n')
+
+        f.write('\\end{multicols}\n\n')
+
+      f.write('\\begin{multicols}{2}\n\n')
+
+      if modTrigRoutingDict:
+        f.write('Trig links sorted by module\n\n\\vspace{-10pt}\n')
+        headers = ['Module Trig Link','Trig Link']
+        table = modTrigRoutingDict
+        f.write(tabulate(table,headers,tablefmt="latex_raw"))
+        f.write('\n\n')
+
+      if modDAQRoutingDict: 
+        f.write('DAQ links sorted by module\n\n\\vspace{-10pt}\n')
+        headers = ['Module DAQ Link','DAQ Link']
+        table = modDAQRoutingDict
+        f.write(tabulate(table,headers,tablefmt="latex_raw"))
+        f.write('\n\n')
+
+      f.write('\\end{multicols}\n\n')
+
+      if xOverInRoutingDict:
+        f.write('Incoming crossover trig links sorted by link no.\n\n\\vspace{-10pt}\n')
+        headers = ['Crossover Trig Link','Trig Link']
+        table = xOverInRoutingDict
+        f.write(tabulate(table,headers,tablefmt="latex_raw"))
+        f.write('\n\n')
+
+      f.write('\n\\newpage\n')
+
+    f.write('\\end{document}')
+    f.close()
+
+  # Print out counts
   #print(codeCounter)
   uniqueWagonCodes = [list(i) for i in set(tuple(i) for i in list(codeCounter.keys()))]
   uniqueWagonCodesHD = [i for i in uniqueWagonCodes if i[0] == 1]
