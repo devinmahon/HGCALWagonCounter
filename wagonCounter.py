@@ -978,21 +978,112 @@ def main():
     wagonCodesDict = wagonCodesDictCopy  
     wagonCodesDict = {x:y for x, y in wagonCodesDict.items() if len(y) > 0} # Remove empty entries
 
-  # Compute partial and zipper info
 
+  # Index changes so that module with engine has index 1
+  indexChanges = {	# "Discontinous" wagons
+			'WE40A2': [2,1,3,0],
+			'WE31A2': [3,2,1,0],
+			'WE30A2': [1,0,2],
+			'WE21C3': [1,0,2],
+			'WE21C5': [2,1,0],
+			'WE21C6': [1,0,2],
+			'WE11B1': [1,0],
+			'WW21E3': [1,0,2],
+			'WW21E1': [1,0,2],
+			'WW30A2': [1,0,2],
+			# Re-indexing some wagons to start straight
+			'WE12A1': [0,2,1],
+                        'WE12B1': [0,2,1],
+                        'WE21C1': [0,2,1],
+                        'WE21C2': [0,2,1],
+                        'WE21C4': [0,2,1],
+                        'WE30A3': [0,2,1],
+                        'WE31A3': [0,2,1,3],
+                        'WW12A1': [0,2,1],
+                        'WW12B1': [0,2,1],
+                        'WW21E2': [0,2,1],
+                        'WW30B2': [0,2,1],
+		}
 
+  # Compute partial and zipper info for LD wagons
+  partialDict = {}
+  partialNamesDict = {'Semi Right': 0,'Semi Left': 0,'Half Top': 0,'Half Bottom': 0,'Five LR': 0,'Five RL':0}
+  partialZipperMap = {}
+  zipperDict = {}
+  zipperTypeDict = {      'Semi Right':   'HS',
+                          'Semi Left':    'HS',
+                          'Half Top':     'HS',
+                          'Half Bottom':  'HS',
+                          'Five LR':      'LR',
+                          'Five RL':      'RL',}
+  for tempCode,indices in wagonCodesDict.items():
+    tempCodeString = ''.join(str(x) for x in tempCode)
+    wagonName = wagonNameDict[tempCodeString]
+    isHD = int(tempCodeString[0])
+    if isHD or (int(wagonName[3]) == 0): continue 
+    partialDict[wagonName] = {i:partialNamesDict.copy() for i in range(int(wagonNameDict[tempCodeString][2]) + int(wagonNameDict[tempCodeString][3]))}
+    #zipperDict[wagonName] = {i:zipperNamesDict.copy() for i in range(int(wagonNameDict[tempCodeString][2]) + int(wagonNameDict[tempCodeString][3]))}
+    for index in indices:
 
+      tempIndex = index
+      geomTempIndex = geomGrouped.get_group((tempIndex[0],tempIndex[1],tempIndex[2]))
 
+      geomTempPartnerIndex = geomGrouped.get_group((tempIndex[0],tempIndex[1],not tempIndex[2]))
+      plane,icassette,MB,wagon = geomTempIndex[['plane','icassette','MB','wagon']].iloc[0]
+      isWest = int(tempCodeString[1])
+      if isWest: # West
+        u,v,irot,x0,y0,trig0,daqLD0,daqHD0 = geomTempIndex[['u','v','irot','x0','y0','trigLinks','dataLinks_ld','dataLinks_hd']].loc[geomTempIndex['isEngine']].iloc[0]
+      else: # East
+        uWest,vWest,irotWest = [int(x) for x in geomTempPartnerIndex[['u','v','irot']].loc[geomTempPartnerIndex['isEngine']].iloc[0]]
+        u,v = findEastEngineModule(plane,uWest,vWest,irotWest)
+        irot,x0,y0,trig0,daqLD0,daqHD0 = geomTempIndex[['irot','x0','y0','trigLinks','dataLinks_ld','dataLinks_hd']].loc[(geomTempIndex['u'] == u) & (geomTempIndex['v'] == v)].iloc[0]
+      u,v,irot = [int(x) for x in [u,v,irot]]
+      uList = list('-'*4)
+      vList = list('-'*4)
+      irotList = list('-'*4)
+      if int(tempCodeString[2]) == 0:
+        uList[0],vList[0],irotList[0] = [u,v,irot]
+      else:
+        uPrev,vPrev,irotPrev = [u,v,irot]
+        for i in reversed(range(int(tempCodeString[2]))):
+          angleRev,orientRev = reverseAngleOrient(int(tempCodeString[5*i+7]),int(tempCodeString[5*i+8]))
+          uPrev,vPrev,irotPrev = nextModule(plane,uPrev,vPrev,irotPrev,angleRev,orientRev)
+        uList[0],vList[0],irotList[0] = [uPrev,vPrev,irotPrev]
+      for i in range(len(tempCodeString)//5-1):
+        uNext,vNext,irotNext = nextModule(plane,uList[i],vList[i],irotList[i],int(tempCodeString[5*i+7]),int(tempCodeString[5*i+8]))
+        uList[i+1],vList[i+1],irotList[i+1] = uNext,vNext,irotNext
+      nModules = int((len(tempCodeString)-2)/5)
+      nFull = int(wagonName[2])
+      wagonRot = (irot + 3) % 6 if int(tempCodeString[1]) else irot
 
+      # Record partial info across instances
+      for i,(uTemp,vTemp) in enumerate(list(zip(uList,vList))):
+        if uTemp == '-' or vTemp == '-': continue
+        if geomTempIndex.loc[(geomTempIndex['u'] == uTemp) & (geomTempIndex['v'] == vTemp),'itype'].iloc[0][0] != 'F':
+          pType = geomTempIndex.loc[(geomTempIndex['u'] == uTemp) & (geomTempIndex['v'] == vTemp),'itypeName'].iloc[0]
+          partialDict[wagonNameDict[tempCodeString]][i][geomTempIndex.loc[(geomTempIndex['u'] == uTemp) & (geomTempIndex['v'] == vTemp),'itypeName'].iloc[0]] += 1 
 
-
-
-
-
-
-
-
-
+          # Zippers
+          indexTemp = i
+          if wagonName in indexChanges: indexTemp = indexChanges[wagonName][indexTemp]
+          if indexTemp != nFull and wagonName not in ['WE21C6','WW21E1']: zipperShape = 'N'
+          elif isWest:
+            if pType in ['Semi Right','Half Top','Five LR']: zipperShape = 'N'
+            elif pType in ['Semi Left','Half Bottom','Five RL']: 
+              if (codeString[4] == 'F' and int(codeString[7]) not in [0,3]) or wagonName == 'WW21E3': zipperShape = 'N'
+              else: zipperShape = 'R'
+            else: print('ERROR: Unexpected partial type: {}'.format(pType)) 
+          else: # East
+            if pType in ['Semi Right','Half Top','Five LR']: 
+              if codeString[4] == 'F' and int(codeString[7]) not in [0,3]: zipperShape = 'N'
+              else: zipperShape = 'L'
+            elif pType in ['Semi Left','Half Bottom','Five RL']: zipperShape = 'N' 
+            else: print('ERROR: Unexpected partial type: {}'.format(pType))
+          zipperType = zipperTypeDict[pType] + zipperShape + ('G' if nModules == 4 else '0')
+          if wagonName in zipperDict and indexTemp in zipperDict[wagonName] and zipperType in zipperDict[wagonName][indexTemp]: zipperDict[wagonName][indexTemp][zipperType] += 1
+          else: zipperDict.setdefault(wagonName,{indexTemp:{zipperType:1}}).setdefault(indexTemp,{zipperType:1}).setdefault(zipperType,1)
+          
+          partialZipperMap.setdefault(wagonName,{indexTemp:{pType:zipperType}}).setdefault(indexTemp,{pType:zipperType}).setdefault(pType,zipperType)
 
   # Manual consolidations
   consolDict = {	(0,1,0,1,'F','5',0):	[(0,1,0,3,'F','3',0)],} # WW10A1 <-- WW10B1
@@ -1024,11 +1115,8 @@ def main():
     fInfo.write('\\begin{tabular}{|c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|}')
 
   wagonNameStatus = {y:False for x,y in wagonNameDict.items()} # Track whether name has been used
-  partialDict = {}
-  partialNamesDict = {'Semi Right': 0,'Semi Left': 0,'Half Top': 0,'Half Bottom': 0,'Five LR': 0,'Five RL':0}
   for tempCode,indices in wagonCodesDict.items():
     tempCodeString = ''.join(str(x) for x in tempCode)
-    partialDict[wagonNameDict[tempCodeString]] = {i:partialNamesDict.copy() for i in range(int(wagonNameDict[tempCodeString][2]) + int(wagonNameDict[tempCodeString][3]))}
     isHD = int(tempCodeString[0])
     for index in indices:
 
@@ -1084,11 +1172,6 @@ def main():
           print('ERROR: Wagon type code for {} not found'.format(tempCodeString))
           wagonName = 'XXXXXX'
 
-        # Record partial info across instances
-        for i,(uTemp,vTemp) in enumerate(list(zip(uList,vList))):
-          if uTemp == '-' or vTemp == '-': continue
-          if geomTempIndex.loc[(geomTempIndex['u'] == uTemp) & (geomTempIndex['v'] == vTemp),'itype'].iloc[0][0] != 'F':
-            partialDict[wagonNameDict[tempCodeString]][i][geomTempIndex.loc[(geomTempIndex['u'] == uTemp) & (geomTempIndex['v'] == vTemp),'itypeName'].iloc[0]] += 1 
       else: # HD wagons
 
         plane,icassette,MB,wagon,u,v,irot,x0,y0,trig0,daqLD0,daqHD0 = geomTempIndex[['plane','icassette','MB','wagon','u','v','irot','x0','y0','trigLinks','dataLinks_ld','dataLinks_hd']].loc[geomTempIndex['isEngine']].iloc[0]
@@ -1123,7 +1206,6 @@ def main():
         #xFX11,yFX11 = [61.2,23.0]
         #x0FX11 = x0 + xFX11 * np.cos(np.pi/3*irot) + yFX11 * np.sin(np.pi/3*irot)
         #y0FX11 = y0 + xFX11 * np.sin(np.pi/3*irot) - yFX11 * np.cos(np.pi/3*irot)
-        nModules = int((len(tempCodeString)-2)/5)
         nTrigTotal = int(tempCodeString[3]) + \
                      sum([int(tempCodeString[5*i+5],16) for i in range(len(tempCodeString)//5)]) + \
                      sum([int(tempCodeString[5*i+6],16) for i in range(len(tempCodeString)//5)])
@@ -1162,11 +1244,8 @@ def main():
     fInfo.write('\\end{tabular}')
     fInfo.close()
 
-  print(partialDict)
-
   for key,val in wagonNameStatus.items():
     if not val: print('WARNING: Unused wagon name ({})'.format(key))
-
 
   #geomWagon = pd.read_csv('output/geometriesWagon/{}/geometryWagon.txt'.format(geomVersion),delim_whitespace=True)
 
@@ -1228,31 +1307,6 @@ def main():
   f.close()
 
   # Make LD wagon info tables
-  # Index changes so that module with engine has index 1
-  indexChanges = {	# "Discontinous" wagons
-			'WE40A2': [2,1,3,0],
-			'WE31A2': [3,2,1,0],
-			'WE30A2': [1,0,2],
-			'WE21C3': [1,0,2],
-			'WE21C5': [2,1,0],
-			'WE21C6': [1,0,2],
-			'WE11B1': [1,0],
-			'WW21E3': [1,0,2],
-			'WW21E1': [1,0,2],
-			'WW30A2': [1,0,2],
-			# Re-indexing some wagons to start straight
-			'WE12A1': [0,2,1],
-                        'WE12B1': [0,2,1],
-                        'WE21C1': [0,2,1],
-                        'WE21C2': [0,2,1],
-                        'WE21C4': [0,2,1],
-                        'WE30A3': [0,2,1],
-                        'WE31A3': [0,2,1,3],
-                        'WW12A1': [0,2,1],
-                        'WW12B1': [0,2,1],
-                        'WW21E2': [0,2,1],
-                        'WW30B2': [0,2,1],
-		}
   if not args.noTables:
 
     if not os.path.exists('output/latex/{}'.format(geomVersion)): os.makedirs('output/latex/{}'.format(geomVersion))
@@ -1284,9 +1338,27 @@ def main():
     f.write('\\end{multicols}\n')
     f.write('\\newpage\n')
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     for key,_ in sorted(wagonCodesDict.items(),key=lambda x:(wagonNameDict[''.join([str(y) for y in x[0]])]),reverse=False):
       codeString = ''.join([str(x) for x in key])
       code = codeString
+      wagonName = wagonNameDict[codeString]
       nFull = int(wagonNameDict[codeString][2])
       nPartials = int(wagonNameDict[codeString][3])
       nModules = nFull + nPartials
@@ -1381,15 +1453,7 @@ def main():
       f.write(tabulate(table,headers,tablefmt="latex_raw"))
       f.write('\n\n')
 
-      if sum([n for index,pTypes in partialDict[wagonNameDict[codeString]].items() for pType,n in pTypes.items()]):
-
-        zipperDict = {}
-        zipperTypeDict = {    	'Semi Right':   'HS',
-                                'Semi Left':    'HS',
-                                'Half Top':     'HS',
-                                'Half Bottom':  'HS',
-                                'Five LR':      'LR',
-                                'Five RL':      'RL',}
+      if nPartials:
 
         f.write('\\begin{multicols}{2}\n\n')
         f.write('\\raggedcolumns\n')
@@ -1402,32 +1466,21 @@ def main():
             table = []
             for pType,pCount in typeCounts.items():
               if pCount == 0: continue
-              if indexTemp != nFull and wagonNameDict[codeString] not in ['WE21C6','WW21E1']: zipperShape = 'N'
-              elif isWest:
-                if pType in ['Semi Right','Half Top','Five LR']: zipperShape = 'N'
-                elif pType in ['Semi Left','Half Bottom','Five RL']: 
-                  if (codeString[4] == 'F' and int(codeString[7]) not in [0,3]) or wagonNameDict[codeString] == 'WW21E3': zipperShape = 'N'
-                  else: zipperShape = 'R'
-                else: print('ERROR: Unexpected partial type: {}'.format(pType)) 
-              else: # East
-                if pType in ['Semi Right','Half Top','Five LR']: 
-                  if codeString[4] == 'F' and int(codeString[7]) not in [0,3]: zipperShape = 'N'
-                  else: zipperShape = 'L'
-                elif pType in ['Semi Left','Half Bottom','Five RL']: zipperShape = 'N' 
-                else: print('ERROR: Unexpected partial type: {}'.format(pType))
-              zipperType = zipperTypeDict[pType] + zipperShape + ('G' if nModules == 4 else '0')
-              if zipperType in zipperDict: zipperDict[zipperType] += pCount * 6
-              else: zipperDict[zipperType] = pCount * 6
-              table.append([pType,zipperType,str(pCount * 6)])
+              table.append([pType,partialZipperMap[wagonName][indexTemp][pType],str(pCount * 6)])
             f.write(tabulate(table,headers,tablefmt="latex_raw"))
             f.write('\n\n')
 
         f.write('\\columnbreak\n')
         f.write('Zipper Types\n\n\\vspace{-10pt}\n')
-        headers = ['Zipper','N Full Detector']
+        headers = ['Zipper Type','N Full Detector']
+        zipperCountsDict = {}
         table = []
-        for zipperName,zipperCount in zipperDict.items():
-          table.append([zipperName,zipperCount])
+        for index,typeCounts in zipperDict[wagonName].items():
+          for zipperName,zipperCount in typeCounts.items():
+            if zipperName in zipperCountsDict: zipperCountsDict[zipperName] += zipperCount
+            else: zipperCountsDict[zipperName] = zipperCount
+        for name,count in zipperCountsDict.items():
+          table.append([name,count * 6])
         f.write(tabulate(table,headers,tablefmt="latex_raw"))
         f.write('\n\n')
 
