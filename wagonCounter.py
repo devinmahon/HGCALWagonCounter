@@ -1059,13 +1059,13 @@ def main():
       # Record partial info across instances
       for i,(uTemp,vTemp) in enumerate(list(zip(uList,vList))):
         if uTemp == '-' or vTemp == '-': continue
+        indexTemp = i
+        if wagonName in indexChanges: indexTemp = indexChanges[wagonName][indexTemp]
         if geomTempIndex.loc[(geomTempIndex['u'] == uTemp) & (geomTempIndex['v'] == vTemp),'itype'].iloc[0][0] != 'F':
           pType = geomTempIndex.loc[(geomTempIndex['u'] == uTemp) & (geomTempIndex['v'] == vTemp),'itypeName'].iloc[0]
-          partialDict[wagonNameDict[tempCodeString]][i][geomTempIndex.loc[(geomTempIndex['u'] == uTemp) & (geomTempIndex['v'] == vTemp),'itypeName'].iloc[0]] += 1 
+          partialDict[wagonNameDict[tempCodeString]][indexTemp][geomTempIndex.loc[(geomTempIndex['u'] == uTemp) & (geomTempIndex['v'] == vTemp),'itypeName'].iloc[0]] += 1 
 
           # Zippers
-          indexTemp = i
-          if wagonName in indexChanges: indexTemp = indexChanges[wagonName][indexTemp]
           if indexTemp != nFull and wagonName not in ['WE21C6','WW21E1']: zipperShape = 'N'
           elif isWest:
             if pType in ['Semi Right','Half Top','Five LR']: zipperShape = 'N'
@@ -1086,11 +1086,47 @@ def main():
           partialZipperMap.setdefault(wagonName,{indexTemp:{pType:zipperType}}).setdefault(indexTemp,{pType:zipperType}).setdefault(pType,zipperType)
 
   # Manual consolidations
-  consolDict = {	(0,1,0,1,'F','5',0):	[(0,1,0,3,'F','3',0)],} # WW10A1 <-- WW10B1
-  for key,items in consolDict.items(): 
-    for item in items:
-      wagonCodesDict[key] += wagonCodesDict[item]
-      wagonCodesDict.pop(item)
+  consolDict = {	(0,1,0,1,'F','5',0): 						[(0,1,0,3,'F','3',0)], 						# WW10A1 <-- WW10B1
+			(0,0,0,1,'F','4',0,0,5,'d','2',0):				[(0,0,1,0,'d','2',0,5,2,'F','2',0)],				# WE11A1 <-- WE11B1
+			(0,0,0,1,'F','2',0,0,0,'F','2',0,0,5,'d','2',0):		[(0,0,2,0,'d','2',0,5,2,'F','2',0,3,0,'F','2',0)],		# WE21A1 <-- WE21C5
+			(0,0,0,0,'F','1',1,0,0,'F','2',0,0,0,'F','2',0,0,5,'d','2',0): 	[(0,0,3,0,'d','1',1,5,2,'F','2',0,3,0,'F','2',0,3,0,'F','2',0)],# WE31A1 <-- WE31A2
+			(0,1,0,0,'F','4',0,3,1,'d','2',0): 				[(0,1,0,0,'F','2',0,3,2,'d','2',0)],				# WW11A1 <-- WW11B1
+			(0,1,0,1,'F','2',0,3,0,'F','2',0,3,1,'d','2',0): 		[(0,1,0,0,'F','2',0,3,0,'F','2',0,3,2,'d','2',0)],		# WW21B1 <-- WW21E4
+               }
+  print('---WE11A1---')
+  print(partialDict['WE11A1'])
+  print(zipperDict['WE11A1'])
+  print(partialZipperMap['WE11A1'])
+  print('---WE11B1---')
+  print(partialDict['WE11B1'])
+  print(zipperDict['WE11B1'])
+  print(partialZipperMap['WE11B1'])
+  for targetCode,removingList in consolDict.items():
+    targetName = wagonNameDict[''.join([str(x) for x in targetCode])]
+    for removingCode in removingList:
+      removingName = wagonNameDict[''.join([str(x) for x in removingCode])]
+      wagonCodesDict[targetCode] += wagonCodesDict[removingCode]
+      wagonCodesDict.pop(removingCode)
+      if int(targetName[3]):
+        for index,partialTypes in partialDict[removingName].items():
+          for partial,count in partialTypes.items():
+            partialDict[targetName][index][partial] = partialDict[targetName][index].get(partial,0) + count
+        partialDict.pop(removingName)
+        for index,zipperTypes in zipperDict[removingName].items():
+          for zipper,count in zipperTypes.items():
+            zipperDict[targetName][index][zipper] = zipperDict[targetName][index].get(zipper,0) + count
+        zipperDict.pop(removingName)
+        for index,partialMap in partialZipperMap[removingName].items():
+          for partial,zipper in partialMap.items():
+            if partial in partialZipperMap[targetName][index] and zipper != partialZipperMap[targetName][index][partial]:
+              print('ERROR: Mapping of partial type to zipper types for module {} when merging {} ({}) into {} ({}) is not one-to-one'.format(index,removingName,zipper,targetName,partialZipperMap[targetName][index][partial]))
+            partialZipperMap[targetName][index][partial] = zipper
+        partialZipperMap.pop(removingName)
+
+  print('---WE11A1---')
+  print(partialDict['WE11A1'])
+  print(zipperDict['WE11A1'])
+  print(partialZipperMap['WE11A1'])
 
   # Final counts
   codeCounter = Counter({tuple(key):len(val) for key,val in wagonCodesDict.items()})
@@ -1461,7 +1497,7 @@ def main():
         for index,typeCounts in partialDict[wagonNameDict[codeString]].items():
           if sum([n for pType,n in typeCounts.items()]):
             indexTemp = index
-            if wagonNameDict[codeString] in indexChanges: indexTemp = indexChanges[wagonNameDict[codeString]][index]
+            #if wagonNameDict[codeString] in indexChanges: indexTemp = indexChanges[wagonNameDict[codeString]][index]
             headers = ['Module {}'.format(indexTemp+1),'Zipper','N Full Detector']
             table = []
             for pType,pCount in typeCounts.items():
