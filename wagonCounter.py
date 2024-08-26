@@ -1091,19 +1091,18 @@ def main():
   partialDict['WE40A1'] = {3:{'Full':wagonCodesCounter['WE40A1']}}
   zipperDict['WE40A1'] =  {3:{'HSNG':wagonCodesCounter['WE40A1']}}
   partialZipperMap['WE40A1'] = {3:{'Full':'HSNG'}}
-  wagonetteDict['WE40A1'] = {3:{'HSNG-Full':wagonCodesCounter['WE40A1']}}
+  #wagonetteDict['WE40A1'] = {3:{'HSNG-Full':wagonCodesCounter['WE40A1']}}
   # WE40A2
   partialDict['WE40A2'] = {3:{'Full':wagonCodesCounter['WE40A2']}}
   zipperDict['WE40A2'] =  {3:{'HSNG':wagonCodesCounter['WE40A2']}}
   partialZipperMap['WE40A2'] = {3:{'Full':'HSNG'}}
-  wagonetteDict['WE40A2'] = {3:{'HSNG-Full':wagonCodesCounter['WE40A2']}}
+  #wagonetteDict['WE40A2'] = {3:{'HSNG-Full':wagonCodesCounter['WE40A2']}}
 
   # Manual consolidations
   consolDict = {	(0,1,0,1,'F','5',0): 						[(0,1,0,3,'F','3',0)], 						# WW10A1 <-- WW10B1
 			(0,0,0,1,'F','4',0,0,5,'d','2',0):				[(0,0,1,0,'d','2',0,5,2,'F','2',0)],				# WE11A1 <-- WE11B1
 			(0,0,0,1,'F','2',0,0,0,'F','2',0,0,5,'d','2',0):		[(0,0,2,0,'d','2',0,5,2,'F','2',0,3,0,'F','2',0)],		# WE21A1 <-- WE21C5
-			(0,0,0,0,'F','1',1,0,0,'F','2',0,0,0,'F','2',0,0,5,'d','2',0): 	[(0,0,3,0,'d','1',1,5,2,'F','2',0,3,0,'F','2',0,3,0,'F','2',0), # WE31A1 <-- WE31A2,WE40A1
-											 (0,0,0,0,'F','1',1,0,0,'F','2',0,0,0,'F','2',0,0,0,'F','2',0)],
+			(0,0,0,0,'F','1',1,0,0,'F','2',0,0,0,'F','2',0,0,5,'d','2',0): 	[(0,0,3,0,'d','1',1,5,2,'F','2',0,3,0,'F','2',0,3,0,'F','2',0)],# WE31A1 <-- WE31A2,WE40A1
 			(0,1,0,0,'F','4',0,3,1,'d','2',0): 				[(0,1,0,0,'F','2',0,3,2,'d','2',0)],				# WW11A1 <-- WW11B1
 			(0,1,0,1,'F','2',0,3,0,'F','2',0,3,1,'d','2',0): 		[(0,1,0,0,'F','2',0,3,0,'F','2',0,3,2,'d','2',0)],		# WW21B1 <-- WW21E4
                }
@@ -1478,7 +1477,7 @@ def main():
       f.write(tabulate(table,headers,tablefmt="latex_raw"))
       f.write('\n\n')
 
-      if nPartials or (wagonName in zipperDict and wagonName in wagonetteDict):
+      if wagonName in zipperDict:
 
         f.write('\\begin{multicols}{2}\n\n')
         f.write('\\raggedcolumns\n')
@@ -1600,12 +1599,14 @@ def main():
     table.append(['TOTAL',nZipperTotal])
     f.write(tabulate(table,headers,tablefmt="latex_raw"))
     f.write('\n\n')
-    headers = ['Wagonette Type','N Full Detector']
-    table = []
-    for wagonetteType,count in wagonetteCounts.items():
-      table.append([wagonetteType,count])
-    table.append(['TOTAL',nWagonetteTotal])
-    f.write(tabulate(table,headers,tablefmt="latex_raw"))
+    if wagonetteCounts:
+      headers = ['Wagonette Type','N Full Detector']
+      table = []
+      for wagonetteType,count in wagonetteCounts.items():
+        table.append([wagonetteType,count])
+      table.append(['TOTAL',nWagonetteTotal])
+      f.write(tabulate(table,headers,tablefmt="latex_raw"))
+    
     f.write('\\end{multicols}\n\n')
 
     f.write('\\end{document}')
