@@ -928,6 +928,7 @@ def main():
       recodedCodesList = [tuple(newCode) if x == tuple(key) else x for x in recodedCodesList]
 
   codeCounter = Counter({tuple(key):len(val) for key,val in wagonCodesDict.items()})
+  wagonCodesCounter = Counter({wagonNameDict[''.join([str(x) for x in key])]:len(val) for key,val in wagonCodesDict.items()})
   maxLinks = {x:maxLinksCalculation(x,'B','trigLinks',wagonCodesDict,geomGrouped,recodedCodesList) for x in wagonCodesDict}
 
   #for name in wagonNameDict:
@@ -942,7 +943,6 @@ def main():
     #wagonCodesDict[(1,0,0,0,'F','5',0,0,0,'F','5',0,0,0,'a','4',0,4,0,'F','5',0)] = wagonCodesDict.pop((1,0,0,0,'F','5',0,0,0,'F','5',0,0,0,'a','5',0,4,0,'F','5',0))
     #wagonCodesDict[(1,0,0,0,'F','6',0,0,0,'F','9',0,0,0,'g','8',0)] = wagonCodesDict.pop((1,0,0,0,'F','6',0,0,0,'F','9',0,0,0,'g','a',0))
     
-
     # Add new codes
     wagonCodesDict[(1,0,0,0,'F','4',0,0,0,'F','5',0,0,0,'F','5',0)] = []
     wagonCodesDict[(1,0,0,0,'F','4',0,0,0,'F','5',0,4,0,'F','5',0)] = []
@@ -1085,22 +1085,28 @@ def main():
           
           partialZipperMap.setdefault(wagonName,{indexTemp:{pType:zipperType}}).setdefault(indexTemp,{pType:zipperType}).setdefault(pType,zipperType)
 
+  # 4-module wagonettes
+  wagonetteDict = {}
+  # WE40A1
+  partialDict['WE40A1'] = {3:{'Full':wagonCodesCounter['WE40A1']}}
+  zipperDict['WE40A1'] =  {3:{'HSNG':wagonCodesCounter['WE40A1']}}
+  partialZipperMap['WE40A1'] = {3:{'Full':'HSNG'}}
+  wagonetteDict['WE40A1'] = {3:{'HSNG-Full':wagonCodesCounter['WE40A1']}}
+  # WE40A2
+  partialDict['WE40A2'] = {3:{'Full':wagonCodesCounter['WE40A2']}}
+  zipperDict['WE40A2'] =  {3:{'HSNG':wagonCodesCounter['WE40A2']}}
+  partialZipperMap['WE40A2'] = {3:{'Full':'HSNG'}}
+  wagonetteDict['WE40A2'] = {3:{'HSNG-Full':wagonCodesCounter['WE40A2']}}
+
   # Manual consolidations
   consolDict = {	(0,1,0,1,'F','5',0): 						[(0,1,0,3,'F','3',0)], 						# WW10A1 <-- WW10B1
 			(0,0,0,1,'F','4',0,0,5,'d','2',0):				[(0,0,1,0,'d','2',0,5,2,'F','2',0)],				# WE11A1 <-- WE11B1
 			(0,0,0,1,'F','2',0,0,0,'F','2',0,0,5,'d','2',0):		[(0,0,2,0,'d','2',0,5,2,'F','2',0,3,0,'F','2',0)],		# WE21A1 <-- WE21C5
-			(0,0,0,0,'F','1',1,0,0,'F','2',0,0,0,'F','2',0,0,5,'d','2',0): 	[(0,0,3,0,'d','1',1,5,2,'F','2',0,3,0,'F','2',0,3,0,'F','2',0)],# WE31A1 <-- WE31A2
+			(0,0,0,0,'F','1',1,0,0,'F','2',0,0,0,'F','2',0,0,5,'d','2',0): 	[(0,0,3,0,'d','1',1,5,2,'F','2',0,3,0,'F','2',0,3,0,'F','2',0), # WE31A1 <-- WE31A2,WE40A1
+											 (0,0,0,0,'F','1',1,0,0,'F','2',0,0,0,'F','2',0,0,0,'F','2',0)],
 			(0,1,0,0,'F','4',0,3,1,'d','2',0): 				[(0,1,0,0,'F','2',0,3,2,'d','2',0)],				# WW11A1 <-- WW11B1
 			(0,1,0,1,'F','2',0,3,0,'F','2',0,3,1,'d','2',0): 		[(0,1,0,0,'F','2',0,3,0,'F','2',0,3,2,'d','2',0)],		# WW21B1 <-- WW21E4
                }
-  print('---WE11A1---')
-  print(partialDict['WE11A1'])
-  print(zipperDict['WE11A1'])
-  print(partialZipperMap['WE11A1'])
-  print('---WE11B1---')
-  print(partialDict['WE11B1'])
-  print(zipperDict['WE11B1'])
-  print(partialZipperMap['WE11B1'])
   for targetCode,removingList in consolDict.items():
     targetName = wagonNameDict[''.join([str(x) for x in targetCode])]
     for removingCode in removingList:
@@ -1122,11 +1128,11 @@ def main():
               print('ERROR: Mapping of partial type to zipper types for module {} when merging {} ({}) into {} ({}) is not one-to-one'.format(index,removingName,zipper,targetName,partialZipperMap[targetName][index][partial]))
             partialZipperMap[targetName][index][partial] = zipper
         partialZipperMap.pop(removingName)
-
-  print('---WE11A1---')
-  print(partialDict['WE11A1'])
-  print(zipperDict['WE11A1'])
-  print(partialZipperMap['WE11A1'])
+        if removingName in wagonetteDict:
+          for index,wagonetteTypes in wagonetteDict[removingName].items():
+            for wagonette,count in wagonetteTypes.items():
+              wagonetteDict.setdefault(targetName,{}).setdefault(index,{})[wagonette] = wagonetteDict.get(targetName,{}).get(index,{}).get(wagonette,0) + count
+          wagonetteDict.pop(removingName)
 
   # Final counts
   codeCounter = Counter({tuple(key):len(val) for key,val in wagonCodesDict.items()})
@@ -1374,23 +1380,6 @@ def main():
     f.write('\\end{multicols}\n')
     f.write('\\newpage\n')
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     for key,_ in sorted(wagonCodesDict.items(),key=lambda x:(wagonNameDict[''.join([str(y) for y in x[0]])]),reverse=False):
       codeString = ''.join([str(x) for x in key])
       code = codeString
@@ -1489,11 +1478,11 @@ def main():
       f.write(tabulate(table,headers,tablefmt="latex_raw"))
       f.write('\n\n')
 
-      if nPartials:
+      if nPartials or (wagonName in zipperDict and wagonName in wagonetteDict):
 
         f.write('\\begin{multicols}{2}\n\n')
         f.write('\\raggedcolumns\n')
-        f.write('Partial Types\n\n\\vspace{-10pt}\n')
+        f.write('Zipper Module Types\n\n\\vspace{-10pt}\n')
         for index,typeCounts in partialDict[wagonNameDict[codeString]].items():
           if sum([n for pType,n in typeCounts.items()]):
             indexTemp = index
@@ -1508,7 +1497,7 @@ def main():
 
         f.write('\\columnbreak\n')
         f.write('Zipper Types\n\n\\vspace{-10pt}\n')
-        headers = ['Zipper Type','N Full Detector']
+        headers = ['Zipper','N']
         zipperCountsDict = {}
         table = []
         for index,typeCounts in zipperDict[wagonName].items():
@@ -1520,6 +1509,20 @@ def main():
         f.write(tabulate(table,headers,tablefmt="latex_raw"))
         f.write('\n\n')
 
+        if wagonName in wagonetteDict:
+          f.write('Wagonette Types\n\n\\vspace{-10pt}\n')
+          headers = ['Wagonette','N']
+          wagonetteCountsDict = {}
+          table = []
+          for index,typeCounts in wagonetteDict[wagonName].items():
+            for wagonetteName,wagonetteCount in typeCounts.items():
+              if wagonetteName in wagonetteCountsDict: wagonetteCountsDict[wagonetteName] += wagonetteCount
+              else: wagonetteCountsDict[wagonetteName] = wagonetteCount
+          for name,count in wagonetteCountsDict.items():
+            table.append([name,count * 6])
+          f.write(tabulate(table,headers,tablefmt="latex_raw"))
+          f.write('\n\n')
+
         f.write('\\end{multicols}\n\n')
 
       f.write('\\begin{multicols}{2}\n\n')
@@ -1530,6 +1533,10 @@ def main():
         table = modTrigRoutingDict
         f.write(tabulate(table,headers,tablefmt="latex_raw"))
         f.write('\n\n')
+      else:
+        f.write('This wagon has no trig links\n\n')
+
+      f.write('\\columnbreak\n')
 
       if modDAQRoutingDict: 
         f.write('DAQ links sorted by module\n\n\\vspace{-10pt}\n')
@@ -1541,13 +1548,65 @@ def main():
       f.write('\\end{multicols}\n\n')
 
       if xOverInRoutingDict:
-        f.write('Incoming crossover trig links sorted by link no.\n\n\\vspace{-10pt}\n')
+        f.write('Incoming crossover trig links sorted by link index\n\n\\vspace{-10pt}\n')
         headers = ['Crossover Trig Link','Trig Link']
         table = xOverInRoutingDict
         f.write(tabulate(table,headers,tablefmt="latex_raw"))
         f.write('\n\n')
 
       f.write('\n\\newpage\n')
+
+    # Summary page
+    f.write('\\section{{Total Partial and Zipper Counts}}\n\n')
+
+    partialCounts = {}
+    nPartialTotal = 0
+    for name,indices in partialDict.items():
+      for index,partialTypes in indices.items():
+        for partialType,count in partialTypes.items():
+          partialCounts[partialType] = partialCounts.get(partialType,0) + count * 6
+          nPartialTotal += count * 6
+
+    zipperCounts = {}
+    nZipperTotal = 0
+    for name,indices in zipperDict.items():
+      for index,zipperTypes in indices.items():
+        for zipperType,count in zipperTypes.items():
+          zipperCounts[zipperType] = zipperCounts.get(zipperType,0) + count * 6
+          nZipperTotal += count * 6
+
+    wagonetteCounts = {}
+    nWagonetteTotal = 0
+    for name,indices in wagonetteDict.items():
+      for index,wagonetteTypes in indices.items():
+        for wagonetteType,count in wagonetteTypes.items():
+          wagonetteCounts[wagonetteType] = wagonetteCounts.get(wagonetteType,0) + count * 6
+          nWagonetteTotal += count * 6
+
+    f.write('\\begin{multicols}{2}\n\n')
+    f.write('\\raggedcolumns\n')
+    headers = ['Zipper Module Type','N Full Detector']
+    table = []
+    for partialType,count in partialCounts.items():
+      table.append([partialType,count])
+    table.append(['TOTAL',nPartialTotal])
+    f.write(tabulate(table,headers,tablefmt="latex_raw"))
+    f.write('\n\n')
+    f.write('\\columnbreak\n')
+    headers = ['Zipper Type','N Full Detector']
+    table = []
+    for zipperType,count in zipperCounts.items():
+      table.append([zipperType,count])
+    table.append(['TOTAL',nZipperTotal])
+    f.write(tabulate(table,headers,tablefmt="latex_raw"))
+    f.write('\n\n')
+    headers = ['Wagonette Type','N Full Detector']
+    table = []
+    for wagonetteType,count in wagonetteCounts.items():
+      table.append([wagonetteType,count])
+    table.append(['TOTAL',nWagonetteTotal])
+    f.write(tabulate(table,headers,tablefmt="latex_raw"))
+    f.write('\\end{multicols}\n\n')
 
     f.write('\\end{document}')
     f.close()
