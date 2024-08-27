@@ -978,10 +978,9 @@ def main():
     wagonCodesDict = wagonCodesDictCopy  
     wagonCodesDict = {x:y for x, y in wagonCodesDict.items() if len(y) > 0} # Remove empty entries
 
-
-  # Index changes so that module with engine has index 1
+  # Manual module index changes
   indexChanges = {	# "Discontinous" wagons
-			'WE40A2': [2,1,3,0],
+			'WE40A2': [3,1,0,2],
 			'WE31A2': [3,2,1,0],
 			'WE30A2': [1,0,2],
 			'WE21C3': [1,0,2],
@@ -1010,12 +1009,14 @@ def main():
   partialNamesDict = {'Semi Right': 0,'Semi Left': 0,'Half Top': 0,'Half Bottom': 0,'Five LR': 0,'Five RL':0}
   partialZipperMap = {}
   zipperDict = {}
+  zipperDictLocs = {}
   zipperTypeDict = {      'Semi Right':   'HS',
                           'Semi Left':    'HS',
                           'Half Top':     'HS',
                           'Half Bottom':  'HS',
                           'Five LR':      'LR',
                           'Five RL':      'RL',}
+
   for tempCode,indices in wagonCodesDict.items():
     tempCodeString = ''.join(str(x) for x in tempCode)
     wagonName = wagonNameDict[tempCodeString]
@@ -1070,18 +1071,19 @@ def main():
           elif isWest:
             if pType in ['Semi Right','Half Top','Five LR']: zipperShape = 'N'
             elif pType in ['Semi Left','Half Bottom','Five RL']: 
-              if (codeString[4] == 'F' and int(codeString[7]) not in [0,3]) or wagonName == 'WW21E3': zipperShape = 'N'
+              if (tempCodeString[4] == 'F' and int(tempCodeString[7]) not in [0,3]) or wagonName == 'WW21E3': zipperShape = 'N'
               else: zipperShape = 'R'
             else: print('ERROR: Unexpected partial type: {}'.format(pType)) 
           else: # East
             if pType in ['Semi Right','Half Top','Five LR']: 
-              if codeString[4] == 'F' and int(codeString[7]) not in [0,3]: zipperShape = 'N'
+              if tempCodeString[4] == 'F' and int(tempCodeString[7]) not in [0,3]: zipperShape = 'N'
               else: zipperShape = 'L'
             elif pType in ['Semi Left','Half Bottom','Five RL']: zipperShape = 'N' 
             else: print('ERROR: Unexpected partial type: {}'.format(pType))
           zipperType = zipperTypeDict[pType] + zipperShape + ('G' if nModules == 4 else '0')
           if wagonName in zipperDict and indexTemp in zipperDict[wagonName] and zipperType in zipperDict[wagonName][indexTemp]: zipperDict[wagonName][indexTemp][zipperType] += 1
           else: zipperDict.setdefault(wagonName,{indexTemp:{zipperType:1}}).setdefault(indexTemp,{zipperType:1}).setdefault(zipperType,1)
+          zipperDictLocs[tuple(tempIndex + [indexTemp])] = zipperType
           
           partialZipperMap.setdefault(wagonName,{indexTemp:{pType:zipperType}}).setdefault(indexTemp,{pType:zipperType}).setdefault(pType,zipperType)
 
@@ -1092,20 +1094,25 @@ def main():
   zipperDict['WE40A1'] =  {3:{'HSNG':wagonCodesCounter['WE40A1']}}
   partialZipperMap['WE40A1'] = {3:{'Full':'HSNG'}}
   #wagonetteDict['WE40A1'] = {3:{'HSNG-Full':wagonCodesCounter['WE40A1']}}
+  for index in wagonCodesDict[(0,0,0,0,'F','1',1,0,0,'F','2',0,0,0,'F','2',0,0,0,'F','2',0)]:
+    zipperDictLocs[tuple(index + [3])] = 'HSNG'
   # WE40A2
   partialDict['WE40A2'] = {3:{'Full':wagonCodesCounter['WE40A2']}}
   zipperDict['WE40A2'] =  {3:{'HSNG':wagonCodesCounter['WE40A2']}}
   partialZipperMap['WE40A2'] = {3:{'Full':'HSNG'}}
   #wagonetteDict['WE40A2'] = {3:{'HSNG-Full':wagonCodesCounter['WE40A2']}}
+  for index in wagonCodesDict[(0,0,3,0,'F','1',1,3,0,'F','2',0,2,2,'F','2',0,2,4,'F','2',0)]:
+    zipperDictLocs[tuple(index + [3])] = 'HSNG'
 
   # Manual consolidations
   consolDict = {	(0,1,0,1,'F','5',0): 						[(0,1,0,3,'F','3',0)], 						# WW10A1 <-- WW10B1
 			(0,0,0,1,'F','4',0,0,5,'d','2',0):				[(0,0,1,0,'d','2',0,5,2,'F','2',0)],				# WE11A1 <-- WE11B1
 			(0,0,0,1,'F','2',0,0,0,'F','2',0,0,5,'d','2',0):		[(0,0,2,0,'d','2',0,5,2,'F','2',0,3,0,'F','2',0)],		# WE21A1 <-- WE21C5
-			(0,0,0,0,'F','1',1,0,0,'F','2',0,0,0,'F','2',0,0,5,'d','2',0): 	[(0,0,3,0,'d','1',1,5,2,'F','2',0,3,0,'F','2',0,3,0,'F','2',0)],# WE31A1 <-- WE31A2,WE40A1
+			(0,0,0,0,'F','1',1,0,0,'F','2',0,0,0,'F','2',0,0,5,'d','2',0): 	[(0,0,3,0,'d','1',1,5,2,'F','2',0,3,0,'F','2',0,3,0,'F','2',0)],# WE31A1 <-- WE31A2
 			(0,1,0,0,'F','4',0,3,1,'d','2',0): 				[(0,1,0,0,'F','2',0,3,2,'d','2',0)],				# WW11A1 <-- WW11B1
 			(0,1,0,1,'F','2',0,3,0,'F','2',0,3,1,'d','2',0): 		[(0,1,0,0,'F','2',0,3,0,'F','2',0,3,2,'d','2',0)],		# WW21B1 <-- WW21E4
                }
+
   for targetCode,removingList in consolDict.items():
     targetName = wagonNameDict[''.join([str(x) for x in targetCode])]
     for removingCode in removingList:
@@ -1260,10 +1267,27 @@ def main():
           print('ERROR: Wagon type code for {} not found'.format(tempCodeString))
           wagonName = 'XXXXXX'
 
+      # Account for manual index changes
+      if wagonName in indexChanges: 
+        indexMap = indexChanges[wagonName]
+        uListTemp = list('-'*4)
+        vListTemp = list('-'*4)
+        for iNew,iOld in enumerate(indexMap):
+          uListTemp[iNew] = uList[iOld]
+          vListTemp[iNew] = vList[iOld]
+        uList = uListTemp
+        vList = vListTemp
+
+      zipperTypes = list('-' * 4)
+      if wagonName in zipperDict:
+        for i in [0,1,2,3]:
+          zipperTypes[i] = zipperDictLocs.get(tuple(tempIndex + [i]),'-')
+        if zipperTypes[0] != '-': print('ERROR: Zipper for first module is not possible')
+
       f.write('\n{}'.format(' '.join(str(x) for x in [	plane,u,v,wagonName,wagonName,round(x0FX11,3) if not isHD else '-',	# 1-6
 							round(y0FX11,3) if not isHD else '-',irot,nModules,uList[0],vList[0],	# 7-11
 							uList[1],vList[1],uList[2],vList[2],uList[3],				# 12-16
-							vList[3],'-','-','-','-',						# 17-21
+							vList[3],zipperTypes[1],zipperTypes[2],zipperTypes[3],'-',		# 17-21
 							'-','-',icassette,nTrigTotal,int(nActiveTrig),				# 22-26
 							nDataTotal,int(nActiveData),int(tempCodeString[3]),nTrigXOutTotal,MB,	# 27-31
 							wagon,0,0,'-',wagonRot,							# 32-36
