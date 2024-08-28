@@ -726,10 +726,10 @@ def main():
     '1000F6000F9000g80'		: 'WH21A1',
     # LD
     '0000F1100F2000F2000F20'	: 'WE40A1',
-    '0000F1100F2000F2005d20'	: 'WE31A1',
+    '0000F2000F2000F2005d11'	: 'WE31A1',
     '0030d1152F2030F2030F20'	: 'WE31A2',
     '0030F1130F2022F2024F20'	: 'WE40A2',
-    '0000F1114F2012F2015d20'	: 'WE31A3',
+    '0000F2014F2012F2015d11'	: 'WE31A3',
     '0101F2030F2030F20'		: 'WW30A1', # W3A
     '0100F3030F2031d20'		: 'WW21A1',
     '0001F2000F2005d20'		: 'WE21A1',
@@ -927,13 +927,6 @@ def main():
       del wagonCodesDict[key]
       recodedCodesList = [tuple(newCode) if x == tuple(key) else x for x in recodedCodesList]
 
-  codeCounter = Counter({tuple(key):len(val) for key,val in wagonCodesDict.items()})
-  wagonCodesCounter = Counter({wagonNameDict[''.join([str(x) for x in key])]:len(val) for key,val in wagonCodesDict.items()})
-  maxLinks = {x:maxLinksCalculation(x,'B','trigLinks',wagonCodesDict,geomGrouped,recodedCodesList) for x in wagonCodesDict}
-
-  #for name in wagonNameDict:
-  #  if name not in [''.join(str(x) for x in key) for key in wagonCodesDict.keys()]: print('{} not used'.format(name))
-
   # HD wagons, hard-code link compromises
   HDLinkCompomises = True
   if HDLinkCompomises:
@@ -977,6 +970,23 @@ def main():
 
     wagonCodesDict = wagonCodesDictCopy  
     wagonCodesDict = {x:y for x, y in wagonCodesDict.items() if len(y) > 0} # Remove empty entries
+
+  # Manually adjust routing
+  # WE31A1: moving xover to module 4 rather than 1
+  oldCode = (0,0,0,0,'F','1',1,0,0,'F','2',0,0,0,'F','2',0,0,5,'d','2',0)
+  newCode = (0,0,0,0,'F','2',0,0,0,'F','2',0,0,0,'F','2',0,0,5,'d','1',1)
+  if newCode not in wagonCodesDict: wagonCodesDict[newCode] = wagonCodesDict.pop(oldCode)
+  else: print('ERROR: Attempting to replace {} with {} (manual adjustment), but the former already exists! Its information will be overwritten.'.format(oldCode,newCode))
+  # WE31A3: moving xover to module 4 rather than 1
+  oldCode = (0,0,0,0,'F','1',1,1,4,'F','2',0,1,2,'F','2',0,1,5,'d','2',0)
+  newCode = (0,0,0,0,'F','2',0,1,4,'F','2',0,1,2,'F','2',0,1,5,'d','1',1)
+  if newCode not in wagonCodesDict: wagonCodesDict[newCode] = wagonCodesDict.pop(oldCode)
+  else: print('ERROR: Attempting to replace {} with {} (manual adjustment), but the former already exists! Its information will be overwritten.'.format(oldCode,newCode))
+
+  # Compute useful objects
+  codeCounter = Counter({tuple(key):len(val) for key,val in wagonCodesDict.items()})
+  wagonCodesCounter = Counter({wagonNameDict[''.join([str(x) for x in key])]:len(val) for key,val in wagonCodesDict.items()})
+  maxLinks = {x:maxLinksCalculation(x,'B','trigLinks',wagonCodesDict,geomGrouped,recodedCodesList) for x in wagonCodesDict}
 
   # Manual module index changes
   indexChanges = {	# "Discontinous" wagons
@@ -1108,7 +1118,7 @@ def main():
   consolDict = {	(0,1,0,1,'F','5',0): 						[(0,1,0,3,'F','3',0)], 						# WW10A1 <-- WW10B1
 			(0,0,0,1,'F','4',0,0,5,'d','2',0):				[(0,0,1,0,'d','2',0,5,2,'F','2',0)],				# WE11A1 <-- WE11B1
 			(0,0,0,1,'F','2',0,0,0,'F','2',0,0,5,'d','2',0):		[(0,0,2,0,'d','2',0,5,2,'F','2',0,3,0,'F','2',0)],		# WE21A1 <-- WE21C5
-			(0,0,0,0,'F','1',1,0,0,'F','2',0,0,0,'F','2',0,0,5,'d','2',0): 	[(0,0,3,0,'d','1',1,5,2,'F','2',0,3,0,'F','2',0,3,0,'F','2',0)],# WE31A1 <-- WE31A2
+			(0,0,0,0,'F','2',0,0,0,'F','2',0,0,0,'F','2',0,0,5,'d','1',1): 	[(0,0,3,0,'d','1',1,5,2,'F','2',0,3,0,'F','2',0,3,0,'F','2',0)],# WE31A1 <-- WE31A2
 			(0,1,0,0,'F','4',0,3,1,'d','2',0): 				[(0,1,0,0,'F','2',0,3,2,'d','2',0)],				# WW11A1 <-- WW11B1
 			(0,1,0,1,'F','2',0,3,0,'F','2',0,3,1,'d','2',0): 		[(0,1,0,0,'F','2',0,3,0,'F','2',0,3,2,'d','2',0)],		# WW21B1 <-- WW21E4
                }
