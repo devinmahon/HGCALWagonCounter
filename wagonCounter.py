@@ -1393,6 +1393,7 @@ def main():
     f.write('\\usepackage{hyperref}\n')
     f.write('\\usepackage{tikz}\n')
     f.write('\\usepackage{multicol}\n')
+    f.write('\\usepackage{pdflscape}\n')
     f.write('\\setlength\columnsep{15pt}\n')
     f.write('\\usepackage{tocloft}\n')
     f.write('\\renewcommand{\cftsecleader}{\cftdotfill{\cftdotsep}}\n')
@@ -1589,7 +1590,25 @@ def main():
 
       f.write('\n\\newpage\n')
 
-    # Summary page
+    # Wagons by layer summary page
+    f.write('\\begin{landscape}\n\n')
+    f.write('\\section{{Wagons Per Layer}}\n\n')
+    f.write('\\scalebox{0.55}{\n\n')
+    layerList = np.arange(47) + 1
+    headers = ['Wagon'] + [str(x) for x in layerList]
+    table = []
+    for code,indices in sorted(wagonCodesDict.items(),key=lambda x:(wagonNameDict[''.join([str(y) for y in x[0]])]),reverse=False):
+      wagonName = wagonNameDict[''.join([str(x) for x in code])]
+      layerCounts = [0] * len(layerList)
+      for i,index in enumerate(indices): layerCounts[index[0] - 1] += 6
+      table.append([wagonName] + [str(x) for x in layerCounts])
+    f.write(tabulate(table,headers,tablefmt="latex_raw")) 
+    f.write('\n}\n\n')
+    f.write('\\end{landscape}\n\n')
+
+    f.write('\n\\newpage\n')
+
+    # Parital/Zipper summary page
     f.write('\\section{{Total Partial and Zipper Counts}}\n\n')
 
     partialCounts = {}
