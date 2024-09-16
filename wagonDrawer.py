@@ -875,7 +875,7 @@ def wagonDrawer(wagonCounter,geomVersion,maxLinksTrigDict,maxLinksDAQDict,wagonN
   
     bottom = centers[0][1] + 95
     #row += 1
-    if bottom > (ymax - 180 - 2 * r - rowSpacing):
+    if bottom > (ymax - 200 - 2 * r - rowSpacing):
       bottom = 0
       col += 1
       ySpaces = 0
