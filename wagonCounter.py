@@ -1090,6 +1090,9 @@ def main():
               else: zipperShape = 'L'
             elif pType in ['Semi Left','Half Bottom','Five RL']: zipperShape = 'N' 
             else: print('ERROR: Unexpected partial type: {}'.format(pType))
+          # More special cases
+          if [wagonName,indexTemp] in [['WW12B1',2],['WW21E2',2]]: zipperShape = 'L'
+          elif [wagonName,indexTemp] in [['WE12B1',2],['WW21E3',2],['WW12C1',1]]: zipperShape = 'R'
           zipperType = zipperTypeDict[pType] + zipperShape + ('G' if nModules == 4 else '0')
           if wagonName in zipperDict and indexTemp in zipperDict[wagonName] and zipperType in zipperDict[wagonName][indexTemp]: zipperDict[wagonName][indexTemp][zipperType] += 1
           else: zipperDict.setdefault(wagonName,{indexTemp:{zipperType:1}}).setdefault(indexTemp,{zipperType:1}).setdefault(zipperType,1)
@@ -1161,228 +1164,30 @@ def main():
     elif key[0] == 1: maxDAQLinks[key] = maxDAQLinksHD[key]
     else: print('ERROR: Unknown first code in {}'.format(key))
 
-  # Output geometry files
-  if not os.path.exists('output/geometries/{}'.format(geomVersion)): os.makedirs('output/geometries/{}'.format(geomVersion))
-  f = open('output/geometries/{}/geometry_simotherboards.hgcal.txt'.format(geomVersion),'w')
+  # Print out forbidden/prohibited DC/DC locations
+  #for code,indices in wagonCodesDict.items():
+  #  wagonName = wagonNameDict[''.join([str(x) for x in code])]
+  #  if wagonName in ['WE31A3','WE12A1','WW12A1','WE30A2','WW30B1','WE21C1','WW30A2','WW21C1','WE21D1','WW12B1','WE21C4','WE21C6','WW21E1','WE12B1','WE21C2','WW21E2','WW21E3','WE21C3','WW12C1','WW20C1','WE11C1','WE11B2']: 
+  #    for index in indices:
+  #      plane,MB,wagon = index
+  #      geomTempIndex = geomGrouped.get_group((plane,MB,wagon))
+  #      geomTempPartnerIndex = geomGrouped.get_group((plane,MB,not wagon))
+  #      isWest = 'WW' in wagonName
+  #      if isWest:
+  #        u,v = geomTempIndex[['u','v']].loc[geomTempIndex['isEngine']].iloc[0]
+  #      else: # East
+  #        uWest,vWest,irotWest = [int(x) for x in geomTempPartnerIndex[['u','v','irot']].loc[geomTempPartnerIndex['isEngine']].iloc[0]]
+  #        u,v = findEastEngineModule(plane,uWest,vWest,irotWest)
+  #      print('{} {} {}'.format(plane,u,v))
 
-  f.write('plane u v itype typecode x0 y0 irot nvertices vx_0 vy_0 vx_1 vy_1 vx_2 vy_2 vx_3 vy_3 vx_4 vy_4 vx_5 vy_5 vx_6 vy_6 icassette trigRate trigLinks dataRate_ld dataLinks_ld dataRate_hd dataLinks_hd MB wagon isEngine nROCs power mrot phi HDorLD hash hash_hdld engine_trig_fibres engine_data_fibres engine_ctrl_fibres dataPp0 trigPp0 dataPp0_type trigPp0_type dataPp1 trigPp1 dataPp1_type trigPp1_type dataPp2 DAQ')
-
-  if not args.noTables:
-    if not os.path.exists('output/wagonInfo/{}'.format(geomVersion)): os.makedirs('output/wagonInfo/{}'.format(geomVersion))
-    fInfo = open('output/wagonInfo/{}/wagonInfoHD.tex'.format(geomVersion),'w')
-    fInfo.write('\\begin{tabular}{|c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|}')
-
-  wagonNameStatus = {y:False for x,y in wagonNameDict.items()} # Track whether name has been used
-  for tempCode,indices in wagonCodesDict.items():
-    tempCodeString = ''.join(str(x) for x in tempCode)
-    isHD = int(tempCodeString[0])
-    for index in indices:
-
-      tempIndex = index
-      geomTempIndex = geomGrouped.get_group((tempIndex[0],tempIndex[1],tempIndex[2]))
-
-      # LD wagons
-      if not isHD:
-        geomTempPartnerIndex = geomGrouped.get_group((tempIndex[0],tempIndex[1],not tempIndex[2]))
-        plane,icassette,MB,wagon = geomTempIndex[['plane','icassette','MB','wagon']].iloc[0]
-        if int(tempCodeString[1]): # West
-          u,v,irot,x0,y0,trig0,daqLD0,daqHD0 = geomTempIndex[['u','v','irot','x0','y0','trigLinks','dataLinks_ld','dataLinks_hd']].loc[geomTempIndex['isEngine']].iloc[0]
-          nDataTotal = 3
-        else: # East
-          uWest,vWest,irotWest = [int(x) for x in geomTempPartnerIndex[['u','v','irot']].loc[geomTempPartnerIndex['isEngine']].iloc[0]]
-          u,v = findEastEngineModule(plane,uWest,vWest,irotWest)
-          irot,x0,y0,trig0,daqLD0,daqHD0 = geomTempIndex[['irot','x0','y0','trigLinks','dataLinks_ld','dataLinks_hd']].loc[(geomTempIndex['u'] == u) & (geomTempIndex['v'] == v)].iloc[0]
-          nDataTotal = 4
-        u,v,irot = [int(x) for x in [u,v,irot]]
-        uList = list('-'*4)
-        vList = list('-'*4)
-        irotList = list('-'*4)
-        nActiveTrig = trig0
-        nActiveData = daqLD0
-        if int(tempCodeString[2]) == 0:
-          uList[0],vList[0],irotList[0] = [u,v,irot]
-        else:
-          uPrev,vPrev,irotPrev = [u,v,irot]
-          for i in reversed(range(int(tempCodeString[2]))):
-            angleRev,orientRev = reverseAngleOrient(int(tempCodeString[5*i+7]),int(tempCodeString[5*i+8]))
-            uPrev,vPrev,irotPrev = nextModule(plane,uPrev,vPrev,irotPrev,angleRev,orientRev)
-          uList[0],vList[0],irotList[0] = [uPrev,vPrev,irotPrev]
-        for i in range(len(tempCodeString)//5-1):
-          uNext,vNext,irotNext = nextModule(plane,uList[i],vList[i],irotList[i],int(tempCodeString[5*i+7]),int(tempCodeString[5*i+8]))
-          uList[i+1],vList[i+1],irotList[i+1] = uNext,vNext,irotNext
-          trigTemp,daqLDTemp,daqHDTemp = geomTempIndex[['trigLinks','dataLinks_ld','dataLinks_hd']].loc[(geomTempIndex['u'] == uNext) & (geomTempIndex['v'] == vNext)].iloc[0]
-          nActiveTrig += trigTemp
-          nActiveData += daqLDTemp
-        xFX11,yFX11 = [61.2,23.0]
-        x0FX11 = x0 + xFX11 * np.cos(np.pi/3*irot) + yFX11 * np.sin(np.pi/3*irot)
-        y0FX11 = y0 + xFX11 * np.sin(np.pi/3*irot) - yFX11 * np.cos(np.pi/3*irot)
-        nModules = int((len(tempCodeString)-2)/5)
-        nTrigTotal = int(tempCodeString[3]) + \
-                     sum([int(tempCodeString[5*i+5],16) for i in range(len(tempCodeString)//5)]) + \
-                     sum([int(tempCodeString[5*i+6],16) for i in range(len(tempCodeString)//5)])
-        nTrigXOutTotal = sum([int(tempCodeString[5*i+6]) for i in range(len(tempCodeString)//5)])
-        wagonRot = (irot + 3) % 6 if int(tempCodeString[1]) else irot
-        if nActiveData > nDataTotal: print('WARNING: {} wagon (layer {}, MB {}) has >4 DAQ links, requiring the use of a xover, which is not expected!'.format('West' if int(tempCodeString[1]) else 'East',plane,MB))
-        if tempCodeString in wagonNameDict: 
-          wagonName = wagonNameDict[tempCodeString]
-          wagonNameStatus[wagonName] = True 
-        else: 
-          print('ERROR: Wagon type code for {} not found'.format(tempCodeString))
-          wagonName = 'XXXXXX'
-
-      else: # HD wagons
-
-        plane,icassette,MB,wagon,u,v,irot,x0,y0,trig0,daqLD0,daqHD0 = geomTempIndex[['plane','icassette','MB','wagon','u','v','irot','x0','y0','trigLinks','dataLinks_ld','dataLinks_hd']].loc[geomTempIndex['isEngine']].iloc[0]
-        uLD,vLD,temp = nextModule(plane,u,v,irot,angle=3,orient=0)
-        x0LD,y0LD,irotLD = geomBasic[(geomBasic['plane'] == plane) & (geomBasic['u'] == uLD) & (geomBasic['v'] == vLD)][['x0','y0','irot']].iloc[0]
-        plane,icassette,MB,wagon,u,v,irot,trig0,daqLD0,daqHD0 = [int(x) for x in [plane,icassette,MB,wagon,u,v,irot,trig0,daqLD0,daqHD0]]
-
-        if irot == irotLD: engineType = 'EH10H0'
-        elif (irot+3)%6 == irotLD: engineType = 'EL10F0'
-        else: print('ERROR: Unexpected relative rotations between HD and LD modules for HD engine (plane = {}, u = {}, v = {})'.format(plane,u,v))
-
-        nDataTotal = 7 if engineType == 'EH10H0' else 14
-        uList = list('-'*4)
-        vList = list('-'*4)
-        irotList = list('-'*4)
-        nActiveTrig = trig0
-        nActiveData = daqHD0
-        if int(tempCodeString[2]) == 0:
-          uList[0],vList[0],irotList[0] = [u,v,irot]
-        else:
-          uPrev,vPrev,irotPrev = [u,v,irot]
-          for i in reversed(range(int(tempCodeString[2]))):
-            angleRev,orientRev = reverseAngleOrient(int(tempCodeString[5*i+7]),int(tempCodeString[5*i+8]))
-            uPrev,vPrev,irotPrev = nextModule(plane,uPrev,vPrev,irotPrev,angleRev,orientRev)
-          uList[0],vList[0],irotList[0] = [uPrev,vPrev,irotPrev]
-        for i in range(len(tempCodeString)//5-1):
-          uNext,vNext,irotNext = nextModule(plane,uList[i],vList[i],irotList[i],int(tempCodeString[5*i+7]),int(tempCodeString[5*i+8]))
-          uList[i+1],vList[i+1],irotList[i+1] = uNext,vNext,irotNext
-          trigTemp,daqLDTemp,daqHDTemp = geomTempIndex[['trigLinks','dataLinks_ld','dataLinks_hd']].loc[(geomTempIndex['u'] == uNext) & (geomTempIndex['v'] == vNext)].iloc[0]
-          nActiveTrig += trigTemp
-          nActiveData += daqHDTemp
-        #xFX11,yFX11 = [61.2,23.0]
-        #x0FX11 = x0 + xFX11 * np.cos(np.pi/3*irot) + yFX11 * np.sin(np.pi/3*irot)
-        #y0FX11 = y0 + xFX11 * np.sin(np.pi/3*irot) - yFX11 * np.cos(np.pi/3*irot)
-        nTrigTotal = int(tempCodeString[3]) + \
-                     sum([int(tempCodeString[5*i+5],16) for i in range(len(tempCodeString)//5)]) + \
-                     sum([int(tempCodeString[5*i+6],16) for i in range(len(tempCodeString)//5)])
-        nTrigXOutTotal = sum([int(tempCodeString[5*i+6]) for i in range(len(tempCodeString)//5)])
-        wagonRot = irot
-        if nActiveData > nDataTotal and nActiveTrig != 0: print('WARNING: {} wagon (layer {}, MB {}) has too many DAQ links, {} counted, but only {} supported!'.format('West' if int(tempCodeString[1]) else 'East',plane,MB,nActiveData,nDataTotal))
-        if tempCodeString in wagonNameDict: 
-          wagonName = wagonNameDict[tempCodeString]
-          wagonNameStatus[wagonName] = True
-        else: 
-          print('ERROR: Wagon type code for {} not found'.format(tempCodeString))
-          wagonName = 'XXXXXX'
-
-      # Account for manual index changes
-      if wagonName in indexChanges: 
-        indexMap = indexChanges[wagonName]
-        uListTemp = list('-'*4)
-        vListTemp = list('-'*4)
-        for iNew,iOld in enumerate(indexMap):
-          uListTemp[iNew] = uList[iOld]
-          vListTemp[iNew] = vList[iOld]
-        uList = uListTemp
-        vList = vListTemp
-
-      zipperTypes = list('-' * 4)
-      if wagonName in zipperDict:
-        for i in [0,1,2,3]:
-          zipperTypes[i] = zipperDictLocs.get(tuple(tempIndex + [i]),'-')
-        if zipperTypes[0] != '-': print('ERROR: Zipper for first module is not possible')
-
-      f.write('\n{}'.format(' '.join(str(x) for x in [	plane,u,v,wagonName,wagonName,round(x0FX11,3) if not isHD else '-',	# 1-6
-							round(y0FX11,3) if not isHD else '-',irot,nModules,uList[0],vList[0],	# 7-11
-							uList[1],vList[1],uList[2],vList[2],uList[3],				# 12-16
-							vList[3],zipperTypes[1],zipperTypes[2],zipperTypes[3],'-',		# 17-21
-							'-','-',icassette,nTrigTotal,int(nActiveTrig),				# 22-26
-							nDataTotal,int(nActiveData),int(tempCodeString[3]),nTrigXOutTotal,MB,	# 27-31
-							wagon,0,0,'-',wagonRot,							# 32-36
-							'-',int(tempCodeString[0]),'-','-','-',					# 37-41
-							'-',tempCodeString,'-','-','-',						# 42-46
-							'-','-','-','-','-',							# 47-51
-							'-','-'])))								# 52-53
-
-    
-    if not args.noTables: fInfo.write('\\n{}\\\\'.format('&'.join([	wagonName,'-',
-						'-','-','-',
-                                                '-','-','-',
-                                                '-','-','-',
-                                                '-','-','-',
-						tempCodeString,'-'])))
-
-  f.close()
-  if not args.noTables:
-    fInfo.write('\\end{tabular}')
-    fInfo.close()
-
-  for key,val in wagonNameStatus.items():
-    if not val: print('WARNING: Unused wagon name ({})'.format(key))
-
-  #geomWagon = pd.read_csv('output/geometriesWagon/{}/geometryWagon.txt'.format(geomVersion),delim_whitespace=True)
-
-
-  #if not os.path.exists('output/geometriesEngine/{}'.format(geomVersion)): os.makedirs('output/geometriesEngine/{}'.format(geomVersion))
-  #f = open('output/geometriesEngine/{}/geometryEngine.txt'.format(geomVersion),'w')
-  f = open('output/geometries/{}/geometry_simotherboards.hgcal.txt'.format(geomVersion),'a')
-
-  #f.write('plane u v itype x0 y0 irot nvertices vx_0 vy_0 vx_1 vy_1 vx_2 vy_2 vx_3 vy_3 vx_4 vy_4 vx_5 vy_5 vx_6 vy_6 icassette trigRate trigLinks dataRate_ld dataLinks_ld dataRate_hd dataLinks_hd MB wagon isEngine nROCs power mrot phi HDorLD hash hash_hdld engine_trig_fibres engine_data_fibres engine_ctrl_fibres dataPp0 trigPp0 dataPp0_type trigPp0_type dataPp1 trigPp1 dataPp1_type trigPp1_type dataPp2 DAQ\n')
-
-
-  geomEngine = geomBasic[geomBasic['isEngine']]
-  for i,engine in geomEngine.iterrows():
-
-    plane,u,v,irot,icassette,x0,y0,isHD = engine[['plane','u','v','irot','icassette','x0','y0','HDorLD']]
-
-    if engine['HDorLD'] == 0: # LD
-      uEast,vEast = findEastEngineModule(plane,u,v,irot)
-      x0East,y0East = geomBasic[(geomBasic['plane'] == plane) & (geomBasic['u'] == uEast) & (geomBasic['v'] == vEast)][['x0','y0']].iloc[0]
-      uCenter = (u+uEast)/2
-      vCenter = (v+vEast)/2
-      x0Center = (x0+x0East)/2
-      y0Center = (y0+y0East)/2
-      nTrigTotal = 14
-      nDataTotal = 7
-      if irot == 0: engineType = 'EL10E0' if engine['x0'] > 0 else 'EL10W0'
-      elif irot == 1 or irot == 2: engineType = 'EL10E0'
-      elif irot == 3: engineType = 'EL10W0' if engine['x0'] > 0 else 'EL10E0'
-      elif irot == 4 or irot ==  5: engineType = 'EL10W0'
-      else: print('ERROR: Invalid irot for engine {}'.format(i))
-    else: # HD
-      uLD,vLD,temp = nextModule(plane,u,v,irot,angle=3,orient=0)
-      x0LD,y0LD,irotLD = geomBasic[(geomBasic['plane'] == plane) & (geomBasic['u'] == uLD) & (geomBasic['v'] == vLD)][['x0','y0','irot']].iloc[0]
-      uCenter = (u+uLD)/2
-      vCenter = (v+vLD)/2
-      x0Center = (x0+x0LD)/2
-      y0Center = (y0+y0LD)/2
-      if irot == irotLD: 
-        engineType = 'EH10H0'
-        nTrigTotal = 14
-        nDataTotal = 7
-      elif (irot+3)%6 == irotLD: 
-        engineType = 'EH10F0'
-        nTrigTotal = 28
-        nDataTotal = 14
-      else: print('ERROR: Unexpected relative rotations between HD and LD modules for HD engine (plane = {}, u = {}, v = {})'.format(plane,u,v))
-    f.write('\n{}'.format(' '.join(str(x) for x in [	plane,round(uCenter,1),round(vCenter,1),engineType,engineType,round(x0Center,3),	# 1-6
-							round(y0Center,3),irot,engineType[-2],u if isHD else uEast,v if isHD else vEast,	# 7-11
-							uLD if isHD else u,vLD if isHD else v,'-','-','-',					# 12-16
-							'-','-','-','-','-',									# 17-21
-							'-','-',icassette,nTrigTotal,'-',							# 22-26
-							nDataTotal,'-','-','-','-',								# 27-31
-							'-',1,'-','-','-',									# 32-36
-							'-',engine['HDorLD'],'-','-','-',							# 37-41
-							'-','-','-','-','-',									# 42-46
-							'-','-','-','-','-',									# 47-51
-							'-','-'])))										# 52-53
-
-  f.close()
-
+  # ----------------------------------------------
   # Make LD wagon info tables
+  # ----------------------------------------------
   if not args.noTables:
+
+    trigRoutingGeomDict = {}
+    xOverInRoutingGeomDict = {}
+    DAQRoutingGeomDict = {}
 
     if not os.path.exists('output/latex/{}'.format(geomVersion)): os.makedirs('output/latex/{}'.format(geomVersion))
     f = open('output/latex/{}/LDWagonInfo.tex'.format(geomVersion),'w')
@@ -1471,7 +1276,7 @@ def main():
 
       trigRoutingDict = {'TRIG\_ELINK{}\_{}'.format('W' if isWest else 'E',i):x for (i,x) in zip(np.arange(len(trigRouting)),trigRouting) if x != '-'}
       xOverOutRoutingDict = {'XING\_ELINK\_{}'.format(i):x for (i,x) in zip(np.arange(len(xOverRouting)),xOverRouting) if x != '-'}
-
+      
       modTrigRoutingDict = {}
       xOverInRoutingDict = {}
       for link,mod in trigRoutingDict.items():
@@ -1486,8 +1291,24 @@ def main():
       modDAQRoutingDict = sorted(modDAQRoutingDict.items(),key=lambda x: x[0])
 
       modTrigRoutingDict = [list(x) for x in modTrigRoutingDict]
-      xOverInRoutingDict   = [list(x) for x in xOverInRoutingDict]
+      xOverInRoutingDict = [list(x) for x in xOverInRoutingDict]
       modDAQRoutingDict  = [list(x) for x in modDAQRoutingDict]
+
+      # Save info for geometry file
+      trigRoutingGeom = []
+      xOverInRoutingGeom = []
+      DAQRoutingGeom = []
+      for mod,link in modTrigRoutingDict:
+        if 'TRIG' in link: 	trigRoutingGeom.append('{}:T{}.{}'.format(mod,'W' if isWest else 'E',link[-1]))
+        else: 			trigRoutingGeom.append('{}:X.{}'.format(mod,link[-1]))
+      for mod,link in xOverInRoutingDict:
+        xOverInRoutingGeom.append('{}:T{}.{}'.format(mod,'W' if isWest else 'E',link[-1]))
+      for mod,link in modDAQRoutingDict:
+        DAQRoutingGeom.append('{}:D1.{}'.format(mod,link[-1]))
+
+      trigRoutingGeomDict[wagonName]  	= ','.join(trigRoutingGeom)
+      xOverInRoutingGeomDict[wagonName]	= ','.join(xOverInRoutingGeom)
+      DAQRoutingGeomDict[wagonName] 	= ','.join(DAQRoutingGeom)
 
       f.write('Trig lpGBT\n\n\\vspace{-10pt}\n')
       headers = ['Index'] + list(np.arange(7))
@@ -1665,7 +1486,243 @@ def main():
     f.write('\\end{document}')
     f.close()
 
+  for code in wagonCodesDict:
+    wagonName = wagonNameDict[''.join([str(x) for x in code])]
+    if 'WH' not in wagonName: continue
+    trigFile = 'HDWagonInfo/{}Trig.dat'.format(wagonName)
+    if not os.path.exists(trigFile): print('ERROR: {} does not exist'.format(trigFile))
+    trigRoutingGeomDict[wagonName] = ','.join(open(trigFile).read().splitlines())
+    DAQFile = 'HDWagonInfo/{}DAQ.dat'.format(wagonName)
+    if not os.path.exists(DAQFile): print('ERROR: {} does not exist'.format(DAQFile))
+    DAQRoutingGeomDict[wagonName] = ','.join(open(DAQFile).read().splitlines())
+    xOverInRoutingGeomDict[wagonName] = '-'
+
+  # ----------------------------------------------
+  # Output geometry files
+  # ----------------------------------------------
+  if not os.path.exists('output/geometries/{}'.format(geomVersion)): os.makedirs('output/geometries/{}'.format(geomVersion))
+  f = open('output/geometries/{}/geometry_simotherboards.hgcal.txt'.format(geomVersion),'w')
+
+  f.write('plane u v itype typecode x0 y0 irot nvertices vx_0 vy_0 vx_1 vy_1 vx_2 vy_2 vx_3 vy_3 vx_4 vy_4 vx_5 vy_5 vx_6 vy_6 icassette trigRate trigLinks dataRate_ld dataLinks_ld dataRate_hd dataLinks_hd MB wagon isEngine nROCs power mrot phi HDorLD hash hash_hdld engine_trig_fibres engine_data_fibres engine_ctrl_fibres dataPp0 trigPp0 dataPp0_type trigPp0_type dataPp1 trigPp1 dataPp1_type trigPp1_type dataPp2 DAQ')
+
+  if not args.noTables:
+    if not os.path.exists('output/wagonInfo/{}'.format(geomVersion)): os.makedirs('output/wagonInfo/{}'.format(geomVersion))
+    fInfo = open('output/wagonInfo/{}/wagonInfoHD.tex'.format(geomVersion),'w')
+    fInfo.write('\\begin{tabular}{|c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|}')
+
+  wagonNameStatus = {y:False for x,y in wagonNameDict.items()} # Track whether name has been used
+  for tempCode,indices in wagonCodesDict.items():
+    tempCodeString = ''.join(str(x) for x in tempCode)
+    isHD = int(tempCodeString[0])
+    for index in indices:
+
+      tempIndex = index
+      geomTempIndex = geomGrouped.get_group((tempIndex[0],tempIndex[1],tempIndex[2]))
+
+      # LD wagons
+      if not isHD:
+        geomTempPartnerIndex = geomGrouped.get_group((tempIndex[0],tempIndex[1],not tempIndex[2]))
+        plane,icassette,MB,wagon = geomTempIndex[['plane','icassette','MB','wagon']].iloc[0]
+        if int(tempCodeString[1]): # West
+          u,v,irot,x0,y0,trig0,daqLD0,daqHD0 = geomTempIndex[['u','v','irot','x0','y0','trigLinks','dataLinks_ld','dataLinks_hd']].loc[geomTempIndex['isEngine']].iloc[0]
+          nDataTotal = 3
+        else: # East
+          uWest,vWest,irotWest = [int(x) for x in geomTempPartnerIndex[['u','v','irot']].loc[geomTempPartnerIndex['isEngine']].iloc[0]]
+          u,v = findEastEngineModule(plane,uWest,vWest,irotWest)
+          irot,x0,y0,trig0,daqLD0,daqHD0 = geomTempIndex[['irot','x0','y0','trigLinks','dataLinks_ld','dataLinks_hd']].loc[(geomTempIndex['u'] == u) & (geomTempIndex['v'] == v)].iloc[0]
+          nDataTotal = 4
+        u,v,irot = [int(x) for x in [u,v,irot]]
+        uList = list('-'*4)
+        vList = list('-'*4)
+        irotList = list('-'*4)
+        nActiveTrig = trig0
+        nActiveData = daqLD0
+        if int(tempCodeString[2]) == 0:
+          uList[0],vList[0],irotList[0] = [u,v,irot]
+        else:
+          uPrev,vPrev,irotPrev = [u,v,irot]
+          for i in reversed(range(int(tempCodeString[2]))):
+            angleRev,orientRev = reverseAngleOrient(int(tempCodeString[5*i+7]),int(tempCodeString[5*i+8]))
+            uPrev,vPrev,irotPrev = nextModule(plane,uPrev,vPrev,irotPrev,angleRev,orientRev)
+          uList[0],vList[0],irotList[0] = [uPrev,vPrev,irotPrev]
+        for i in range(len(tempCodeString)//5-1):
+          uNext,vNext,irotNext = nextModule(plane,uList[i],vList[i],irotList[i],int(tempCodeString[5*i+7]),int(tempCodeString[5*i+8]))
+          uList[i+1],vList[i+1],irotList[i+1] = uNext,vNext,irotNext
+          trigTemp,daqLDTemp,daqHDTemp = geomTempIndex[['trigLinks','dataLinks_ld','dataLinks_hd']].loc[(geomTempIndex['u'] == uNext) & (geomTempIndex['v'] == vNext)].iloc[0]
+          nActiveTrig += trigTemp
+          nActiveData += daqLDTemp
+        xFX11,yFX11 = [61.2,23.0]
+        x0FX11 = x0 + xFX11 * np.cos(np.pi/3*irot) + yFX11 * np.sin(np.pi/3*irot)
+        y0FX11 = y0 + xFX11 * np.sin(np.pi/3*irot) - yFX11 * np.cos(np.pi/3*irot)
+        nTrigTotal = int(tempCodeString[3]) + \
+                     sum([int(tempCodeString[5*i+5],16) for i in range(len(tempCodeString)//5)]) + \
+                     sum([int(tempCodeString[5*i+6],16) for i in range(len(tempCodeString)//5)])
+        nTrigXOutTotal = sum([int(tempCodeString[5*i+6]) for i in range(len(tempCodeString)//5)])
+        wagonRot = (irot + 3) % 6 if int(tempCodeString[1]) else irot
+        if nActiveData > nDataTotal: print('WARNING: {} wagon (layer {}, MB {}) has >4 DAQ links, requiring the use of a xover, which is not expected!'.format('West' if int(tempCodeString[1]) else 'East',plane,MB))
+        if tempCodeString in wagonNameDict: 
+          wagonName = wagonNameDict[tempCodeString]
+          wagonNameStatus[wagonName] = True 
+        else: 
+          print('ERROR: Wagon type code for {} not found'.format(tempCodeString))
+          wagonName = 'XXXXXX'
+        nModules = int(wagonName[2]) + int(wagonName[3])
+
+      else: # HD wagons
+
+        plane,icassette,MB,wagon,u,v,irot,x0,y0,trig0,daqLD0,daqHD0 = geomTempIndex[['plane','icassette','MB','wagon','u','v','irot','x0','y0','trigLinks','dataLinks_ld','dataLinks_hd']].loc[geomTempIndex['isEngine']].iloc[0]
+        uLD,vLD,temp = nextModule(plane,u,v,irot,angle=3,orient=0)
+        x0LD,y0LD,irotLD = geomBasic[(geomBasic['plane'] == plane) & (geomBasic['u'] == uLD) & (geomBasic['v'] == vLD)][['x0','y0','irot']].iloc[0]
+        plane,icassette,MB,wagon,u,v,irot,trig0,daqLD0,daqHD0 = [int(x) for x in [plane,icassette,MB,wagon,u,v,irot,trig0,daqLD0,daqHD0]]
+
+        if irot == irotLD: engineType = 'EH10H0'
+        elif (irot+3)%6 == irotLD: engineType = 'EL10F0'
+        else: print('ERROR: Unexpected relative rotations between HD and LD modules for HD engine (plane = {}, u = {}, v = {})'.format(plane,u,v))
+
+        nDataTotal = 7 if engineType == 'EH10H0' else 14
+        uList = list('-'*4)
+        vList = list('-'*4)
+        irotList = list('-'*4)
+        nActiveTrig = trig0
+        nActiveData = daqHD0
+        if int(tempCodeString[2]) == 0:
+          uList[0],vList[0],irotList[0] = [u,v,irot]
+        else:
+          uPrev,vPrev,irotPrev = [u,v,irot]
+          for i in reversed(range(int(tempCodeString[2]))):
+            angleRev,orientRev = reverseAngleOrient(int(tempCodeString[5*i+7]),int(tempCodeString[5*i+8]))
+            uPrev,vPrev,irotPrev = nextModule(plane,uPrev,vPrev,irotPrev,angleRev,orientRev)
+          uList[0],vList[0],irotList[0] = [uPrev,vPrev,irotPrev]
+        for i in range(len(tempCodeString)//5-1):
+          uNext,vNext,irotNext = nextModule(plane,uList[i],vList[i],irotList[i],int(tempCodeString[5*i+7]),int(tempCodeString[5*i+8]))
+          uList[i+1],vList[i+1],irotList[i+1] = uNext,vNext,irotNext
+          trigTemp,daqLDTemp,daqHDTemp = geomTempIndex[['trigLinks','dataLinks_ld','dataLinks_hd']].loc[(geomTempIndex['u'] == uNext) & (geomTempIndex['v'] == vNext)].iloc[0]
+          nActiveTrig += trigTemp
+          nActiveData += daqHDTemp
+        #xFX11,yFX11 = [61.2,23.0]
+        #x0FX11 = x0 + xFX11 * np.cos(np.pi/3*irot) + yFX11 * np.sin(np.pi/3*irot)
+        #y0FX11 = y0 + xFX11 * np.sin(np.pi/3*irot) - yFX11 * np.cos(np.pi/3*irot)
+        nTrigTotal = int(tempCodeString[3]) + \
+                     sum([int(tempCodeString[5*i+5],16) for i in range(len(tempCodeString)//5)]) + \
+                     sum([int(tempCodeString[5*i+6],16) for i in range(len(tempCodeString)//5)])
+        nTrigXOutTotal = sum([int(tempCodeString[5*i+6]) for i in range(len(tempCodeString)//5)])
+        wagonRot = irot
+        if nActiveData > nDataTotal and nActiveTrig != 0: print('WARNING: {} wagon (layer {}, MB {}) has too many DAQ links, {} counted, but only {} supported!'.format('West' if int(tempCodeString[1]) else 'East',plane,MB,nActiveData,nDataTotal))
+        if tempCodeString in wagonNameDict: 
+          wagonName = wagonNameDict[tempCodeString]
+          wagonNameStatus[wagonName] = True
+        else: 
+          print('ERROR: Wagon type code for {} not found'.format(tempCodeString))
+          wagonName = 'XXXXXX'
+      nModules = int(wagonName[2]) + int(wagonName[3])
+
+      # Account for manual index changes
+      if wagonName in indexChanges: 
+        indexMap = indexChanges[wagonName]
+        uListTemp = list('-'*4)
+        vListTemp = list('-'*4)
+        for iNew,iOld in enumerate(indexMap):
+          uListTemp[iNew] = uList[iOld]
+          vListTemp[iNew] = vList[iOld]
+        uList = uListTemp
+        vList = vListTemp
+
+      zipperTypes = list('-' * 4)
+      if wagonName in zipperDict:
+        for i in [0,1,2,3]:
+          zipperTypes[i] = zipperDictLocs.get(tuple(tempIndex + [i]),'-')
+        if zipperTypes[0] != '-': print('ERROR: Zipper for first module is not possible')
+
+      f.write('\n{}'.format(' '.join(str(x) for x in [	plane,u,v,wagonName,wagonName,round(x0FX11,3) if not isHD else '-',				# 1-6
+							round(y0FX11,3) if not isHD else '-',irot,nModules,uList[0],vList[0],				# 7-11
+							uList[1],vList[1],uList[2],vList[2],uList[3],							# 12-16
+							vList[3],zipperTypes[1],zipperTypes[2],zipperTypes[3],'-',					# 17-21
+							'-','-',icassette,nTrigTotal,int(nActiveTrig),							# 22-26
+							nDataTotal,int(nActiveData),int(tempCodeString[3]),nTrigXOutTotal,MB,				# 27-31
+							wagon,0,0,'-',wagonRot,										# 32-36
+							'-',int(tempCodeString[0]),'-','-',trigRoutingGeomDict[wagonName],				# 37-41
+							DAQRoutingGeomDict[wagonName],tempCodeString,xOverInRoutingGeomDict[wagonName],'-','-',		# 42-46
+							'-','-','-','-','-',										# 47-51
+							'-','-'])))											# 52-53
+
+    
+    if not args.noTables: fInfo.write('\\n{}\\\\'.format('&'.join([	wagonName,'-',
+						'-','-','-',
+                                                '-','-','-',
+                                                '-','-','-',
+                                                '-','-','-',
+						tempCodeString,'-'])))
+
+  f.close()
+  if not args.noTables:
+    fInfo.write('\\end{tabular}')
+    fInfo.close()
+
+  for key,val in wagonNameStatus.items():
+    if not val: print('WARNING: Unused wagon name ({})'.format(key))
+
+  #geomWagon = pd.read_csv('output/geometriesWagon/{}/geometryWagon.txt'.format(geomVersion),delim_whitespace=True)
+
+
+  #if not os.path.exists('output/geometriesEngine/{}'.format(geomVersion)): os.makedirs('output/geometriesEngine/{}'.format(geomVersion))
+  #f = open('output/geometriesEngine/{}/geometryEngine.txt'.format(geomVersion),'w')
+  f = open('output/geometries/{}/geometry_simotherboards.hgcal.txt'.format(geomVersion),'a')
+
+  #f.write('plane u v itype x0 y0 irot nvertices vx_0 vy_0 vx_1 vy_1 vx_2 vy_2 vx_3 vy_3 vx_4 vy_4 vx_5 vy_5 vx_6 vy_6 icassette trigRate trigLinks dataRate_ld dataLinks_ld dataRate_hd dataLinks_hd MB wagon isEngine nROCs power mrot phi HDorLD hash hash_hdld engine_trig_fibres engine_data_fibres engine_ctrl_fibres dataPp0 trigPp0 dataPp0_type trigPp0_type dataPp1 trigPp1 dataPp1_type trigPp1_type dataPp2 DAQ\n')
+
+
+  geomEngine = geomBasic[geomBasic['isEngine']]
+  for i,engine in geomEngine.iterrows():
+
+    plane,u,v,irot,icassette,x0,y0,isHD = engine[['plane','u','v','irot','icassette','x0','y0','HDorLD']]
+
+    if engine['HDorLD'] == 0: # LD
+      uEast,vEast = findEastEngineModule(plane,u,v,irot)
+      x0East,y0East = geomBasic[(geomBasic['plane'] == plane) & (geomBasic['u'] == uEast) & (geomBasic['v'] == vEast)][['x0','y0']].iloc[0]
+      uCenter = (u+uEast)/2
+      vCenter = (v+vEast)/2
+      x0Center = (x0+x0East)/2
+      y0Center = (y0+y0East)/2
+      nTrigTotal = 14
+      nDataTotal = 7
+      if irot == 0: engineType = 'EL10E0' if engine['x0'] > 0 else 'EL10W0'
+      elif irot == 1 or irot == 2: engineType = 'EL10E0'
+      elif irot == 3: engineType = 'EL10W0' if engine['x0'] > 0 else 'EL10E0'
+      elif irot == 4 or irot ==  5: engineType = 'EL10W0'
+      else: print('ERROR: Invalid irot for engine {}'.format(i))
+    else: # HD
+      uLD,vLD,temp = nextModule(plane,u,v,irot,angle=3,orient=0)
+      x0LD,y0LD,irotLD = geomBasic[(geomBasic['plane'] == plane) & (geomBasic['u'] == uLD) & (geomBasic['v'] == vLD)][['x0','y0','irot']].iloc[0]
+      uCenter = (u+uLD)/2
+      vCenter = (v+vLD)/2
+      x0Center = (x0+x0LD)/2
+      y0Center = (y0+y0LD)/2
+      if irot == irotLD: 
+        engineType = 'EH10H0'
+        nTrigTotal = 14
+        nDataTotal = 7
+      elif (irot+3)%6 == irotLD: 
+        engineType = 'EH10F0'
+        nTrigTotal = 28
+        nDataTotal = 14
+      else: print('ERROR: Unexpected relative rotations between HD and LD modules for HD engine (plane = {}, u = {}, v = {})'.format(plane,u,v))
+    f.write('\n{}'.format(' '.join(str(x) for x in [	plane,round(uCenter,1),round(vCenter,1),engineType,engineType,round(x0Center,3),	# 1-6
+							round(y0Center,3),irot,engineType[-2],u if isHD else uEast,v if isHD else vEast,	# 7-11
+							uLD if isHD else u,vLD if isHD else v,'-','-','-',					# 12-16
+							'-','-','-','-','-',									# 17-21
+							'-','-',icassette,nTrigTotal,'-',							# 22-26
+							nDataTotal,'-','-','-','-',								# 27-31
+							'-',1,'-','-','-',									# 32-36
+							'-',engine['HDorLD'],'-','-','-',							# 37-41
+							'-','-','-','-','-',									# 42-46
+							'-','-','-','-','-',									# 47-51
+							'-','-'])))										# 52-53
+
+  f.close()
+
+  # ----------------------------------------------
   # Print out counts
+  # ----------------------------------------------
   #print(codeCounter)
   uniqueWagonCodes = [list(i) for i in set(tuple(i) for i in list(codeCounter.keys()))]
   uniqueWagonCodesHD = [i for i in uniqueWagonCodes if i[0] == 1]
