@@ -1092,7 +1092,7 @@ def main():
             else: print('ERROR: Unexpected partial type: {}'.format(pType))
           # More special cases
           if [wagonName,indexTemp] in [['WW12B1',2],['WW21E2',2]]: zipperShape = 'L'
-          elif [wagonName,indexTemp] in [['WE12B1',2],['WW21E3',2],['WW12C1',1]]: zipperShape = 'R'
+          elif [wagonName,indexTemp] in [['WE12B1',2],['WE21C2',2],['WW21E3',2],['WW12C1',1]]: zipperShape = 'R'
           zipperType = zipperTypeDict[pType] + zipperShape + ('G' if nModules == 4 else '0')
           if wagonName in zipperDict and indexTemp in zipperDict[wagonName] and zipperType in zipperDict[wagonName][indexTemp]: zipperDict[wagonName][indexTemp][zipperType] += 1
           else: zipperDict.setdefault(wagonName,{indexTemp:{zipperType:1}}).setdefault(indexTemp,{zipperType:1}).setdefault(zipperType,1)
