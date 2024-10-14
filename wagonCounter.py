@@ -235,7 +235,7 @@ def maxLinksCalculation(code,codeFormat,linkType,wagonCodesDict,geomGrouped,reco
 def main():
 
   # Specify the geometry file to be used
-  geomVersion = 'v16.4'
+  geomVersion = 'v16.5'
   geometryPath = '../hgcal_modmap/geometries/{}/'.format(geomVersion)
   geometryFile = 'geometry_sipmontile.hgcal'
 
@@ -1736,6 +1736,18 @@ def main():
   if not args.noWagonDict:
     with open('wagonDict/wagonDict_{}.txt'.format(geometryFile),'w') as f:
       print(wagonCodesDict,file=f)
+
+  # Print LD wagons that are only in CE-H
+  #LDWagonDictSection = {}
+  #for code,indices in wagonCodesDict.items():
+  #  wagonName = wagonNameDict[''.join([str(x) for x in code])]
+  #  if code[0] != 0: continue
+  #  if wagonName not in LDWagonDictSection: LDWagonDictSection[wagonName] = {'CE-E':0,'CE-H':0}
+  #  for layer,MB,wagon in indices:
+  #    if layer < 27: LDWagonDictSection[wagonName]['CE-E'] += 1
+  #    else:          LDWagonDictSection[wagonName]['CE-H'] += 1
+  #for name,sectionCounts in LDWagonDictSection.items():
+  #  if sectionCounts['CE-E'] == 0: print(name)
 
   # Print wagon info
   #wagonCodesDict = dict(sorted(wagonCodesDict.items(),key=lambda x:(x[0][0],len(x[0]),len(x[1])),reverse=True))
