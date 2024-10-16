@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
 import argparse
 from tabulate import tabulate
+import json
 
 pd.set_option('display.max_columns', None)
 
@@ -1180,6 +1181,16 @@ def main():
   #        u,v = findEastEngineModule(plane,uWest,vWest,irotWest)
   #      print('{} {} {}'.format(plane,u,v))
 
+  # Crosspoint mapping for wagon link config file
+  crosspointLinkOutputMap = {	'TRIG0':	3,
+				'TRIG1':	2,
+				'TRIG2':	1,
+				'TRIG3':	0,}
+  crosspointLinkInputMap = {   	'DAQ1':		2,
+                                'DAQ0':		1,
+                                'TRIG4':       	0,}
+  eastDAQMap = {4:0,5:1,6:2,3:4}
+
   # ----------------------------------------------
   # Make LD wagon info tables
   # ----------------------------------------------
@@ -1188,6 +1199,8 @@ def main():
     trigRoutingGeomDict = {}
     xOverInRoutingGeomDict = {}
     DAQRoutingGeomDict = {}
+
+    wagonLinkConfig = {}
 
     if not os.path.exists('output/latex/{}'.format(geomVersion)): os.makedirs('output/latex/{}'.format(geomVersion))
     f = open('output/latex/{}/LDWagonInfo.tex'.format(geomVersion),'w')
@@ -1411,7 +1424,47 @@ def main():
 
       f.write('\n\\newpage\n')
 
+      #------------------------
+      # Wagon link config json
+      #------------------------
+      
+      # Create actual dicts
+      modTrigRoutingDictNew = {}
+      for pair in modTrigRoutingDict: modTrigRoutingDictNew[pair[0]] = pair[1]
+      modDAQRoutingDictNew = {}
+      for pair in modDAQRoutingDict: modDAQRoutingDictNew[pair[0]] = pair[1]
+      xOverInRoutingDictNew = {}
+      for pair in xOverInRoutingDict: xOverInRoutingDictNew[pair[0]] = pair[1]
+
+      wagonLinkConfig[wagonName] = {'NumMod':nModules}
+      modTrigRoutingDict
+      for iMod in np.arange(nModules) + 1:
+        hasTrig4 = True if 'M{}.{}'.format(iMod,4) in modTrigRoutingDictNew.keys() else False
+        nInputs = len([x for x in modDAQRoutingDictNew.keys() if 'M{}'.format(iMod) in x]) + (1 if hasTrig4 else 0)
+        for iInput in range(nInputs):
+          if iInput == 0 and hasTrig4:
+            linkString = modTrigRoutingDictNew['M{}.4'.format(iMod)].replace('\\','')
+            linkString = ''.join([x for i,x in enumerate(linkString.split('_')) if i in [0,2]])
+            modLinkString = 'TRIG4'
+            wagonLinkConfig[wagonName].setdefault('Mod{}'.format(iMod),{}).setdefault('Inputs',{}).setdefault(crosspointLinkInputMap[modLinkString],{'Eng_Elink':linkString,'Mod_Elink':modLinkString,'Invert':0})
+          else:
+            iDAQLink = iInput if not hasTrig4 else iInput-1
+            linkString = modDAQRoutingDictNew['M{}.{}'.format(iMod,iDAQLink)].replace('\\','')
+            linkString = ''.join([x for i,x in enumerate(linkString.split('_')) if i in [0,2]])
+            if wagonName[1] == 'E': linkString = linkString[:-1] + str(eastDAQMap[int(linkString[-1])])
+            modLinkString = 'DAQ{}'.format(iDAQLink)
+            wagonLinkConfig[wagonName].setdefault('Mod{}'.format(iMod),{}).setdefault('Inputs',{}).setdefault(crosspointLinkInputMap[modLinkString],{'Eng_Elink':linkString,'Mod_Elink':modLinkString,'Invert':0})
+        nOutputs = len([x for x in modTrigRoutingDictNew.keys() if 'M{}'.format(iMod) in x]) - (1 if hasTrig4 else 0)
+        for iOutput in range(nOutputs):
+          iTrigLink = iOutput
+          linkString = modTrigRoutingDictNew['M{}.{}'.format(iMod,iTrigLink)].replace('\\','')
+          linkString = ''.join([x for i,x in enumerate(linkString.split('_')) if i in [0,2]])
+          modLinkString = 'TRIG{}'.format(iTrigLink)
+          wagonLinkConfig[wagonName].setdefault('Mod{}'.format(iMod),{}).setdefault('Outputs',{}).setdefault(crosspointLinkOutputMap[modLinkString],{'Eng_Elink':linkString,'Mod_Elink':modLinkString,'Invert':0})
+
+    #------------------------------
     # Wagons by layer summary page
+    #------------------------------
     f.write('\\begin{landscape}\n\n')
     f.write('\\section{{Wagons Per Layer}}\n\n')
     f.write('\\scalebox{0.55}{\n\n')
@@ -1496,6 +1549,14 @@ def main():
     if not os.path.exists(DAQFile): print('ERROR: {} does not exist'.format(DAQFile))
     DAQRoutingGeomDict[wagonName] = ','.join(open(DAQFile).read().splitlines())
     xOverInRoutingGeomDict[wagonName] = '-'
+
+  #--------------------------------
+  # Wagon link config json file
+  #--------------------------------
+  if not os.path.exists('output/wagonLinkConfig/{}'.format(geomVersion)): os.makedirs('output/wagonLinkConfig/{}'.format(geomVersion))
+  f = open('output/wagonLinkConfig/{}/wagonConfig.json'.format(geomVersion),'w')
+  json.dump(wagonLinkConfig,f,indent=4)
+  f.close()
 
   # ----------------------------------------------
   # Output geometry files
