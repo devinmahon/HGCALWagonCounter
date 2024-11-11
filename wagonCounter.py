@@ -726,10 +726,10 @@ def main():
     '1000F5000F50'		: 'WH20A1',
     '1000F6000F9000g80'		: 'WH21A1',
     # LD
-    '0000F1100F2000F2000F20'	: 'WE40A1',
+    '0000F2000F2000F2000F11'	: 'WE40A1',
     '0000F2000F2000F2005d11'	: 'WE31A1',
     '0030d1152F2030F2030F20'	: 'WE31A2',
-    '0030F1130F2022F2024F20'	: 'WE40A2',
+    '0030F2030F2022F1124F20'	: 'WE40A2',
     '0000F2014F2012F2015d11'	: 'WE31A3',
     '0101F2030F2030F20'		: 'WW30A1', # W3A
     '0100F3030F2031d20'		: 'WW21A1',
@@ -983,6 +983,16 @@ def main():
   newCode = (0,0,0,0,'F','2',0,1,4,'F','2',0,1,2,'F','2',0,1,5,'d','1',1)
   if newCode not in wagonCodesDict: wagonCodesDict[newCode] = wagonCodesDict.pop(oldCode)
   else: print('ERROR: Attempting to replace {} with {} (manual adjustment), but the former already exists! Its information will be overwritten.'.format(oldCode,newCode))
+  # WE40A1: moving xover to module 4 rather than 1
+  oldCode = (0,0,0,0,'F','1',1,0,0,'F','2',0,0,0,'F','2',0,0,0,'F','2',0)
+  newCode = (0,0,0,0,'F','2',0,0,0,'F','2',0,0,0,'F','2',0,0,0,'F','1',1)
+  if newCode not in wagonCodesDict: wagonCodesDict[newCode] = wagonCodesDict.pop(oldCode)
+  else: print('ERROR: Attempting to replace {} with {} (manual adjustment), but the former already exists! Its information will be overwritten.'.format(oldCode,newCode))
+  # WE40A2: moving xover to module 4 rather than 1
+  oldCode = (0,0,3,0,'F','1',1,3,0,'F','2',0,2,2,'F','2',0,2,4,'F','2',0)
+  newCode = (0,0,3,0,'F','2',0,3,0,'F','2',0,2,2,'F','1',1,2,4,'F','2',0)
+  if newCode not in wagonCodesDict: wagonCodesDict[newCode] = wagonCodesDict.pop(oldCode)
+  else: print('ERROR: Attempting to replace {} with {} (manual adjustment), but the former already exists! Its information will be overwritten.'.format(oldCode,newCode))
 
   # Compute useful objects
   codeCounter = Counter({tuple(key):len(val) for key,val in wagonCodesDict.items()})
@@ -990,8 +1000,8 @@ def main():
   maxLinks = {x:maxLinksCalculation(x,'B','trigLinks',wagonCodesDict,geomGrouped,recodedCodesList) for x in wagonCodesDict}
 
   # Manual module index changes
-  indexChanges = {	# "Discontinous" wagons
-			'WE40A2': [3,1,0,2],
+  indexChanges = {
+			'WE40A2': [2,1,3,0],
 			'WE31A2': [3,2,1,0],
 			'WE30A2': [1,0,2],
 			'WE21C3': [1,0,2],
@@ -1001,7 +1011,6 @@ def main():
 			'WW21E3': [1,0,2],
 			'WW21E1': [1,0,2],
 			'WW30A2': [1,0,2],
-			# Re-indexing some wagons to start straight
 			'WE12A1': [0,2,1],
                         'WE12B1': [0,2,1],
                         'WE21C1': [0,2,1],
@@ -1108,14 +1117,14 @@ def main():
   zipperDict['WE40A1'] =  {3:{'HSNG':wagonCodesCounter['WE40A1']}}
   partialZipperMap['WE40A1'] = {3:{'Full':'HSNG'}}
   #wagonetteDict['WE40A1'] = {3:{'HSNG-Full':wagonCodesCounter['WE40A1']}}
-  for index in wagonCodesDict[(0,0,0,0,'F','1',1,0,0,'F','2',0,0,0,'F','2',0,0,0,'F','2',0)]:
+  for index in wagonCodesDict[(0,0,0,0,'F','2',0,0,0,'F','2',0,0,0,'F','2',0,0,0,'F','1',1)]:
     zipperDictLocs[tuple(index + [3])] = 'HSNG'
   # WE40A2
   partialDict['WE40A2'] = {3:{'Full':wagonCodesCounter['WE40A2']}}
   zipperDict['WE40A2'] =  {3:{'HSNG':wagonCodesCounter['WE40A2']}}
   partialZipperMap['WE40A2'] = {3:{'Full':'HSNG'}}
   #wagonetteDict['WE40A2'] = {3:{'HSNG-Full':wagonCodesCounter['WE40A2']}}
-  for index in wagonCodesDict[(0,0,3,0,'F','1',1,3,0,'F','2',0,2,2,'F','2',0,2,4,'F','2',0)]:
+  for index in wagonCodesDict[(0,0,3,0,'F','2',0,3,0,'F','2',0,2,2,'F','1',1,2,4,'F','2',0)]:
     zipperDictLocs[tuple(index + [3])] = 'HSNG'
 
   # Manual consolidations
@@ -1266,7 +1275,8 @@ def main():
           linkList[i] = linkList[indexChanges[wagonNameDict[codeString]][i]]
       for Mi,nT in enumerate(linkList):
          for Ti in range(nT):
-           if (Ti + 1) > code[Mi][0]: 	xOverRouting.append('M{}.{}'.format(Mi+1,Ti))
+           #if (Ti + 1) > code[Mi][0]: 	xOverRouting.append('M{}.{}'.format(Mi+1,Ti))
+           if (Ti + 1) > code[indexChanges[wagonNameDict[codeString]].index(Mi) if wagonNameDict[codeString] in indexChanges else Mi][0]:  xOverRouting.append('M{}.{}'.format(Mi+1,Ti))
            else:			trigRouting.append('M{}.{}'.format(Mi+1,Ti))
 
       linkList = maxDAQLinks[key]
@@ -1798,17 +1808,23 @@ def main():
     with open('wagonDict/wagonDict_{}.txt'.format(geometryFile),'w') as f:
       print(wagonCodesDict,file=f)
 
-  # Print LD wagons that are only in CE-H
+  # Print LD wagons by locations
   #LDWagonDictSection = {}
   #for code,indices in wagonCodesDict.items():
   #  wagonName = wagonNameDict[''.join([str(x) for x in code])]
   #  if code[0] != 0: continue
-  #  if wagonName not in LDWagonDictSection: LDWagonDictSection[wagonName] = {'CE-E':0,'CE-H':0}
+  #  if wagonName not in LDWagonDictSection: LDWagonDictSection[wagonName] = {'CE-E':0,'CE-H':0,'Preseries':0,'Preproduction':0,'Total':0}
   #  for layer,MB,wagon in indices:
   #    if layer < 27: LDWagonDictSection[wagonName]['CE-E'] += 1
   #    else:          LDWagonDictSection[wagonName]['CE-H'] += 1
+  #    if layer in [25,26,44,45,46,47]: LDWagonDictSection[wagonName]['Preproduction'] += 1
+  #    if layer in [25,26,33,44,45,46,47] : LDWagonDictSection[wagonName]['Preseries'] += 1
+  #    LDWagonDictSection[wagonName]['Total'] += 1
   #for name,sectionCounts in LDWagonDictSection.items():
-  #  if sectionCounts['CE-E'] == 0: print(name)
+  #  #if sectionCounts['CE-E'] == 0: print(name)
+  #  nCEE,nCEH,nPreseries,nPreproduction,n = np.array([sectionCounts['CE-E'],sectionCounts['CE-H'],sectionCounts['Preseries'],sectionCounts['Preproduction'],sectionCounts['Total']]) * 6
+  #  #print('{:<10}{:<10}{:<10}{:<10}'.format(name,nCEE,nCEH,n))
+  #  print('{},{},{},{},{},{}'.format(name,nCEE,nCEH,nPreseries,nPreproduction,n))
 
   # Print wagon info
   #wagonCodesDict = dict(sorted(wagonCodesDict.items(),key=lambda x:(x[0][0],len(x[0]),len(x[1])),reverse=True))
@@ -1841,7 +1857,7 @@ def main():
   #codeCounter = Counter({tuple(key):len(val) for key,val in wagonCodesDict.items()})
   # maxLinks = {x:maxLinksCalculation(x,'B','trigLinks'wagonCodesDict,geomGrouped,recodedCodesList) for x in wagonCodesDict}
 
-  # Select only wagon in certain layers/cassettes
+  # Select only wagons in certain layers/cassettes
   #wagonCodesSubDict = copy.deepcopy(wagonCodesDict)
   #for key,vals in wagonCodesDict.items():
   #  for val in vals:
