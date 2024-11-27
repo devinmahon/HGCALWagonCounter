@@ -7,6 +7,7 @@ import sys
 import time
 import copy
 import os
+import subprocess
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
 import argparse
@@ -239,6 +240,7 @@ def main():
   geomVersion = 'v16.5'
   geometryPath = '../hgcal_modmap/geometries/{}/'.format(geomVersion)
   geometryFile = 'geometry_sipmontile.hgcal'
+  gitHash = subprocess.check_output('git -C ../hgcal_modmap/ rev-parse --short HEAD',shell=True).decode('utf-8')
 
   parser = argparse.ArgumentParser(description='Wagon Variety Analyzer')
   parser.add_argument('--geomVersion',type=str,default=geomVersion,help='Geometry version')
@@ -1211,6 +1213,9 @@ def main():
 
     wagonLinkConfig = {}
 
+    # Load information about wagon nicknames and resistors
+    LDWagonIdentifiers = pd.read_csv('wagonInfo/LDWagonIdentifiers.txt')
+
     if not os.path.exists('output/latex/{}'.format(geomVersion)): os.makedirs('output/latex/{}'.format(geomVersion))
     f = open('output/latex/{}/LDWagonInfo.tex'.format(geomVersion),'w')
 
@@ -1234,7 +1239,9 @@ def main():
     f.write('\\parskip=15pt\n')
     f.write('\\begin{document}\n')
     f.write('\\begin{center}\n')
-    f.write('{\huge LD Wagon Design Information}\n')
+    f.write('{\huge LD Wagon Design Information}\n\n')
+    f.write('\\vspace{-10pt}\n')
+    f.write('{{Produced with Hgcal Modmap {} with git hash {}}}\n'.format(geomVersion,gitHash))
     f.write('\\end{center}\n')
     f.write('\\begin{multicols}{2}\n')
     f.write('\\tableofcontents\n')
@@ -1256,9 +1263,10 @@ def main():
       code = [[int(x[0]),int(x[1])] for x in code]
 
       f.write('\\begin{tikzpicture}[overlay, remember picture]\n')
-      f.write('\\node[xshift=-2in,yshift=-2.05in] at (current page.north east) {{\IfFileExists{{/Users/devinmahon/Documents/CMS/wagonCounter/output/wagonImages/cartoons/{}.png}}{{\includegraphics[width=0.85in,height=0.85in,keepaspectratio]{{/Users/devinmahon/Documents/CMS/wagonCounter/output/wagonImages/cartoons/{}.png}}}}{{\includegraphics[width=0.85in,height=0.85in,keepaspectratio]{{/Users/devinmahon/Downloads/NotFound.png}}}}}};\n'.format(wagonNameDict[codeString],wagonNameDict[codeString]))
-      f.write('\\node[xshift=-2in,yshift=-1.5in] at (current page.north east) {Variant Cartoon};\n')
-      f.write('\\node (rect) at ([xshift=-2in,yshift=-1.95in] current page.north east) [draw,thick,minimum width=1.2in,minimum height=1.1in] {};\n')
+      f.write('\\node[xshift=-2in,yshift=-1.75in] at (current page.north east) {{\IfFileExists{{/Users/devinmahon/Documents/CMS/wagonCounter/output/wagonImages/cartoons/{}.png}}{{\includegraphics[width=0.85in,height=0.85in,keepaspectratio]{{/Users/devinmahon/Documents/CMS/wagonCounter/output/wagonImages/cartoons/{}.png}}}}{{\includegraphics[width=0.85in,height=0.85in,keepaspectratio]{{/Users/devinmahon/Downloads/NotFound.png}}}}}};\n'.format(wagonNameDict[codeString],wagonNameDict[codeString]))
+      f.write('\\node[xshift=-2in,yshift=-2.3in] at (current page.north east) {{Nickname: {}}};\n'.format(LDWagonIdentifiers[LDWagonIdentifiers['typecode'] == wagonName]['nickname'].iloc[0] if wagonName in LDWagonIdentifiers['typecode'].values else 'Not found'))
+      f.write('\\node[xshift=-2in,yshift=-2.5in] at (current page.north east) {{ID Resistor: {} $\Omega$}};\n'.format(LDWagonIdentifiers[LDWagonIdentifiers['typecode'] == wagonName]['resistor'].iloc[0] if wagonName in LDWagonIdentifiers['typecode'].values else 'Not found'))
+      f.write('\\node (rect) at ([xshift=-2in,yshift=-1.95in] current page.north east) [draw,thick,minimum width=2.0in,minimum height=1.5in] {};\n')
       f.write('\\end{tikzpicture}\n\n')
 
       f.write('\\section{{{} ({})}}\n\n'.format(wagonNameDict[codeString],codeString))
@@ -1447,6 +1455,7 @@ def main():
       for pair in xOverInRoutingDict: xOverInRoutingDictNew[pair[0]] = pair[1]
 
       wagonLinkConfig[wagonName] = {'NumMod':nModules}
+      wagonLinkConfig[wagonName] = {'IDResistor':int(LDWagonIdentifiers[LDWagonIdentifiers['typecode'] == wagonName]['resistor'].iloc[0]) if wagonName in LDWagonIdentifiers['typecode'].values else 'Unknown'}
       modTrigRoutingDict
       for iMod in np.arange(nModules) + 1:
         hasTrig4 = True if 'M{}.{}'.format(iMod,4) in modTrigRoutingDictNew.keys() else False
@@ -1821,10 +1830,32 @@ def main():
   #    if layer in [25,26,33,44,45,46,47] : LDWagonDictSection[wagonName]['Preseries'] += 1
   #    LDWagonDictSection[wagonName]['Total'] += 1
   #for name,sectionCounts in LDWagonDictSection.items():
-  #  #if sectionCounts['CE-E'] == 0: print(name)
+  #  #if sectionCounts['CE-E'] == 0: print(name,'is only in CE-H')
   #  nCEE,nCEH,nPreseries,nPreproduction,n = np.array([sectionCounts['CE-E'],sectionCounts['CE-H'],sectionCounts['Preseries'],sectionCounts['Preproduction'],sectionCounts['Total']]) * 6
   #  #print('{:<10}{:<10}{:<10}{:<10}'.format(name,nCEE,nCEH,n))
   #  print('{},{},{},{},{},{}'.format(name,nCEE,nCEH,nPreseries,nPreproduction,n))
+
+  # Count certain wagons
+  #extraFibers = {}
+  #for code,indices in wagonCodesDict.items():
+  #  for index in indices:
+  #    wagonName = wagonNameDict[''.join([str(x) for x in code])]
+  #    if wagonName[0:2] == 'WH' or wagonName[2:4] not in ['31','40']: continue
+  #    layer = index[0]
+  #    icassette = geomGrouped.get_group(tuple(index))['icassette'].iloc[0]
+  #    extraFibers[(layer,icassette,'DAQ')] = extraFibers.get((layer,icassette,'DAQ'),0) + 1
+  #    extraFibers[(layer,icassette,'Trig')] = extraFibers.get((layer,icassette,'Trig'),0) + 1
+  #extraFibersList = sorted([list(loc) + [count] for loc,count in extraFibers.items()])
+  #layerCurr,cassetteCurr = extraFibersList[0][0],extraFibersList[0][1]
+  #for i,item in enumerate(extraFibersList):
+  #  layer,cassette,linkType,count = item
+  #  if i == 0 or layer != layerCurr: 
+  #    print('----------Layer {}----------'.format(layer))
+  #    print('Cassette {}:'.format(cassette))
+  #  elif cassette != cassetteCurr:
+  #    print('Cassette {}:'.format(cassette))
+  #  print('  {}: +{}'.format(linkType,count * 6))
+  #  layerCurr,cassetteCurr = [layer,cassette]
 
   # Print wagon info
   #wagonCodesDict = dict(sorted(wagonCodesDict.items(),key=lambda x:(x[0][0],len(x[0]),len(x[1])),reverse=True))
