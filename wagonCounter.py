@@ -237,7 +237,7 @@ def maxLinksCalculation(code,codeFormat,linkType,wagonCodesDict,geomGrouped,reco
 def main():
 
   # Specify the geometry file to be used
-  geomVersion = 'v16.5'
+  geomVersion = 'v16.5_pre2'
   geometryPath = '../hgcal_modmap/geometries/{}/'.format(geomVersion)
   geometryFile = 'geometry_sipmontile.hgcal'
   gitHash = subprocess.check_output('git -C ../hgcal_modmap/ rev-parse --short HEAD',shell=True).decode('utf-8')
@@ -1003,6 +1003,7 @@ def main():
 
   # Manual module index changes
   indexChanges = {
+                        'WH31B1': [0,1,3,2],
 			'WE40A2': [2,1,3,0],
 			'WE31A2': [3,2,1,0],
 			'WE30A2': [1,0,2],
@@ -1136,6 +1137,9 @@ def main():
 			(0,0,0,0,'F','2',0,0,0,'F','2',0,0,0,'F','2',0,0,5,'d','1',1): 	[(0,0,3,0,'d','1',1,5,2,'F','2',0,3,0,'F','2',0,3,0,'F','2',0)],# WE31A1 <-- WE31A2
 			(0,1,0,0,'F','4',0,3,1,'d','2',0): 				[(0,1,0,0,'F','2',0,3,2,'d','2',0)],				# WW11A1 <-- WW11B1
 			(0,1,0,1,'F','2',0,3,0,'F','2',0,3,1,'d','2',0): 		[(0,1,0,0,'F','2',0,3,0,'F','2',0,3,2,'d','2',0)],		# WW21B1 <-- WW21E4
+                        (0,0,0,0,'F','3',0,1,5,'d','2',0,0,0,'d','2',0):                [(0,0,0,0,'F','2',0,1,0,'d','2',0,5,5,'d','2',0)],              # WE12A1 <-- WE12B1
+                        (0,0,0,0,'F','2',0,1,5,'d','2',0,0,1,'F','2',0):                [(0,0,0,0,'F','2',0,1,0,'d','2',0,5,0,'F','2',0)],              # WE21C1 <-- WE21C2
+                        (0,1,0,0,'F','3',1,2,1,'d','2',0,3,0,'d','2',0):                [(0,1,0,0,'F','2',0,2,0,'d','2',0,4,1,'d','2',0)],              # WW12A1 <-- WW12B1
                }
 
   for targetCode,removingList in consolDict.items():
@@ -1241,7 +1245,7 @@ def main():
     f.write('\\begin{center}\n')
     f.write('{\huge LD Wagon Design Information}\n\n')
     f.write('\\vspace{-10pt}\n')
-    f.write('{{Produced with Hgcal Modmap {} with git hash {}}}\n'.format(geomVersion,gitHash))
+    f.write('{{Produced with Hgcal Modmap {} with git hash {}}}\n'.format(geomVersion.replace('_','\_'),gitHash))
     f.write('\\end{center}\n')
     f.write('\\begin{multicols}{2}\n')
     f.write('\\tableofcontents\n')
@@ -1337,9 +1341,9 @@ def main():
       for mod,link in modDAQRoutingDict:
         DAQRoutingGeom.append('{}:D1.{}'.format(mod,link[-1]))
 
-      trigRoutingGeomDict[wagonName]  	= ','.join(trigRoutingGeom)
-      xOverInRoutingGeomDict[wagonName]	= ','.join(xOverInRoutingGeom)
-      DAQRoutingGeomDict[wagonName] 	= ','.join(DAQRoutingGeom)
+      trigRoutingGeomDict[wagonName]  	= ','.join(trigRoutingGeom) if trigRoutingGeom else '-'
+      xOverInRoutingGeomDict[wagonName]	= ','.join(xOverInRoutingGeom) if xOverInRoutingGeom else '-'
+      DAQRoutingGeomDict[wagonName] 	= ','.join(DAQRoutingGeom) if DAQRoutingGeom else '-'
 
       f.write('Trig lpGBT\n\n\\vspace{-10pt}\n')
       headers = ['Index'] + list(np.arange(7))
@@ -1585,6 +1589,10 @@ def main():
 
   f.write('plane u v itype typecode x0 y0 irot nvertices vx_0 vy_0 vx_1 vy_1 vx_2 vy_2 vx_3 vy_3 vx_4 vy_4 vx_5 vy_5 vx_6 vy_6 icassette trigRate trigLinks dataRate_ld dataLinks_ld dataRate_hd dataLinks_hd MB wagon isEngine nROCs power mrot phi HDorLD hash hash_hdld engine_trig_fibres engine_data_fibres engine_ctrl_fibres dataPp0 trigPp0 dataPp0_type trigPp0_type dataPp1 trigPp1 dataPp1_type trigPp1_type dataPp2 DAQ')
 
+  # Load wagon information
+  #wagonInfoLD = json.load(open('wagonInfo/wagonInfoLD.json'))
+  wagonInfoHD = json.load(open('wagonInfo/wagonInfoHD.json'))
+
   if not args.noTables:
     if not os.path.exists('output/wagonInfo/{}'.format(geomVersion)): os.makedirs('output/wagonInfo/{}'.format(geomVersion))
     fInfo = open('output/wagonInfo/{}/wagonInfoHD.tex'.format(geomVersion),'w')
@@ -1593,7 +1601,14 @@ def main():
   wagonNameStatus = {y:False for x,y in wagonNameDict.items()} # Track whether name has been used
   for tempCode,indices in wagonCodesDict.items():
     tempCodeString = ''.join(str(x) for x in tempCode)
+    if tempCodeString in wagonNameDict: 
+      wagonName = wagonNameDict[tempCodeString]
+      wagonNameStatus[wagonName] = True 
+    else: 
+      print('ERROR: Wagon type code for {} not found'.format(tempCodeString))
+      wagonName = 'XXXXXX'
     isHD = int(tempCodeString[0])
+    nModules = int(wagonName[2]) + int(wagonName[3])
     for index in indices:
 
       tempIndex = index
@@ -1640,13 +1655,6 @@ def main():
         nTrigXOutTotal = sum([int(tempCodeString[5*i+6]) for i in range(len(tempCodeString)//5)])
         wagonRot = (irot + 3) % 6 if int(tempCodeString[1]) else irot
         if nActiveData > nDataTotal: print('WARNING: {} wagon (layer {}, MB {}) has >4 DAQ links, requiring the use of a xover, which is not expected!'.format('West' if int(tempCodeString[1]) else 'East',plane,MB))
-        if tempCodeString in wagonNameDict: 
-          wagonName = wagonNameDict[tempCodeString]
-          wagonNameStatus[wagonName] = True 
-        else: 
-          print('ERROR: Wagon type code for {} not found'.format(tempCodeString))
-          wagonName = 'XXXXXX'
-        nModules = int(wagonName[2]) + int(wagonName[3])
 
       else: # HD wagons
 
@@ -1656,8 +1664,38 @@ def main():
         plane,icassette,MB,wagon,u,v,irot,trig0,daqLD0,daqHD0 = [int(x) for x in [plane,icassette,MB,wagon,u,v,irot,trig0,daqLD0,daqHD0]]
 
         if irot == irotLD: engineType = 'EH10H0'
-        elif (irot+3)%6 == irotLD: engineType = 'EL10F0'
+        elif (irot+3)%6 == irotLD: engineType = 'EH10F0'
         else: print('ERROR: Unexpected relative rotations between HD and LD modules for HD engine (plane = {}, u = {}, v = {})'.format(plane,u,v))
+
+        # Matrices for link routing
+        if engineType == 'EH10F0':
+          trigDim = 4
+          DAQDim = 2
+        elif engineType == 'EH10H0':
+          trigDim = 2
+          DAQDim = 1
+        else: print('ERROR: Unexpected HD engine type when formatting link routing for HD engine (plane = {}, u = {}, v = {})'.format(plane,u,v))
+        trigMat = np.empty((trigDim,7),dtype=object)
+        DAQMat = np.empty((DAQDim,7),dtype=object)
+
+        # Account for index changes
+        newIndices = list(range(nModules)) if wagonName not in indexChanges else indexChanges[wagonName]
+
+        # Link routing for first module
+        for index,x in enumerate(wagonInfoHD):
+          if x['name'] == wagonName: iWagon = index
+        for iTrig in range(int(trig0)):
+          ilpGBT,iLink = np.where(np.array(wagonInfoHD[iWagon]['trigRouting']) == 'M{}.{}'.format(newIndices[0]+1,iTrig))
+          if ilpGBT.size != 1 or iLink.size != 1:
+            print('ERROR: Module trigger link not found or duplicated in wagon routing. Wagon {}, layer {}, (u,v) = ({},{}), link {}'.format(wagonName,plane,u,v,'M{}.{}'.format(newIndices[0]+1,iTrig)))
+          ilpGBT,iLink = ilpGBT[0],iLink[0]
+          trigMat[ilpGBT,iLink] = wagonInfoHD[iWagon]['trigRouting'][ilpGBT][iLink]
+        for iDAQ in range(int(daqHD0)):
+          ilpGBT,iLink = np.where(np.array(wagonInfoHD[iWagon]['DAQRouting']) == 'M{}.{}'.format(newIndices[0]+1,iDAQ))
+          if ilpGBT.size != 1 or iLink.size != 1:
+            print('ERROR: Module DAQ link not found or duplicated in wagon routing. Wagon {}, layer {}, (u,v) = ({},{}), link {}'.format(wagonName,plane,u,v,'M{}.{}'.format(newIndices[0]+1,iDAQ)))
+          ilpGBT,iLink = ilpGBT[0],iLink[0]
+          DAQMat[ilpGBT,iLink] = wagonInfoHD[iWagon]['DAQRouting'][ilpGBT][iLink]
 
         nDataTotal = 7 if engineType == 'EH10H0' else 14
         uList = list('-'*4)
@@ -1672,20 +1710,33 @@ def main():
           for i in reversed(range(int(tempCodeString[2]))):
             angleRev,orientRev = reverseAngleOrient(int(tempCodeString[5*i+7]),int(tempCodeString[5*i+8]))
             uPrev,vPrev,irotPrev = nextModule(plane,uPrev,vPrev,irotPrev,angleRev,orientRev)
-          uList[0],vList[0],irotList[0] = [uPrev,vPrev,irotPrev]
+          uList[newIndices[0]],vList[newIndices[0]],irotList[newIndices[0]] = [uPrev,vPrev,irotPrev]
         for i in range(len(tempCodeString)//5-1):
-          uNext,vNext,irotNext = nextModule(plane,uList[i],vList[i],irotList[i],int(tempCodeString[5*i+7]),int(tempCodeString[5*i+8]))
-          uList[i+1],vList[i+1],irotList[i+1] = uNext,vNext,irotNext
+          uNext,vNext,irotNext = nextModule(plane,uList[newIndices[i]],vList[newIndices[i]],irotList[newIndices[i]],int(tempCodeString[5*i+7]),int(tempCodeString[5*i+8]))
+          uList[newIndices[i+1]],vList[newIndices[i+1]],irotList[newIndices[i+1]] = uNext,vNext,irotNext
           trigTemp,daqLDTemp,daqHDTemp = geomTempIndex[['trigLinks','dataLinks_ld','dataLinks_hd']].loc[(geomTempIndex['u'] == uNext) & (geomTempIndex['v'] == vNext)].iloc[0]
           nActiveTrig += trigTemp
           nActiveData += daqHDTemp
-        #xFX11,yFX11 = [61.2,23.0]
-        #x0FX11 = x0 + xFX11 * np.cos(np.pi/3*irot) + yFX11 * np.sin(np.pi/3*irot)
-        #y0FX11 = y0 + xFX11 * np.sin(np.pi/3*irot) - yFX11 * np.cos(np.pi/3*irot)
+          for index,x in enumerate(wagonInfoHD):
+            if x['name'] == wagonName: iWagon = index
+          for iTrig in range(int(trigTemp)):
+            ilpGBT,iLink = np.where(np.array(wagonInfoHD[iWagon]['trigRouting']) == 'M{}.{}'.format(newIndices[i+1]+1,iTrig))
+            if ilpGBT.size != 1 or iLink.size != 1:
+              print('ERROR: Module trigger link not found or duplicated in wagon routing. Wagon {}, layer {}, (u,v) = ({},{}), link {}'.format(wagonName,plane,u,v,'M{}.{}'.format(newIndices[i+1]+1,iTrig)))
+            ilpGBT,iLink = ilpGBT[0],iLink[0]
+            trigMat[ilpGBT,iLink] = wagonInfoHD[iWagon]['trigRouting'][ilpGBT][iLink]
+          for iDAQ in range(int(daqHDTemp)):
+            ilpGBT,iLink = np.where(np.array(wagonInfoHD[iWagon]['DAQRouting']) == 'M{}.{}'.format(newIndices[i+1]+1,iDAQ))
+            if ilpGBT.size != 1 or iLink.size != 1:
+              print('ERROR: Module DAQ link not found or duplicated in wagon routing. Wagon {}, layer {}, (u,v) = ({},{}), link {}'.format(wagonName,plane,u,v,'M{}.{}'.format(newIndices[i+1]+1,iDAQ)))
+            ilpGBT,iLink = ilpGBT[0],iLink[0]
+            DAQMat[ilpGBT,iLink] = wagonInfoHD[iWagon]['DAQRouting'][ilpGBT][iLink]        
         nTrigTotal = int(tempCodeString[3]) + \
                      sum([int(tempCodeString[5*i+5],16) for i in range(len(tempCodeString)//5)]) + \
                      sum([int(tempCodeString[5*i+6],16) for i in range(len(tempCodeString)//5)])
         nTrigXOutTotal = sum([int(tempCodeString[5*i+6]) for i in range(len(tempCodeString)//5)])
+        nTrigXInTotal = int(tempCodeString[3])
+        if nTrigXInTotal != 0: print('ERROR: HD wagon somehow has incoming trigger links!!!')
         wagonRot = irot
         if nActiveData > nDataTotal and nActiveTrig != 0: print('WARNING: {} wagon (layer {}, MB {}) has too many DAQ links, {} counted, but only {} supported!'.format('West' if int(tempCodeString[1]) else 'East',plane,MB,nActiveData,nDataTotal))
         if tempCodeString in wagonNameDict: 
@@ -1694,18 +1745,38 @@ def main():
         else: 
           print('ERROR: Wagon type code for {} not found'.format(tempCodeString))
           wagonName = 'XXXXXX'
-      nModules = int(wagonName[2]) + int(wagonName[3])
+        nModules = int(wagonName[2]) + int(wagonName[3])
+        nActiveTrigEngine = nActiveTrig
+        nActiveDataEngine = nActiveData
 
-      # Account for manual index changes
-      if wagonName in indexChanges: 
-        indexMap = indexChanges[wagonName]
-        uListTemp = list('-'*4)
-        vListTemp = list('-'*4)
-        for iNew,iOld in enumerate(indexMap):
-          uListTemp[iNew] = uList[iOld]
-          vListTemp[iNew] = vList[iOld]
-        uList = uListTemp
-        vList = vListTemp
+      # Convert link routings to strings
+      trigMatString = ''
+      for ilpGBT in range(len(trigMat)):
+        for iLink in range(len(trigMat[ilpGBT])):
+          trigMatString += 'T{}.{}-{}'.format(ilpGBT+1,iLink,trigMat[ilpGBT][iLink] if trigMat[ilpGBT][iLink] else 'N')
+          trigMatString += ',' if not (ilpGBT == len(trigMat) - 1 and iLink == len(trigMat[ilpGBT]) - 1) else ''
+
+      DAQMatString = ''
+      for ilpGBT in range(len(DAQMat)):
+        for iLink in range(len(DAQMat[ilpGBT])):
+          DAQMatString += 'D{}.{}-{}'.format(ilpGBT+1,iLink,DAQMat[ilpGBT][iLink] if DAQMat[ilpGBT][iLink] else 'N')
+          DAQMatString += ',' if not (ilpGBT == len(DAQMat) - 1 and iLink == len(DAQMat[ilpGBT]) - 1) else ''
+
+      if isHD: xOverOutMatString = '-'
+      else: 
+        #for iLink in range(len(xOverOutMat)):
+        #  xOverOutMatString = 'X.{}-{}'.format(iLink,xOverOutMat[iLink])
+        xOverOutMatString = '-'
+
+      # Convert to int
+      nActiveTrig,nActiveData,nActiveTrigEngine,nActiveDataEngine = [int(x) for x in [nActiveTrig,nActiveData,nActiveTrigEngine,nActiveDataEngine]]    
+
+      if engineType == 'EH10F0':
+        if sum([np.all(trigMat[i] == None) for i in [0,1]]) + sum([np.all(DAQMat[i] == None) for i in [0]]) == 3: print('ERROR: Somehow VTRx+ 1 is empty!!!')
+        if sum([np.all(trigMat[i] == None) for i in [2,3]]) + sum([np.all(DAQMat[i] == None) for i in [1]]) == 3: nVTRx = 1
+        else: nVTRx = 2
+      else:
+        nVTRx = 1
 
       zipperTypes = list('-' * 4)
       if wagonName in zipperDict:
@@ -1720,9 +1791,9 @@ def main():
 							'-','-',icassette,nTrigTotal,int(nActiveTrig),							# 22-26
 							nDataTotal,int(nActiveData),int(tempCodeString[3]),nTrigXOutTotal,MB,				# 27-31
 							wagon,0,0,'-',wagonRot,										# 32-36
-							'-',int(tempCodeString[0]),'-','-',trigRoutingGeomDict[wagonName],				# 37-41
-							DAQRoutingGeomDict[wagonName],tempCodeString,xOverInRoutingGeomDict[wagonName],'-','-',		# 42-46
-							'-','-','-','-','-',										# 47-51
+							'-',isHD,'-','-',trigRoutingGeomDict[wagonName],				# 37-41
+							DAQRoutingGeomDict[wagonName],tempCodeString,xOverInRoutingGeomDict[wagonName],trigMatString,DAQMatString,		# 42-46
+							'-',nVTRx,'-','-','-',										# 47-51
 							'-','-'])))											# 52-53
 
     
@@ -1919,6 +1990,11 @@ def main():
   #  else: NPart += N
   #print('Wagons with no partials:',NNoPart)
   #print('Wagons with partials:',NPart)
+
+  # Print out quantities
+  #with open('output/wagonCounts/wagonCounts_{}.txt'.format(geomVersion),'w') as f:
+  #  for key, item in codeCounter.items():
+  #    f.write('{}:\t{}\n'.format(wagonNameDict[''.join(str(x) for x in key)],item))
 
   # Draw and save the wagon summary (see wagonDrawer.py)
   if not args.noImages: wagonDrawer.wagonDrawer(codeCounter,geomVersion,maxLinks,maxDAQLinks,wagonNameDict,indexChanges)
