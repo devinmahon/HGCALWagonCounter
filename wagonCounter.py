@@ -2200,22 +2200,57 @@ def main():
     with open('wagonDict/wagonDict_{}.txt'.format(geometryFile),'w') as f:
       print(wagonCodesDict,file=f)
 
-  # Print LD wagons by locations
+  # Print LD wagons and zippers by locations
+  #geomFileData = pd.read_csv('output/geometries/{}/geometry_simotherboards.hgcal.txt'.format(geomVersion),sep=' ')
+  #geomFileDataGrouped = geomFileData.groupby(['plane','MB','wagon'])
+  #print('Zipper counts (full detector):')
+  #print(pd.concat([geomFileData['vx_4'],geomFileData['vy_4'],geomFileData['vx_5']],axis=0,ignore_index=True).value_counts().drop('-') * 6)
   #LDWagonDictSection = {}
+  #zipperDictSection = {}
   #for code,indices in wagonCodesDict.items():
   #  wagonName = wagonNameDict[''.join([str(x) for x in code])]
   #  if code[0] != 0: continue
   #  if wagonName not in LDWagonDictSection: LDWagonDictSection[wagonName] = {'CE-E':0,'CE-H':0,'Preseries':0,'Preproduction':0,'Total':0}
   #  for layer,MB,wagon in indices:
-  #    if layer < 27: LDWagonDictSection[wagonName]['CE-E'] += 1
-  #    else:          LDWagonDictSection[wagonName]['CE-H'] += 1
-  #    if layer in [25,26,44,45,46,47]: LDWagonDictSection[wagonName]['Preproduction'] += 1
-  #    if layer in [25,26,33,44,45,46,47] : LDWagonDictSection[wagonName]['Preseries'] += 1
+  #    # Zippers
+  #    z2,z3,z4 = geomFileDataGrouped.get_group((layer,MB,str(wagon)))[['vx_4','vy_4','vx_5']].iloc[0]
+  #    z2 = None if z2 == '-' else z2
+  #    z3 = None if z3 == '-' else z3
+  #    z4 = None if z4 == '-' else z4
+  #    if layer < 27: 
+  #      LDWagonDictSection[wagonName]['CE-E'] += 1
+  #      for z in [z2,z3,z4]:
+  #        if z:
+  #          if z not in zipperDictSection: zipperDictSection[z] = {'CE-E':1,'CE-H':0,'Preseries':0,'Preproduction':0,'Total':1}
+  #          else: 
+  #            zipperDictSection[z]['CE-E'] += 1
+  #            zipperDictSection[z]['Total'] += 1
+  #    else:
+  #      LDWagonDictSection[wagonName]['CE-H'] += 1
+  #      for z in [z2,z3,z4]:
+  #        if z:
+  #          if z not in zipperDictSection: zipperDictSection[z] = {'CE-E':0,'CE-H':1,'Preseries':0,'Preproduction':0,'Total':1}
+  #          else:
+  #            zipperDictSection[z]['CE-H'] += 1
+  #            zipperDictSection[z]['Total'] += 1
+  #    if layer in [25,26,44,45,46,47]: 
+  #      LDWagonDictSection[wagonName]['Preproduction'] += 1
+  #      for z in [z2,z3,z4]:
+  #        if z:
+  #          zipperDictSection[z]['Preproduction'] += 1
+  #    if layer in [25,26,33,44,45,46,47] : 
+  #      LDWagonDictSection[wagonName]['Preseries'] += 1
+  #      for z in [z2,z3,z4]:
+  #        if z:
+  #          zipperDictSection[z]['Preseries'] += 1
   #    LDWagonDictSection[wagonName]['Total'] += 1
+  #    
   #for name,sectionCounts in LDWagonDictSection.items():
   #  #if sectionCounts['CE-E'] == 0: print(name,'is only in CE-H')
   #  nCEE,nCEH,nPreseries,nPreproduction,n = np.array([sectionCounts['CE-E'],sectionCounts['CE-H'],sectionCounts['Preseries'],sectionCounts['Preproduction'],sectionCounts['Total']]) * 6
-  #  #print('{:<10}{:<10}{:<10}{:<10}'.format(name,nCEE,nCEH,n))
+  #  print('{},{},{},{},{},{}'.format(name,nCEE,nCEH,nPreseries,nPreproduction,n))
+  #for name,sectionCounts in zipperDictSection.items():
+  #  nCEE,nCEH,nPreseries,nPreproduction,n = np.array([sectionCounts['CE-E'],sectionCounts['CE-H'],sectionCounts['Preseries'],sectionCounts['Preproduction'],sectionCounts['Total']]) * 6
   #  print('{},{},{},{},{},{}'.format(name,nCEE,nCEH,nPreseries,nPreproduction,n))
 
   # Count certain wagons
