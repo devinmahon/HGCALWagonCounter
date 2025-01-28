@@ -1,0 +1,35 @@
+typecode,nickname,resistor
+WE10A1,Leaf,1000
+WE10B1,Flower,6340
+WE11A1,Scissors,604
+WE11B2,Envelope,665
+WE11C1,Pencil,715
+WE12A1,Moon,768
+WE20A1,Zebra,1200
+WE20B1,Elephant,1300
+WE20E1,Turkey,2670
+WE21A1,Hot-air balloon,2150
+WE21B1,Sailboat,2370
+WE21C1,Helicopter,2490
+WE21C3,Cargo ship,2870
+WE21C4,Semi-truck,3160
+WE21C6,Submarine,3650
+WE21D1,UFO,5110
+WE30A1,Seahorse,1500
+WE30A3,Octopus,1600
+WW10A1,Mushroom,1100
+WW11A1,Paper clip,820
+WW12A1,Saturn,866
+WW12C1,Comet,931
+WW20A1,Bird,1400
+WW20B1,Lion,6810
+WW20C1,Rabbit,7150
+WW20D1,Cow,7500
+WW21A1,Bicycle,4530
+WW21B1,Airplane,4320
+WW21C1,Roller skates,4120
+WW21D1,Kayak,3830
+WW21E1,Scooter,3320
+WW21E2,Rocket,4750
+WW21E3,Car,4930
+WW30A1,Turtle,1800
