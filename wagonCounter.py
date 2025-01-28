@@ -1525,16 +1525,33 @@ def main():
     f.write('\\end{document}')
     f.close()
 
-  for code in wagonCodesDict:
-    wagonName = wagonNameDict[''.join([str(x) for x in code])]
-    if 'WH' not in wagonName: continue
-    trigFile = 'HDWagonInfo/{}Trig.dat'.format(wagonName)
-    if not os.path.exists(trigFile): print('ERROR: {} does not exist'.format(trigFile))
-    trigRoutingGeomDict[wagonName] = ','.join(open(trigFile).read().splitlines())
-    DAQFile = 'HDWagonInfo/{}DAQ.dat'.format(wagonName)
-    if not os.path.exists(DAQFile): print('ERROR: {} does not exist'.format(DAQFile))
-    DAQRoutingGeomDict[wagonName] = ','.join(open(DAQFile).read().splitlines())
-    xOverInRoutingGeomDict[wagonName] = '-'
+  with open('wagonInfo/wagonInfoHD.json','r') as fHDWagonInfo: 
+    wagonInfoHD = json.load(fHDWagonInfo)
+    for code in wagonCodesDict:
+      wagonName = wagonNameDict[''.join([str(x) for x in code])]
+      if 'WH' not in wagonName: continue
+      infoTemp = {}
+      for item in wagonInfoHD:
+        if item['name'] == wagonName: infoTemp = item
+      if not infoTemp: print('ERROR: {} does not exist in {}'.format(wagonName,'wagonInfo/wagonInfoHD.json'))
+      trigString = ''
+      for iTrig,modLinkList in enumerate(infoTemp['trigRouting']):
+        for iTrigLink,modInfo in enumerate(modLinkList):
+          if modInfo == '': continue
+          trigString += '{}:T{}.{},'.format(modInfo,iTrig+1,iTrigLink)
+      if trigString: trigString = trigString[:-1] # Remove last comma
+      trigRoutingGeomDict[wagonName] = trigString
+      DAQString = ''
+      for iDAQ,modLinkList in enumerate(infoTemp['DAQRouting']):
+        for iDAQLink,modInfo in enumerate(modLinkList):
+          if modInfo == '': continue
+          DAQString += '{}:D{}.{},'.format(modInfo,iDAQ+1,iDAQLink)
+      if DAQString: DAQString = DAQString[:-1] # Remove last comma
+      DAQRoutingGeomDict[wagonName] = DAQString
+      xOverInRoutingGeomDict[wagonName] = '-'
+      print(wagonName)
+      print(trigString)
+      print(DAQString)
 
   #--------------------------------
   # Wagon link config json file
