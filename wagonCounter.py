@@ -1112,6 +1112,21 @@ def main():
           
           partialZipperMap.setdefault(wagonName,{indexTemp:{pType:zipperType}}).setdefault(indexTemp,{pType:zipperType}).setdefault(pType,zipperType)
 
+  # WE40A1
+  codeTemp = (0,0,0,0,'F','2',0,0,0,'F','2',0,0,0,'F','2',0,0,0,'F','1',1)
+  partialDict['WE40A1'] = {3:{'Full':len(wagonCodesDict[codeTemp])}}
+  zipperDict['WE40A1'] =  {3:{'HSNG':len(wagonCodesDict[codeTemp])}}
+  partialZipperMap['WE40A1'] = {3:{'Full':'HSNG'}}
+  for index in wagonCodesDict[codeTemp]:
+    zipperDictLocs[tuple(index + [3])] = 'HSNG'
+  # WE40A2
+  codeTemp = (0,0,3,0,'F','2',0,3,0,'F','2',0,2,2,'F','1',1,2,4,'F','2',0)
+  partialDict['WE40A2'] = {3:{'Full':len(wagonCodesDict[codeTemp])}}
+  zipperDict['WE40A2'] =  {3:{'HSNG':len(wagonCodesDict[codeTemp])}}
+  partialZipperMap['WE40A2'] = {3:{'Full':'HSNG'}}
+  for index in wagonCodesDict[codeTemp]:
+    zipperDictLocs[tuple(index + [3])] = 'HSNG'
+
   # Manual consolidations
   consolDict = {	(0,1,0,1,'F','5',0): 						[(0,1,0,3,'F','3',0)], 						# WW10A1 <-- WW10B1
 			(0,0,0,1,'F','4',0,0,5,'d','2',0):				[(0,0,1,0,'d','2',0,5,2,'F','2',0)],				# WE11A1 <-- WE11B1
