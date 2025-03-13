@@ -1462,6 +1462,14 @@ def main():
           modLinkString = 'TRIG{}'.format(iTrigLink)
           wagonLinkConfig[wagonName].setdefault('Mod{}'.format(iMod),{}).setdefault('Outputs',{}).setdefault(crosspointLinkOutputMap[modLinkString],{'Eng_Elink':linkString,'Mod_Elink':modLinkString,'Invert':0})
 
+      # Add incoming trigger links
+      if xOverInRoutingDictNew:
+        for iXOver, (xOverString,trigLinkString) in enumerate(xOverInRoutingDictNew.items()):
+          wagonLinkConfig[wagonName].setdefault('ModX',{}).setdefault('Inputs',{}).setdefault(iXOver,{'Eng_Elink':'XING{}'.format(xOverString.split('.')[-1]),'Mod_Elink':'Crossover','Invert':0})
+          wagonLinkConfig[wagonName].setdefault('ModX',{}).setdefault('Outputs',{}).setdefault(iXOver,{'Eng_Elink':'TRIG{}'.format(trigLinkString.split('_')[-1]),'Mod_Elink':'Crossover','Invert':0})
+      else:
+        wagonLinkConfig[wagonName].setdefault('ModX',{})
+
     #------------------------------
     # Wagons by layer summary page
     #------------------------------
