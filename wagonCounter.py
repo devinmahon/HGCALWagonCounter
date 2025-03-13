@@ -1261,7 +1261,7 @@ def main():
       f.write('\\begin{tikzpicture}[overlay, remember picture]\n')
       f.write('\\node[xshift=-2in,yshift=-1.75in] at (current page.north east) {{\IfFileExists{{/Users/devinmahon/Documents/CMS/wagonCounter/output/wagonImages/cartoons/{}.png}}{{\includegraphics[width=0.85in,height=0.85in,keepaspectratio]{{/Users/devinmahon/Documents/CMS/wagonCounter/output/wagonImages/cartoons/{}.png}}}}{{\includegraphics[width=0.85in,height=0.85in,keepaspectratio]{{/Users/devinmahon/Downloads/NotFound.png}}}}}};\n'.format(wagonNameDict[codeString],wagonNameDict[codeString]))
       f.write('\\node[xshift=-2in,yshift=-2.3in] at (current page.north east) {{Nickname: {}}};\n'.format(LDWagonIdentifiers[LDWagonIdentifiers['typecode'] == wagonName]['nickname'].iloc[0] if wagonName in LDWagonIdentifiers['typecode'].values else 'Not found'))
-      f.write('\\node[xshift=-2in,yshift=-2.5in] at (current page.north east) {{ID Resistor: {} $\Omega$}};\n'.format(LDWagonIdentifiers[LDWagonIdentifiers['typecode'] == wagonName]['resistor'].iloc[0] if wagonName in LDWagonIdentifiers['typecode'].values else 'Not found'))
+      f.write('\\node[xshift=-2in,yshift=-2.5in] at (current page.north east) {{ID Resistor: {} $\Omega$}};\n'.format('Not found' if wagonName not in LDWagonIdentifiers['typecode'].values or np.isnan(LDWagonIdentifiers[LDWagonIdentifiers['typecode'] == wagonName]['resistor'].iloc[0]) else LDWagonIdentifiers[LDWagonIdentifiers['typecode'] == wagonName]['resistor'].iloc[0]))
       f.write('\\node (rect) at ([xshift=-2in,yshift=-1.95in] current page.north east) [draw,thick,minimum width=2.0in,minimum height=1.5in] {};\n')
       f.write('\\end{tikzpicture}\n\n')
 
@@ -1436,8 +1436,7 @@ def main():
       xOverInRoutingDictNew = {}
       for pair in xOverInRoutingDict: xOverInRoutingDictNew[pair[0]] = pair[1]
 
-      wagonLinkConfig[wagonName] = {'NumMod':nModules}
-      wagonLinkConfig[wagonName] = {'IDResistor':int(LDWagonIdentifiers[LDWagonIdentifiers['typecode'] == wagonName]['resistor'].iloc[0]) if wagonName in LDWagonIdentifiers['typecode'].values else 'Unknown'}
+      wagonLinkConfig[wagonName] = {'IDResistor':'Unknown' if wagonName not in LDWagonIdentifiers['typecode'].values or np.isnan(LDWagonIdentifiers[LDWagonIdentifiers['typecode'] == wagonName]['resistor'].iloc[0]) else int(LDWagonIdentifiers[LDWagonIdentifiers['typecode'] == wagonName]['resistor'].iloc[0])}
       modTrigRoutingDict
       for iMod in np.arange(nModules) + 1:
         hasTrig4 = True if 'M{}.{}'.format(iMod,4) in modTrigRoutingDictNew.keys() else False
@@ -1483,7 +1482,28 @@ def main():
 
     f.write('\n\\newpage\n')
 
+    #------------------------------
+    # Zippers by layer summary page
+    #------------------------------
+    geomFileData = pd.read_csv('output/geometries/{}/geometry_simotherboards.hgcal.txt'.format('v16.6'),sep=' ')
+    zipperTable = geomFileData.set_index('plane')[['vx_4','vy_4','vx_5']].stack().reset_index(level=1,drop=True).reset_index(name='value')
+    zipperTable = zipperTable[zipperTable['value'] != '-']
+    zipperCountsByLayer = zipperTable.groupby(['value','plane']).size().unstack(fill_value=0).multiply(6)
+    f.write('\\begin{landscape}\n\n')
+    f.write('\\section{{Zippers Per Layer}}\n\n')
+    f.write('\\scalebox{0.55}{\n\n')
+    layerList = np.arange(47) + 1
+    headers = ['Zipper'] + [str(x) for x in layerList]
+    table = zipperCountsByLayer.reset_index().astype(str).to_numpy()
+    f.write(tabulate(table,headers,tablefmt="latex_raw"))
+    f.write('\n}\n\n')
+    f.write('\\end{landscape}\n\n')
+
+    f.write('\n\\newpage\n')
+
+    #------------------------------
     # Parital/Zipper summary page
+    #------------------------------
     f.write('\\section{{Total Partial and Zipper Counts}}\n\n')
 
     partialCounts = {}
@@ -1549,9 +1569,9 @@ def main():
       if DAQString: DAQString = DAQString[:-1] # Remove last comma
       DAQRoutingGeomDict[wagonName] = DAQString
       xOverInRoutingGeomDict[wagonName] = '-'
-      print(wagonName)
-      print(trigString)
-      print(DAQString)
+      #print(wagonName)
+      #print(trigString)
+      #print(DAQString)
 
   #--------------------------------
   # Wagon link config json file
@@ -2369,6 +2389,21 @@ def main():
   #  else: NPart += N
   #print('Wagons with no partials:',NNoPart)
   #print('Wagons with partials:',NPart)
+
+  #xoverOutWagons = {}
+  #xoverInWagons = {}
+  #for code,N in codeCounter.items():
+  #  c = ''.join([str(x) for x in code])
+  #  if int(c[3]) > 0: xoverInWagons['{} ({})'.format(wagonNameDict[c],c)] = N
+  #  else:
+  #    nX = sum([int(x) for x in c[6::5]])
+  #    if nX > 0: xoverOutWagons['{} ({})'.format(wagonNameDict[c],c)] = N
+  #print('LD wagons with incoming crossover links:')
+  #for name,N in xoverInWagons.items():
+  #  print(name.split('(')[0])
+  #print('LD wagons with outgoing crossover links:')
+  #for name,N in xoverOutWagons.items():
+  #  print(name.split('(')[0])
 
   # Print out quantities
   #with open('output/wagonCounts/wagonCounts_{}.txt'.format(geomVersion),'w') as f:
