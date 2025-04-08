@@ -2085,17 +2085,17 @@ def main():
       #-----------------------------------------
       # Write wagon info
       #-----------------------------------------
-      f.write('\n{}'.format(' '.join(str(x) for x in [	plane,u,v,wagonNamePrint,wagonNamePrint,round(x0FX11,3) if not isHD else '-',				# 1-6
-							round(y0FX11,3) if not isHD else '-',irot,nModules,uList[0],vList[0],				# 7-11
-							uList[1],vList[1],uList[2],vList[2],uList[3],							# 12-16
-							vList[3],zipperTypes[1],zipperTypes[2],zipperTypes[3],'-',					# 17-21
-							'-','-',icassette,nTrigTotal,int(nActiveTrig),							# 22-26
-							nDataTotal,int(nActiveData),int(tempCodeString[3]),nTrigXOutTotal,MB,				# 27-31
-							wagon,0,0,'-',wagonRot,										# 32-36
-							'-',isHD,'-','-',trigRoutingGeomDict[wagonName],				# 37-41
-							DAQRoutingGeomDict[wagonName],tempCodeString,xOverInRoutingGeomDict[wagonName],trigMatString,DAQMatString,		# 42-46
-							'-','-','-','-','-',										# 47-51
-							'-','-'])))											# 52-53
+      f.write('\n{}'.format(' '.join(str(x) for x in [	plane,u,v,wagonNamePrint,wagonNamePrint,round(x0FX11,3) if not isHD else '-',					# 1-6
+							round(y0FX11,3) if not isHD else '-',irot,nModules,uList[0],vList[0],						# 7-11
+							uList[1],vList[1],uList[2],vList[2],uList[3],									# 12-16
+							vList[3],zipperTypes[1],zipperTypes[2],zipperTypes[3],'-',							# 17-21
+							'-','-',icassette,nTrigTotal,int(nActiveTrig),									# 22-26
+							nDataTotal,int(nActiveData),int(tempCodeString[3]),nTrigXOutTotal,MB,						# 27-31
+							wagon,0,0,'-',wagonRot,												# 32-36
+							'-',isHD,'-','-',trigRoutingGeomDict[wagonName],								# 37-41
+							DAQRoutingGeomDict[wagonName],tempCodeString,xOverInRoutingGeomDict[wagonName],trigMatString,DAQMatString,	# 42-46
+							'-','-','-','-','-',												# 47-51
+							'-','-'])))													# 52-53
 
       #-----------------------------------------
       # Engines
@@ -2167,6 +2167,7 @@ def main():
         # Format active link mapping
         # Trig links for current wagon
         trigMatEngineString = ''
+        xoverEngineString = ''
         for ilpGBT in range(len(trigMat)):
           for iLink in range(len(trigMat[ilpGBT])):
             if trigMat[ilpGBT][iLink]:
@@ -2186,6 +2187,7 @@ def main():
                   print('ERROR: incoming xover link X.{} for layer {} MB {} not found in partner xover link matrix:'.format(int(trigMat[ilpGBT][iLink][-1]),plane,MB))
                   print(xoverMatPartner[0])
                 trigMatEngineString += 'T{}.{}:{},'.format(lpGBTLabel,iLink,modTemp.replace('M','{}M'.format(modLabel)))
+                xoverEngineString += '{}:{}:T{}.{},'.format(modTemp.replace('M','{}M'.format(modLabel)),trigMat[ilpGBT][iLink],lpGBTLabel,iLink)
         # Add any xovers
         if not isHD:
           # Outgoing xovers (read out by the opposite side)
@@ -2198,6 +2200,7 @@ def main():
                 print('ERROR: outgoing xover link X.{} for layer {} MB {} not found in partner trigger link matrix:'.format(iLink,plane,MB))
                 print(trigMatPartner)
               trigMatEngineString += 'T{}.{}:{},'.format(lpGBTLabel,iLinkTrig,link.replace('M','{}M'.format(modLabel)))
+              xoverEngineString += '{}:{}:T{}.{},'.format(link.replace('M','{}M'.format(modLabel)),'X.{}'.format(iLink),lpGBTLabel,iLinkTrig)
           # Trig links for partner wagon (LD only), regular non-xovers links from E side since loop is over wagons and isEngine is only true for W
           for ilpGBT in range(len(trigMatPartner)):
             for iLink in range(len(trigMatPartner[ilpGBT])):
@@ -2211,6 +2214,8 @@ def main():
                 trigMatEngineString += 'T{}.{}:{},'.format(lpGBTLabel,iLink,trigMatPartner[ilpGBT][iLink].replace('M','{}M'.format(modLabel)))
         if trigMatEngineString == '': trigMatEngineString = '-'
         if trigMatEngineString[-1] == ',': trigMatEngineString = trigMatEngineString[:-1]
+        if xoverEngineString == '': xoverEngineString = '-'
+        if xoverEngineString[-1] == ',': xoverEngineString = xoverEngineString[:-1]
             
         #DAQ links for current wagon
         DAQMatEngineString = ''
@@ -2253,8 +2258,8 @@ def main():
             						nDataTotal,nActiveDataEngine,'-','-',MB,						# 27-31
             						'-',1,'-','-','-',									# 32-36
             						'-',isHD,'-','-',nTriglpGBT,								# 37-41
-            						nDAQlpGBT,nCtrlFibers,nVTRx,trigMatEngineString,DAQMatEngineString,							# 42-46
-            						'-','-','-','-','-',									# 47-51
+            						nDAQlpGBT,nCtrlFibers,nVTRx,trigMatEngineString,DAQMatEngineString,			# 42-46
+            						xoverEngineString,'-','-','-','-',							# 47-51
             						'-','-'])))										# 52-53
 
     # Write tables
