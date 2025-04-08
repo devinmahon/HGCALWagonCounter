@@ -1188,19 +1188,20 @@ def main():
   #        u,v = findEastEngineModule(plane,uWest,vWest,irotWest)
   #      print('{} {} {}'.format(plane,u,v))
 
-  # Crosspoint mapping for wagon link config file
-  crosspointLinkOutputMap = {	'TRIG0':	3,
-				'TRIG1':	2,
-				'TRIG2':	1,
-				'TRIG3':	0,}
-  crosspointLinkInputMap = {   	'DAQ1':		2,
-                                'DAQ0':		1,
-                                'TRIG4':       	0,}
-  eastDAQMap = {4:0,5:1,6:2,3:4}
-
   # ----------------------------------------------
   # Make LD wagon info tables
   # ----------------------------------------------
+
+  # Crosspoint mapping for wagon link config file
+  crosspointLinkOutputMap = {   'TRIG0':        3,
+                                'TRIG1':        2,
+                                'TRIG2':        1,
+                                'TRIG3':        0,}
+  crosspointLinkInputMap = {    'DAQ1':         2,
+                                'DAQ0':         1,
+                                'TRIG4':        0,}
+  eastDAQMap = {4:0,5:1,6:2,3:4}
+
   if not args.noTables:
 
     trigRoutingGeomDict = {}
@@ -1493,21 +1494,24 @@ def main():
     #------------------------------
     # Zippers by layer summary page
     #------------------------------
-    geomFileData = pd.read_csv('output/geometries/{}/geometry_simotherboards.hgcal.txt'.format('v16.6'),sep=' ')
-    zipperTable = geomFileData.set_index('plane')[['vx_4','vy_4','vx_5']].stack().reset_index(level=1,drop=True).reset_index(name='value')
-    zipperTable = zipperTable[zipperTable['value'] != '-']
-    zipperCountsByLayer = zipperTable.groupby(['value','plane']).size().unstack(fill_value=0).multiply(6)
-    f.write('\\begin{landscape}\n\n')
-    f.write('\\section{{Zippers Per Layer}}\n\n')
-    f.write('\\scalebox{0.55}{\n\n')
-    layerList = np.arange(47) + 1
-    headers = ['Zipper'] + [str(x) for x in layerList]
-    table = zipperCountsByLayer.reset_index().astype(str).to_numpy()
-    f.write(tabulate(table,headers,tablefmt="latex_raw"))
-    f.write('\n}\n\n')
-    f.write('\\end{landscape}\n\n')
+    if not os.path.exists('output/geometries/{}/geometry_simotherboards.hgcal.txt'.format(geomVersion)): 
+      print('WARNING: You must re-run to get the zipper summary page in the LDWagonInfo.tex document!')
+    else:
+      geomFileData = pd.read_csv('output/geometries/{}/geometry_simotherboards.hgcal.txt'.format(geomVersion),sep=' ')
+      zipperTable = geomFileData.set_index('plane')[['vx_4','vy_4','vx_5']].stack().reset_index(level=1,drop=True).reset_index(name='value')
+      zipperTable = zipperTable[zipperTable['value'] != '-']
+      zipperCountsByLayer = zipperTable.groupby(['value','plane']).size().unstack(fill_value=0).multiply(6)
+      f.write('\\begin{landscape}\n\n')
+      f.write('\\section{{Zippers Per Layer}}\n\n')
+      f.write('\\scalebox{0.55}{\n\n')
+      layerList = np.arange(47) + 1
+      headers = ['Zipper'] + [str(x) for x in layerList]
+      table = zipperCountsByLayer.reset_index().astype(str).to_numpy()
+      f.write(tabulate(table,headers,tablefmt="latex_raw"))
+      f.write('\n}\n\n')
+      f.write('\\end{landscape}\n\n')
 
-    f.write('\n\\newpage\n')
+      f.write('\n\\newpage\n')
 
     #------------------------------
     # Parital/Zipper summary page
@@ -1553,41 +1557,41 @@ def main():
     f.write('\\end{document}')
     f.close()
 
-  with open('wagonInfo/wagonInfoHD.json','r') as fHDWagonInfo: 
-    wagonInfoHD = json.load(fHDWagonInfo)
-    for code in wagonCodesDict:
-      wagonName = wagonNameDict[''.join([str(x) for x in code])]
-      if 'WH' not in wagonName: continue
-      infoTemp = {}
-      for item in wagonInfoHD:
-        if item['name'] == wagonName: infoTemp = item
-      if not infoTemp: print('ERROR: {} does not exist in {}'.format(wagonName,'wagonInfo/wagonInfoHD.json'))
-      trigString = ''
-      for iTrig,modLinkList in enumerate(infoTemp['trigRouting']):
-        for iTrigLink,modInfo in enumerate(modLinkList):
-          if modInfo == '': continue
-          trigString += '{}:T{}.{},'.format(modInfo,iTrig+1,iTrigLink)
-      if trigString: trigString = trigString[:-1] # Remove last comma
-      trigRoutingGeomDict[wagonName] = trigString
-      DAQString = ''
-      for iDAQ,modLinkList in enumerate(infoTemp['DAQRouting']):
-        for iDAQLink,modInfo in enumerate(modLinkList):
-          if modInfo == '': continue
-          DAQString += '{}:D{}.{},'.format(modInfo,iDAQ+1,iDAQLink)
-      if DAQString: DAQString = DAQString[:-1] # Remove last comma
-      DAQRoutingGeomDict[wagonName] = DAQString
-      xOverInRoutingGeomDict[wagonName] = '-'
-      #print(wagonName)
-      #print(trigString)
-      #print(DAQString)
+    with open('wagonInfo/wagonInfoHD.json','r') as fHDWagonInfo: 
+      wagonInfoHD = json.load(fHDWagonInfo)
+      for code in wagonCodesDict:
+        wagonName = wagonNameDict[''.join([str(x) for x in code])]
+        if 'WH' not in wagonName: continue
+        infoTemp = {}
+        for item in wagonInfoHD:
+          if item['name'] == wagonName: infoTemp = item
+        if not infoTemp: print('ERROR: {} does not exist in {}'.format(wagonName,'wagonInfo/wagonInfoHD.json'))
+        trigString = ''
+        for iTrig,modLinkList in enumerate(infoTemp['trigRouting']):
+          for iTrigLink,modInfo in enumerate(modLinkList):
+            if modInfo == '': continue
+            trigString += '{}:T{}.{},'.format(modInfo,iTrig+1,iTrigLink)
+        if trigString: trigString = trigString[:-1] # Remove last comma
+        trigRoutingGeomDict[wagonName] = trigString
+        DAQString = ''
+        for iDAQ,modLinkList in enumerate(infoTemp['DAQRouting']):
+          for iDAQLink,modInfo in enumerate(modLinkList):
+            if modInfo == '': continue
+            DAQString += '{}:D{}.{},'.format(modInfo,iDAQ+1,iDAQLink)
+        if DAQString: DAQString = DAQString[:-1] # Remove last comma
+        DAQRoutingGeomDict[wagonName] = DAQString
+        xOverInRoutingGeomDict[wagonName] = '-'
+        #print(wagonName)
+        #print(trigString)
+        #print(DAQString)
 
-  #--------------------------------
-  # Wagon link config json file
-  #--------------------------------
-  if not os.path.exists('output/wagonLinkConfig/{}'.format(geomVersion)): os.makedirs('output/wagonLinkConfig/{}'.format(geomVersion))
-  f = open('output/wagonLinkConfig/{}/wagonConfig.json'.format(geomVersion),'w')
-  json.dump(wagonLinkConfig,f,indent=4)
-  f.close()
+    #--------------------------------
+    # Wagon link config json file
+    #--------------------------------
+    if not os.path.exists('output/wagonLinkConfig/{}'.format(geomVersion)): os.makedirs('output/wagonLinkConfig/{}'.format(geomVersion))
+    f = open('output/wagonLinkConfig/{}/wagonConfig.json'.format(geomVersion),'w')
+    json.dump(wagonLinkConfig,f,indent=4)
+    f.close()
 
   # ----------------------------------------------
   # Output engine/wagon geometry file (by looping over wagons)
@@ -1706,7 +1710,7 @@ def main():
         xoverDim = 1
         trigMat = np.empty((trigDim,7),dtype=object)
         DAQMat = np.empty((DAQDim,7),dtype=object)
-        xoverMat = np.empty((xoverDim,3),dtype=object)
+        xoverMat = np.empty((xoverDim,3),dtype=object) # Outgoing xovers
 
         # Link routing for first module
         for index,x in enumerate(wagonInfoLD):
@@ -2153,13 +2157,14 @@ def main():
               trigMatEngineString += 'T{}.{}:{},'.format(lpGBTLabel,iLink,trigMat[ilpGBT][iLink].replace('M','{}M'.format(modLabel)))
         # Add any xovers
         if not isHD:
+          # Outgoing xovers (read out by the opposite side)
           for iLink,link in enumerate(xoverMat[0]):
             if link:
               if wagonName[1] == 'E': 
-                lpGBTLabel = 'E'
+                lpGBTLabel = 'W'
                 modLabel = 'E'
               else:                   
-                lpGBTLabel = 'W'
+                lpGBTLabel = 'E'
                 modLabel = 'W'
               trigMatEngineString += 'T{}.{}:{},'.format(lpGBTLabel,iLink,link.replace('M','{}M'.format(modLabel)))
           # Trig links for partner wagon (LD only)
