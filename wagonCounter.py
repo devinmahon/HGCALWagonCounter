@@ -2057,6 +2057,31 @@ def main():
       elif plane <= 26 and not plane % 2: wagonNamePrint = wagonName[:-1] + 'D'
       else:                               wagonNamePrint = wagonName[:-1] + 'T'
 
+      # Active xover info
+      
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
       #-----------------------------------------
       # Write wagon info
       #-----------------------------------------
@@ -2144,30 +2169,36 @@ def main():
         trigMatEngineString = ''
         for ilpGBT in range(len(trigMat)):
           for iLink in range(len(trigMat[ilpGBT])):
-            if trigMat[ilpGBT][iLink] and 'X' not in trigMat[ilpGBT][iLink]:
-              if isHD:                  
-                lpGBTLabel = ilpGBT + 1
-                modLabel = ''
-              elif wagonName[1] == 'E': 
-                lpGBTLabel = 'E'
-                modLabel = 'E'
-              else:                    
+            if trigMat[ilpGBT][iLink]:
+              if 'X' not in trigMat[ilpGBT][iLink]:
+                if isHD:                  
+                  lpGBTLabel = ilpGBT + 1
+                  modLabel = ''
+                else:                    
+                  lpGBTLabel = 'W'
+                  modLabel = 'W'
+                trigMatEngineString += 'T{}.{}:{},'.format(lpGBTLabel,iLink,trigMat[ilpGBT][iLink].replace('M','{}M'.format(modLabel)))
+              else: # These are incoming xovers (on W wagons since only W reaches this point (isEngine == True))
                 lpGBTLabel = 'W'
-                modLabel = 'W'
-              trigMatEngineString += 'T{}.{}:{},'.format(lpGBTLabel,iLink,trigMat[ilpGBT][iLink].replace('M','{}M'.format(modLabel)))
+                modLabel = 'E' # Coming in from other side
+                modTemp = xoverMatPartner[0][int(trigMat[ilpGBT][iLink][-1])]
+                if 'M' not in modTemp: 
+                  print('ERROR: incoming xover link X.{} for layer {} MB {} not found in partner xover link matrix:'.format(int(trigMat[ilpGBT][iLink][-1]),plane,MB))
+                  print(xoverMatPartner[0])
+                trigMatEngineString += 'T{}.{}:{},'.format(lpGBTLabel,iLink,modTemp.replace('M','{}M'.format(modLabel)))
         # Add any xovers
         if not isHD:
           # Outgoing xovers (read out by the opposite side)
           for iLink,link in enumerate(xoverMat[0]):
             if link:
-              if wagonName[1] == 'E': 
-                lpGBTLabel = 'W'
-                modLabel = 'E'
-              else:                   
-                lpGBTLabel = 'E'
-                modLabel = 'W'
-              trigMatEngineString += 'T{}.{}:{},'.format(lpGBTLabel,iLink,link.replace('M','{}M'.format(modLabel)))
-          # Trig links for partner wagon (LD only)
+              lpGBTLabel = 'E' # opposite side
+              modLabel = 'W'
+              try: iLinkTrig = np.where(trigMatPartner[0] == 'X.{}'.format(iLink))[0][0]
+              except IndexError: 
+                print('ERROR: outgoing xover link X.{} for layer {} MB {} not found in partner trigger link matrix:'.format(iLink,plane,MB))
+                print(trigMatPartner)
+              trigMatEngineString += 'T{}.{}:{},'.format(lpGBTLabel,iLinkTrig,link.replace('M','{}M'.format(modLabel)))
+          # Trig links for partner wagon (LD only), regular non-xovers links from E side since loop is over wagons and isEngine is only true for W
           for ilpGBT in range(len(trigMatPartner)):
             for iLink in range(len(trigMatPartner[ilpGBT])):
               if trigMatPartner[ilpGBT][iLink] and 'X' not in trigMatPartner[ilpGBT][iLink]:
