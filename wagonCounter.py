@@ -1380,7 +1380,7 @@ def main():
 
         f.write('\\columnbreak\n')
         f.write('Zipper Types\n\n\\vspace{-10pt}\n')
-        headers = ['Zipper','N']
+        headers = ['Zipper','N Full Detector']
         zipperCountsDict = {}
         table = []
         for index,typeCounts in zipperDict[wagonName].items():
@@ -1598,8 +1598,21 @@ def main():
   # ----------------------------------------------
   if not os.path.exists('output/geometries/{}'.format(geomVersion)): os.makedirs('output/geometries/{}'.format(geomVersion))
   f = open('output/geometries/{}/geometry_simotherboards.hgcal.txt'.format(geomVersion),'w')
-
   f.write('plane u v itype typecode x0 y0 irot nvertices vx_0 vy_0 vx_1 vy_1 vx_2 vy_2 vx_3 vy_3 vx_4 vy_4 vx_5 vy_5 vx_6 vy_6 icassette trigRate trigLinks dataRate_ld dataLinks_ld dataRate_hd dataLinks_hd MB wagon isEngine nROCs power mrot phi HDorLD hash hash_hdld engine_trig_fibres engine_data_fibres engine_ctrl_fibres dataPp0 trigPp0 dataPp0_type trigPp0_type dataPp1 trigPp1 dataPp1_type trigPp1_type dataPp2 DAQ')
+
+  if not os.path.exists('output/geometriesECOND/{}'.format(geomVersion)): os.makedirs('output/geometriesECOND/{}'.format(geomVersion))
+  fECOND = open('output/geometriesECOND/{}/geometryECOND.txt'.format(geomVersion),'w')
+  fECOND.write('plane MB u v modIndex typecode r')
+  HDWagonECONDMap = {	'WH20A1': [(8.50,0.00),	(26.00,0.00)],
+			'WH30C1': [(9.00,0.00), (26.00,0.00),	(18.00,-16.50)],
+                        'WH30D1': [(9.00,0.00),	(26.00,0.00),	(18.00,-16.50)],
+                        'WH30B1': [(8.75,0.00),	(25.50,0.00),	(42.25,0.00)],
+                        'WH31B1': [(9.00,0.00), (26.00,0.00),   (34.50,-17.50),	(37.25,0.00)],	# Modules in index order (e.g. M1)
+                        'WH21A1': [(9.00,0.00), (25.50,0.00),   (33.25,0.00)],
+                        'WH31A1': [(9.00,0.00), (25.50,0.00),   (42.50,0.00),	(47.50,0.00)],
+                        'WH30A1': [(8.75,0.00), (25.50,0.00),   (42.25,0.00)],
+  }
+  HDWagonECONDMap = {x:[(a*10,b*10) for a,b in y] for x,y in HDWagonECONDMap.items()} # Convert from cm to mm
 
   # Construct wagonInfoLD and wagonInfoHD
   wagonInfoLD = []
@@ -2098,6 +2111,22 @@ def main():
 							'-','-'])))													# 52-53
 
       #-----------------------------------------
+      # Write ECOND info
+      #-----------------------------------------
+      if isHD:
+        uEngine,vEngine = (uList[0],vList[0])
+        plane,MB,irot,x0,y0 = geomTempIndex[geomTempIndex['isEngine'] == True][['plane','MB','irot','x0','y0']].iloc[0]
+        ECONDCoords = HDWagonECONDMap[wagonNamePrint[:-1] + '1']
+        apothem = 167.64 / 2.0 # IMD [mm] / 2
+        for iTemp,uTemp in enumerate(uList):
+          if uTemp != '-':
+            vTemp = vList[iTemp]
+            xTemp = x0 + apothem * np.cos(np.pi + np.pi/3*irot) + ECONDCoords[iTemp][0] * np.cos(np.pi/3*irot) + ECONDCoords[iTemp][1] * np.sin(np.pi/3*irot)
+            yTemp = y0 + apothem * np.sin(np.pi + np.pi/3*irot) + ECONDCoords[iTemp][0] * np.sin(np.pi/3*irot) + ECONDCoords[iTemp][1] * np.cos(np.pi/3*irot)
+            rTemp = np.sqrt(xTemp**2 + yTemp**2)
+            fECOND.write('\n{}'.format(' '.join(str(x) for x in [int(plane),int(MB),uTemp,vTemp,iTemp+1,wagonNamePrint[:-1] + '1',round(rTemp,2)])))
+
+      #-----------------------------------------
       # Engines
       #-----------------------------------------
       if (geomTempIndex['isEngine'] == True).any():
@@ -2275,6 +2304,7 @@ def main():
     except UnboundLocalError: pass
 
   f.close()
+  fECOND.close()
   if not args.noTables:
     fInfo.write('\\end{tabular}')
     fInfo.close()
