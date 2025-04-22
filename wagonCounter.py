@@ -1105,27 +1105,27 @@ def main():
           # More special cases
           if [wagonName,indexTemp] in [['WW12B1',2],['WW21E2',2]]: zipperShape = 'L'
           elif [wagonName,indexTemp] in [['WE12B1',2],['WE21C2',2],['WW21E3',2],['WW12C1',1]]: zipperShape = 'R'
-          zipperType = zipperTypeDict[pType] + zipperShape + ('G' if nModules == 4 else '0')
+          zipperType = zipperTypeDict[pType] + zipperShape + '0'
           if wagonName in zipperDict and indexTemp in zipperDict[wagonName] and zipperType in zipperDict[wagonName][indexTemp]: zipperDict[wagonName][indexTemp][zipperType] += 1
           else: zipperDict.setdefault(wagonName,{indexTemp:{zipperType:1}}).setdefault(indexTemp,{zipperType:1}).setdefault(zipperType,1)
           zipperDictLocs[tuple(tempIndex + [indexTemp])] = zipperType
           
           partialZipperMap.setdefault(wagonName,{indexTemp:{pType:zipperType}}).setdefault(indexTemp,{pType:zipperType}).setdefault(pType,zipperType)
 
-  # WE40A1
-  codeTemp = (0,0,0,0,'F','2',0,0,0,'F','2',0,0,0,'F','2',0,0,0,'F','1',1)
-  partialDict['WE40A1'] = {3:{'Full':len(wagonCodesDict[codeTemp])}}
-  zipperDict['WE40A1'] =  {3:{'HSNG':len(wagonCodesDict[codeTemp])}}
-  partialZipperMap['WE40A1'] = {3:{'Full':'HSNG'}}
-  for index in wagonCodesDict[codeTemp]:
-    zipperDictLocs[tuple(index + [3])] = 'HSNG'
-  # WE40A2
-  codeTemp = (0,0,3,0,'F','2',0,3,0,'F','2',0,2,2,'F','1',1,2,4,'F','2',0)
-  partialDict['WE40A2'] = {3:{'Full':len(wagonCodesDict[codeTemp])}}
-  zipperDict['WE40A2'] =  {3:{'HSNG':len(wagonCodesDict[codeTemp])}}
-  partialZipperMap['WE40A2'] = {3:{'Full':'HSNG'}}
-  for index in wagonCodesDict[codeTemp]:
-    zipperDictLocs[tuple(index + [3])] = 'HSNG'
+  ## WE40A1
+  #codeTemp = (0,0,0,0,'F','2',0,0,0,'F','2',0,0,0,'F','2',0,0,0,'F','1',1)
+  #partialDict['WE40A1'] = {3:{'Full':len(wagonCodesDict[codeTemp])}}
+  #zipperDict['WE40A1'] =  {3:{'HSNG':len(wagonCodesDict[codeTemp])}}
+  #partialZipperMap['WE40A1'] = {3:{'Full':'HSNG'}}
+  #for index in wagonCodesDict[codeTemp]:
+  #  zipperDictLocs[tuple(index + [3])] = 'HSNG'
+  ## WE40A2
+  #codeTemp = (0,0,3,0,'F','2',0,3,0,'F','2',0,2,2,'F','1',1,2,4,'F','2',0)
+  #partialDict['WE40A2'] = {3:{'Full':len(wagonCodesDict[codeTemp])}}
+  #zipperDict['WE40A2'] =  {3:{'HSNG':len(wagonCodesDict[codeTemp])}}
+  #partialZipperMap['WE40A2'] = {3:{'Full':'HSNG'}}
+  #for index in wagonCodesDict[codeTemp]:
+  #  zipperDictLocs[tuple(index + [3])] = 'HSNG'
 
   # Manual consolidations
   consolDict = {	(0,1,0,1,'F','5',0): 						[(0,1,0,3,'F','3',0)], 						# WW10A1 <-- WW10B1
@@ -2146,12 +2146,15 @@ def main():
       #-----------------------------------------
       if not isHD:
         isWest = int(tempCodeString[1])
+        # Zippers and PCMs
         for iTemp,codeTemp in enumerate(zipperTypes):
           if iTemp > (nModules-1): break
           if codeTemp == '-':
             irotTemp = geomBasic[(geomBasic['plane'] == plane) & (geomBasic['u'] == uList[iTemp]) & (geomBasic['v'] == vList[iTemp])]['irot'].iloc[0]
-            irotTemp = irotTemp if isWest else (irotTemp+3)%6
+            if wagonName not in ['WE31A3']: irotTemp = irotTemp if isWest else (irotTemp+3)%6
+            else: irotTemp = (irotTemp+5)%6
           else:
+            # Zippers
             f.write('\n{}'.format(' '.join(str(x) for x in [	plane,uList[iTemp],vList[iTemp],codeTemp,codeTemp,'-',					                        # 1-6
                                                             	'-',irotTemp,'-','-','-',						                                        # 7-11
                                                             	'-','-','-','-','-',				                                                                # 12-16
@@ -2163,8 +2166,57 @@ def main():
                                                             	'-','-','-','-','-',							     					# 42-46
                                                             	'-','-','-','-','-',                                                                                            # 47-51
                                                             	'-','-'])))                                                                                                     # 52-53
-            # If there are any more zippers, adjust the rotation to try to point toward the adjacent full
+            # PCMs
+            itypeNameTemp = geomBasic[(geomBasic['plane'] == plane) & (geomBasic['u'] == uList[iTemp]) & (geomBasic['v'] == vList[iTemp])]['itypeName'].iloc[0]
+            if   itypeNameTemp == 'Semi Right':		itypeNameTemp = '3SRD'
+            elif itypeNameTemp == 'Semi Left':		itypeNameTemp = '3SLT'
+            elif itypeNameTemp == 'Half Top':  		itypeNameTemp = '3HTT'
+            elif itypeNameTemp == 'Half Bottom':  	itypeNameTemp = '3HBT'
+            elif itypeNameTemp == 'Five RL':  		itypeNameTemp = '35LD'
+            elif itypeNameTemp == 'Five LR':  		itypeNameTemp = '35RT'
+            else: print('ERROR: Unknown module type {} for PCM output'.format(itypeNameTemp)) 
+            f.write('\n{}'.format(' '.join(str(x) for x in [    plane,uList[iTemp],vList[iTemp],itypeNameTemp,itypeNameTemp,'-',                                                # 1-6
+                                                                '-',irotTemp,'-','-','-',                                                                                       # 7-11
+                                                                '-','-','-','-','-',                                                                                            # 12-16
+                                                                '-','-','-','-','-',                                                                                            # 17-21
+                                                                '-','-','-','-','-',                                                                                            # 22-26
+                                                                '-','-','-','-','-',                                                                                            # 27-31
+                                                                '-','-','-','-','-',                                                                                            # 32-36
+                                                                '-','-','-','-','-',                                                                                            # 37-41
+                                                                '-','-','-','-','-',                                                                                            # 42-46
+                                                                '-','-','-','-','-',                                                                                            # 47-51
+                                                                '-','-'])))                                                                                                     # 52-53
+            # If there are any more zippers/PCMs, adjust the rotation to try to point toward the adjacent full
             irotTemp = (irotTemp-1)%6 if isWest else (irotTemp+1)%6
+        # lpGBT mezzanines
+        if nModules == 4:
+          if wagonName in ['WE40A1','WE31A1']:
+            irotTemp = geomBasic[(geomBasic['plane'] == plane) & (geomBasic['u'] == uList[1]) & (geomBasic['v'] == vList[1])]['irot'].iloc[0]
+            f.write('\n{}'.format(' '.join(str(x) for x in [    plane,uList[1],vList[1],'MEZZ','MEZZ','-', 		                                                        # 1-6
+                                                                '-',irotTemp,'-','-','-',                                                                                       # 7-11
+                                                                '-','-','-','-','-',                                                                                            # 12-16
+                                                                '-','-','-','-','-',                                                                                            # 17-21
+                                                                '-','-','-','-','-',                                                                                            # 22-26
+                                                                '-','-','-','-','-',                                                                                            # 27-31
+                                                                '-','-','-','-','-',                                                                                            # 32-36
+                                                                '-','-','-','-','-',                                                                                            # 37-41
+                                                                '-','-','-','-','-',                                                                                            # 42-46
+                                                                '-','-','-','-','-',                                                                                            # 47-51
+                                                                '-','-'])))                                                                                                     # 52-53
+          elif wagonName in ['WE40A2','WE31A3']:
+            irotTemp = geomBasic[(geomBasic['plane'] == plane) & (geomBasic['u'] == uList[0]) & (geomBasic['v'] == vList[0])]['irot'].iloc[0]
+            f.write('\n{}'.format(' '.join(str(x) for x in [    plane,uList[0],vList[0],'MEZZ','MEZZ','-',                                                                      # 1-6
+                                                                '-',irotTemp,'-','-','-',                                                                                       # 7-11
+                                                                '-','-','-','-','-',                                                                                            # 12-16
+                                                                '-','-','-','-','-',                                                                                            # 17-21
+                                                                '-','-','-','-','-',                                                                                            # 22-26
+                                                                '-','-','-','-','-',                                                                                            # 27-31
+                                                                '-','-','-','-','-',                                                                                            # 32-36
+                                                                '-','-','-','-','-',                                                                                            # 37-41
+                                                                '-','-','-','-','-',                                                                                            # 42-46
+                                                                '-','-','-','-','-',                                                                                            # 47-51
+                                                                '-','-'])))                                                                                                     # 52-53
+          else: print('WARNING: unknown 4-module wagon name {}'.format(wagonName))
 
       #-----------------------------------------
       # Write ECOND info
