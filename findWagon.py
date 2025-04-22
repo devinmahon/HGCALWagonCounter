@@ -18,7 +18,7 @@ wagonNameDict = {
   '0000F1100F2000F2000F20'    : 'WE40A1',
   '0000F2000F2000F2005d11'    : 'WE31A1',
   '0030d1152F2030F2030F20'    : 'WE31A2',
-  '0030F1130F2022F2024F20'    : 'WE40A2',
+  '0030F2030F2022F1124F20'    : 'WE40A2',
   '0000F2014F2012F2015d11'    : 'WE31A3',
   '0101F2030F2030F20'         : 'WW30A1', # W3A
   '0100F3030F2031d20'         : 'WW21A1',
@@ -93,10 +93,19 @@ def main():
 
     print(arg,'is a',wagonNameDict[''.join([str(x) for x in findCode(wagonDict,arg)])],'(',findCode(wagonDict,arg),')')
     print(argPartner,'is a',wagonNameDict[''.join([str(x) for x in findCode(wagonDict,argPartner)])],'(',findCode(wagonDict,argPartner),')')
-    
+
   else: 
 
-    arg = tuple([int(i) if i.isdigit() else i for i in list(argv[1])])
+    if argv[1][0] == 'W':
+      for key,item in wagonNameDict.items():
+        if item == argv[1]:
+          arg = tuple([int(i) if i.isdigit() else i for i in list(key)])
+          break
+      try: arg
+      except UnboundLocalError: 
+        print('ERROR: Wagon type {} not found'.format(argv[1]))
+        quit()
+    else: arg = tuple([int(i) if i.isdigit() else i for i in list(argv[1])])
 
     isDash = 0
     code = []
