@@ -2142,6 +2142,31 @@ def main():
 							'-','-'])))													# 52-53
 
       #-----------------------------------------
+      # Write zipper, lpGBT mezzanine, and PCM info
+      #-----------------------------------------
+      if not isHD:
+        isWest = int(tempCodeString[1])
+        for iTemp,codeTemp in enumerate(zipperTypes):
+          if iTemp > (nModules-1): break
+          if codeTemp == '-':
+            irotTemp = geomBasic[(geomBasic['plane'] == plane) & (geomBasic['u'] == uList[iTemp]) & (geomBasic['v'] == vList[iTemp])]['irot'].iloc[0]
+            irotTemp = irotTemp if isWest else (irotTemp+3)%6
+          else:
+            f.write('\n{}'.format(' '.join(str(x) for x in [	plane,uList[iTemp],vList[iTemp],codeTemp,codeTemp,'-',					                        # 1-6
+                                                            	'-',irotTemp,'-','-','-',						                                        # 7-11
+                                                            	'-','-','-','-','-',				                                                                # 12-16
+                                                            	'-','-','-','-','-',												# 17-21
+                                                            	'-','-','-','-','-',							     					# 22-26
+                                                            	'-','-','-','-','-',							     					# 27-31
+                                                            	'-','-','-','-','-',							     					# 32-36
+                                                            	'-','-','-','-','-',							     					# 37-41
+                                                            	'-','-','-','-','-',							     					# 42-46
+                                                            	'-','-','-','-','-',                                                                                            # 47-51
+                                                            	'-','-'])))                                                                                                     # 52-53
+            # If there are any more zippers, adjust the rotation to try to point toward the adjacent full
+            irotTemp = (irotTemp-1)%6 if isWest else (irotTemp+1)%6
+
+      #-----------------------------------------
       # Write ECOND info
       #-----------------------------------------
       if isHD:
