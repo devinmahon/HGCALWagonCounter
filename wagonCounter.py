@@ -1703,6 +1703,7 @@ def main():
         else:
           print('ERROR: Wagon type code for {} not found'.format(partnerCodeString))
           wagonPartnerName = 'XXXXXX'
+        nModulesPartner = int(wagonPartnerName[2]) + int(wagonPartnerName[3])
 
         # Wagon info
         plane,icassette,MB,wagon = geomTempIndex[['plane','icassette','MB','wagon']].iloc[0]
@@ -1718,33 +1719,9 @@ def main():
         #-----------------------------------------
         # Current wagon: matrices for active links
         #-----------------------------------------
-        trigDim = 1 
-        DAQDim = 1
-        xoverDim = 1
-        trigMat = np.empty((trigDim,7),dtype=object)
-        DAQMat = np.empty((DAQDim,7),dtype=object)
-        xoverMat = np.empty((xoverDim,3),dtype=object) # Outgoing xovers
 
-        # Link routing for first module
-        for index,x in enumerate(wagonInfoLD):
-          if x['name'] == wagonName: iWagon = index
-        for iTrig in range(int(trig0)):
-          ilpGBT,iLink = np.where(np.array(wagonInfoLD[iWagon]['trigRouting']) == 'M{}.{}'.format(1,iTrig))
-          if ilpGBT.size != 1 or iLink.size != 1:
-            ilpGBT,iLink = np.where(np.array(wagonInfoLD[iWagon]['xoverRouting']) == 'M{}.{}'.format(1,iTrig))
-            if ilpGBT.size != 1 or iLink.size != 1:
-              print('ERROR: Module trigger link not found or duplicated in wagon routing. Wagon {}, layer {}, (u,v) = ({},{}), link {}'.format(wagonName,plane,u,v,'M{}.{}'.format(1,iTrig)))
-            ilpGBT,iLink = ilpGBT[0],iLink[0]
-            xoverMat[ilpGBT,iLink] = wagonInfoLD[iWagon]['xoverRouting'][ilpGBT][iLink]
-          else:
-            ilpGBT,iLink = ilpGBT[0],iLink[0]
-            trigMat[ilpGBT,iLink] = wagonInfoLD[iWagon]['trigRouting'][ilpGBT][iLink]
-        for iDAQ in range(int(daqLD0)):
-          ilpGBT,iLink = np.where(np.array(wagonInfoLD[iWagon]['DAQRouting']) == 'M{}.{}'.format(1,iDAQ))
-          if ilpGBT.size != 1 or iLink.size != 1:
-            print('ERROR: Module DAQ link not found or duplicated in wagon routing. Wagon {}, layer {}, (u,v) = ({},{}), link {}'.format(wagonName,plane,u,v,'M{}.{}'.format(1,iDAQ)))
-          ilpGBT,iLink = ilpGBT[0],iLink[0]
-          DAQMat[ilpGBT,iLink] = wagonInfoLD[iWagon]['DAQRouting'][ilpGBT][iLink]
+        # Get modified indices, if different than code
+        newIndices = list(range(nModules)) if wagonName not in indexChanges else indexChanges[wagonName]
 
         # Info for first module
         u,v,irot = [int(x) for x in [u,v,irot]]
@@ -1762,6 +1739,39 @@ def main():
             uPrev,vPrev,irotPrev = nextModule(plane,uPrev,vPrev,irotPrev,angleRev,orientRev)
           uList[0],vList[0],irotList[0] = [uPrev,vPrev,irotPrev]
 
+        # Update link info in case engine isn't on the first module according to code
+        trig0,daqLD0,daqHD0 = geomTempIndex[['trigLinks','dataLinks_ld','dataLinks_hd']].loc[(geomTempIndex['u'] == uList[0]) & (geomTempIndex['v'] == vList[0])].iloc[0]
+
+        # Make link matrices
+        trigDim = 1 
+        DAQDim = 1
+        xoverDim = 1
+        trigMat = np.empty((trigDim,7),dtype=object)
+        DAQMat = np.empty((DAQDim,7),dtype=object)
+        xoverMat = np.empty((xoverDim,3),dtype=object) # Outgoing xovers
+
+        # Link routing for first module
+        for index,x in enumerate(wagonInfoLD):
+          if x['name'] == wagonName: iWagon = index
+        for iTrig in range(int(trig0)):
+          ilpGBT,iLink = np.where(np.array(wagonInfoLD[iWagon]['trigRouting']) == 'M{}.{}'.format(newIndices[0]+1,iTrig))
+          if ilpGBT.size != 1 or iLink.size != 1:
+            ilpGBT,iLink = np.where(np.array(wagonInfoLD[iWagon]['xoverRouting']) == 'M{}.{}'.format(newIndices[0]+1,iTrig))
+            if ilpGBT.size != 1 or iLink.size != 1:
+              print('ERROR: Module trigger link not found or duplicated in wagon routing. Wagon {}, layer {}, (u,v) = ({},{}), link {}'.format(wagonName,plane,u,v,'M{}.{}'.format(newIndices[0]+1,iTrig)))
+            ilpGBT,iLink = ilpGBT[0],iLink[0]
+            xoverMat[ilpGBT,iLink] = wagonInfoLD[iWagon]['xoverRouting'][ilpGBT][iLink]
+          else:
+            ilpGBT,iLink = ilpGBT[0],iLink[0]
+            trigMat[ilpGBT,iLink] = wagonInfoLD[iWagon]['trigRouting'][ilpGBT][iLink]
+        for iDAQ in range(int(daqLD0)):
+          ilpGBT,iLink = np.where(np.array(wagonInfoLD[iWagon]['DAQRouting']) == 'M{}.{}'.format(newIndices[0]+1,iDAQ))
+          if ilpGBT.size != 1 or iLink.size != 1:
+            print('ERROR: Module DAQ link not found or duplicated in wagon routing. Wagon {}, layer {}, (u,v) = ({},{}), link {}'.format(wagonName,plane,u,v,'M{}.{}'.format(newIndices[0]+1,iDAQ)))
+          ilpGBT,iLink = ilpGBT[0],iLink[0]
+          DAQMat[ilpGBT,iLink] = wagonInfoLD[iWagon]['DAQRouting'][ilpGBT][iLink]
+
+
         # Loop over all modules
         for i in range(len(tempCodeString)//5-1):
           uNext,vNext,irotNext = nextModule(plane,uList[i],vList[i],irotList[i],int(tempCodeString[5*i+7]),int(tempCodeString[5*i+8]))
@@ -1773,20 +1783,20 @@ def main():
           for index,x in enumerate(wagonInfoLD):
             if x['name'] == wagonName: iWagon = index
           for iTrig in range(int(trigTemp)):
-            ilpGBT,iLink = np.where(np.array(wagonInfoLD[iWagon]['trigRouting']) == 'M{}.{}'.format(i+2,iTrig)) # Look in trigRouting
+            ilpGBT,iLink = np.where(np.array(wagonInfoLD[iWagon]['trigRouting']) == 'M{}.{}'.format(newIndices[i+1]+1,iTrig)) # Look in trigRouting
             if ilpGBT.size != 1 or iLink.size != 1:
-              ilpGBT,iLink = np.where(np.array(wagonInfoLD[iWagon]['xoverRouting']) == 'M{}.{}'.format(i+2,iTrig)) # Looks in xoverRouting
+              ilpGBT,iLink = np.where(np.array(wagonInfoLD[iWagon]['xoverRouting']) == 'M{}.{}'.format(newIndices[i+1]+1,iTrig)) # Looks in xoverRouting
               if ilpGBT.size != 1 or iLink.size != 1:
-                print('ERROR: Module trigger link not found or duplicated in wagon routing. Wagon {}, layer {}, (u,v) = ({},{}), link {}'.format(wagonName,plane,u,v,'M{}.{}'.format(i+2,iTrig)))
+                print('ERROR: Module trigger link not found or duplicated in wagon routing. Wagon {}, layer {}, (u,v) = ({},{}), link {}'.format(wagonName,plane,u,v,'M{}.{}'.format(newIndices[i+1]+1,iTrig)))
               ilpGBT,iLink = ilpGBT[0],iLink[0]
               xoverMat[ilpGBT,iLink] = wagonInfoLD[iWagon]['xoverRouting'][ilpGBT][iLink] # Add it to outgoing xovers
             else:
               ilpGBT,iLink = ilpGBT[0],iLink[0]
               trigMat[ilpGBT,iLink] = wagonInfoLD[iWagon]['trigRouting'][ilpGBT][iLink]
           for iDAQ in range(int(daqLDTemp)):
-            ilpGBT,iLink = np.where(np.array(wagonInfoLD[iWagon]['DAQRouting']) == 'M{}.{}'.format(i+2,iDAQ))
+            ilpGBT,iLink = np.where(np.array(wagonInfoLD[iWagon]['DAQRouting']) == 'M{}.{}'.format(newIndices[i+1]+1,iDAQ))
             if ilpGBT.size != 1 or iLink.size != 1:
-              print('ERROR: Module DAQ link not found or duplicated in wagon routing. Wagon {}, layer {}, (u,v) = ({},{}), link {}'.format(wagonName,plane,u,v,'M{}.{}'.format(i+2,iDAQ)))
+              print('ERROR: Module DAQ link not found or duplicated in wagon routing. Wagon {}, layer {}, (u,v) = ({},{}), link {}'.format(wagonName,plane,u,v,'M{}.{}'.format(newIndices[i+1]+1,iDAQ)))
             ilpGBT,iLink = ilpGBT[0],iLink[0]
             DAQMat[ilpGBT,iLink] = wagonInfoLD[iWagon]['DAQRouting'][ilpGBT][iLink]
         
@@ -1803,6 +1813,10 @@ def main():
         #-----------------------------------------
         # Partner wagon: matrices for active links
         #-----------------------------------------
+
+        # Get modified indices, if different than code
+        newIndicesPartner = list(range(nModulesPartner)) if wagonPartnerName not in indexChanges else indexChanges[wagonPartnerName]
+
         trigDim = 1 
         DAQDim = 1
         xoverDim = 1
@@ -1819,6 +1833,7 @@ def main():
           uPartner,vPartner = findEastEngineModule(plane,uWest,vWest,irotPartnerWest)
           irotPartner,trig0,daqLD0,daqHD0 = geomTempPartnerIndex[['irot','trigLinks','dataLinks_ld','dataLinks_hd']].loc[(geomTempPartnerIndex['u'] == uPartner) & (geomTempPartnerIndex['v'] == vPartner)].iloc[0]
           nDataTotalPartner = 4
+
         uPartner,vPartner,irotPartner = [int(x) for x in [uPartner,vPartner,irotPartner]]
         uListPartner = list('-'*4)
         vListPartner = list('-'*4)
@@ -1834,24 +1849,27 @@ def main():
             uPrev,vPrev,irotPrev = nextModule(plane,uPrev,vPrev,irotPrev,angleRev,orientRev)
           uListPartner[0],vListPartner[0],irotListPartner[0] = [uPrev,vPrev,irotPrev]
 
+        # Update link info in case engine isn't on the first module according to code
+        trig0,daqLD0,daqHD0 = geomTempPartnerIndex[['trigLinks','dataLinks_ld','dataLinks_hd']].loc[(geomTempPartnerIndex['u'] == uListPartner[0]) & (geomTempPartnerIndex['v'] == vListPartner[0])].iloc[0]
+
         # Link routing for first module
         for index,x in enumerate(wagonInfoLD):
           if x['name'] == wagonPartnerName: iWagon = index
         for iTrig in range(int(trig0)):
-          ilpGBT,iLink = np.where(np.array(wagonInfoLD[iWagon]['trigRouting']) == 'M{}.{}'.format(1,iTrig))
+          ilpGBT,iLink = np.where(np.array(wagonInfoLD[iWagon]['trigRouting']) == 'M{}.{}'.format(newIndicesPartner[0]+1,iTrig))
           if ilpGBT.size != 1 or iLink.size != 1:
-            ilpGBT,iLink = np.where(np.array(wagonInfoLD[iWagon]['xoverRouting']) == 'M{}.{}'.format(1,iTrig))
+            ilpGBT,iLink = np.where(np.array(wagonInfoLD[iWagon]['xoverRouting']) == 'M{}.{}'.format(newIndicesPartner[0]+1,iTrig))
             if ilpGBT.size != 1 or iLink.size != 1:
-              print('ERROR: Module trigger link not found or duplicated in wagon routing. Wagon {}, layer {}, (u,v) = ({},{}), link {}'.format(wagonName,plane,u,v,'M{}.{}'.format(1,iTrig)))
+              print('ERROR: Module trigger link not found or duplicated in wagon routing. Wagon {}, layer {}, (u,v) = ({},{}), link {}'.format(wagonName,plane,u,v,'M{}.{}'.format(newIndicesPartner[0]+1,iTrig)))
             ilpGBT,iLink = ilpGBT[0],iLink[0]
             xoverMatPartner[ilpGBT,iLink] = wagonInfoLD[iWagon]['xoverRouting'][ilpGBT][iLink]
           else:
             ilpGBT,iLink = ilpGBT[0],iLink[0]
             trigMatPartner[ilpGBT,iLink] = wagonInfoLD[iWagon]['trigRouting'][ilpGBT][iLink]
         for iDAQ in range(int(daqLD0)):
-          ilpGBT,iLink = np.where(np.array(wagonInfoLD[iWagon]['DAQRouting']) == 'M{}.{}'.format(1,iDAQ))
+          ilpGBT,iLink = np.where(np.array(wagonInfoLD[iWagon]['DAQRouting']) == 'M{}.{}'.format(newIndicesPartner[0]+1,iDAQ))
           if ilpGBT.size != 1 or iLink.size != 1:
-            print('ERROR: Module DAQ link not found or duplicated in wagon routing. Wagon {}, layer {}, (u,v) = ({},{}), link {}'.format(wagonName,plane,u,v,'M{}.{}'.format(1,iDAQ)))
+            print('ERROR: Module DAQ link not found or duplicated in wagon routing. Wagon {}, layer {}, (u,v) = ({},{}), link {}'.format(wagonName,plane,u,v,'M{}.{}'.format(newIndicesPartner[0]+1,iDAQ)))
           ilpGBT,iLink = ilpGBT[0],iLink[0]
           DAQMatPartner[ilpGBT,iLink] = wagonInfoLD[iWagon]['DAQRouting'][ilpGBT][iLink]
 
@@ -1866,52 +1884,28 @@ def main():
           for index,x in enumerate(wagonInfoLD):
             if x['name'] == wagonPartnerName: iWagon = index
           for iTrig in range(int(trigTemp)):
-            ilpGBT,iLink = np.where(np.array(wagonInfoLD[iWagon]['trigRouting']) == 'M{}.{}'.format(i+2,iTrig)) # Look in trigRouting
+            ilpGBT,iLink = np.where(np.array(wagonInfoLD[iWagon]['trigRouting']) == 'M{}.{}'.format(newIndicesPartner[i+1]+1,iTrig)) # Look in trigRouting
             if ilpGBT.size != 1 or iLink.size != 1:
-              ilpGBT,iLink = np.where(np.array(wagonInfoLD[iWagon]['xoverRouting']) == 'M{}.{}'.format(i+2,iTrig)) # Looks in xoverRouting
+              ilpGBT,iLink = np.where(np.array(wagonInfoLD[iWagon]['xoverRouting']) == 'M{}.{}'.format(newIndicesPartner[i+1]+1,iTrig)) # Looks in xoverRouting
               if ilpGBT.size != 1 or iLink.size != 1:
-                print('ERROR: Module trigger link not found or duplicated in wagon routing. Wagon {}, layer {}, (u,v) = ({},{}), link {}'.format(wagonName,plane,u,v,'M{}.{}'.format(i+2,iTrig)))
+                print('ERROR: Module trigger link not found or duplicated in wagon routing. Wagon {}, layer {}, (u,v) = ({},{}), link {}'.format(wagonName,plane,u,v,'M{}.{}'.format(newIndicesPartner[i+1]+1,iTrig)))
               ilpGBT,iLink = ilpGBT[0],iLink[0]
               xoverMatPartner[ilpGBT,iLink] = wagonInfoLD[iWagon]['xoverRouting'][ilpGBT][iLink] # Add it to outgoing xovers
             else:
               ilpGBT,iLink = ilpGBT[0],iLink[0]
               trigMatPartner[ilpGBT,iLink] = wagonInfoLD[iWagon]['trigRouting'][ilpGBT][iLink]
           for iDAQ in range(int(daqLDTemp)):
-            ilpGBT,iLink = np.where(np.array(wagonInfoLD[iWagon]['DAQRouting']) == 'M{}.{}'.format(i+2,iDAQ))
+            ilpGBT,iLink = np.where(np.array(wagonInfoLD[iWagon]['DAQRouting']) == 'M{}.{}'.format(newIndicesPartner[i+1]+1,iDAQ))
             if ilpGBT.size != 1 or iLink.size != 1:
-              print('ERROR: Module DAQ link not found or duplicated in wagon routing. Wagon {}, layer {}, (u,v) = ({},{}), link {}'.format(wagonName,plane,u,v,'M{}.{}'.format(i+2,iDAQ)))
+              print('ERROR: Module DAQ link not found or duplicated in wagon routing. Wagon {}, layer {}, (u,v) = ({},{}), link {}'.format(wagonName,plane,u,v,'M{}.{}'.format(newIndicesPartner[i+1]+1,iDAQ)))
             ilpGBT,iLink = ilpGBT[0],iLink[0]
             DAQMatPartner[ilpGBT,iLink] = wagonInfoLD[iWagon]['DAQRouting'][ilpGBT][iLink]
 
-        for index,x in enumerate(wagonInfoLD):
-          if x['name'] == wagonPartnerName: iWagon = index
-        ixoverIns = np.where(np.array([x[0] for x in wagonInfoLD[iWagon]['trigRouting'][0]]) == 'X')[0]
-        for ixoverIn in ixoverIns:
-          ixoverOut = int(wagonInfoLD[iWagon]['trigRouting'][0][ixoverIn][-1])
-          for index,x in enumerate(wagonInfoLD):
-            if x['name'] == wagonName: iWagonPartner = index # The partner of the partner is the original!
-          # Find MX.Y of outgoing xover on partner wagon if it is sent
-          xoverOutLink = wagonInfoLD[iWagonPartner]['xoverRouting'][0][ixoverOut]
-          if xoverOutLink != '-':
-            iMod,iLink = [int(x) for x in xoverOutLink[1:].split('.')]
-            # Look at that module and see how many trig links are active
-            uTemp = uList[iMod - 1]
-            vTemp = vList[iMod - 1]
-            trigTemp = int(geomTempIndex[['trigLinks']].loc[(geomTempIndex['u'] == uTemp) & (geomTempIndex['v'] == vTemp)].iloc[0])
-            # If it's >=Y, the xover is active, so add it to trigMat
-            if trigTemp >= (iLink + 1): trigMatPartner[0][ixoverIn] = wagonInfoLD[iWagon]['trigRouting'][0][ixoverIn]
+        #-----------------------------------------
+        # Account for crossovers between wagons
+        #-----------------------------------------
 
-        #-----------------------------------------
-        # Calculate global wagon info
-        #-----------------------------------------
-        nModulesPartner = int((len(partnerCodeString)-2)/5)
-        nTrigTotalPartner = int(partnerCodeString[3]) + \
-                     sum([int(partnerCodeString[5*i+5],16) for i in range(len(partnerCodeString)//5)]) + \
-                     sum([int(partnerCodeString[5*i+6],16) for i in range(len(partnerCodeString)//5)])
-        nTrigXOutTotalPartner = sum([int(partnerCodeString[5*i+6]) for i in range(len(partnerCodeString)//5)])
-        nActiveTrigEngine = nActiveTrig + nActiveTrigPartner
-        nActiveDataEngine = nActiveData + nActiveDataPartner
-      
+        # Add in incoming xovers FROM PARTNER TO ORIGINAL if they are active
         for index,x in enumerate(wagonInfoLD):
           if x['name'] == wagonName: iWagon = index
         ixoverIns = np.where(np.array([x[0] for x in wagonInfoLD[iWagon]['trigRouting'][0]]) == 'X')[0]
@@ -1919,17 +1913,54 @@ def main():
           ixoverOut = int(wagonInfoLD[iWagon]['trigRouting'][0][ixoverIn][-1])
           for index,x in enumerate(wagonInfoLD):
             if x['name'] == wagonPartnerName: iWagonPartner = index
-          # Find MX.Y of outgoing xover on partner wagon if it is sent
+          # Find MX.Y of outgoing xover on PARTNER wagon if it is sent
           xoverOutLink = wagonInfoLD[iWagonPartner]['xoverRouting'][0][ixoverOut]
           if xoverOutLink != '-':
-            iMod,iLink = [int(x) for x in xoverOutLink[1:].split('.')]
+            iMod,iLink = [int(x) for x in xoverOutLink[1:].split('.')] # Module index according to index-changed PARTNER wagon
+            if (iMod-1) in newIndicesPartner: indexTemp = newIndicesPartner.index(iMod-1)
+            else: print('ERROR: Module {} (index {}) not found in wagon {} (plane {}, MB {})'.format(iMod,iMod-1,wagonPartnerName,plane,MB))
             # Look at that module and see how many trig links are active
-            uTemp = uListPartner[iMod - 1]
-            vTemp = vListPartner[iMod - 1]
+            uTemp = uListPartner[indexTemp]
+            vTemp = vListPartner[indexTemp]
             trigTemp = int(geomTempPartnerIndex[['trigLinks']].loc[(geomTempPartnerIndex['u'] == uTemp) & (geomTempPartnerIndex['v'] == vTemp)].iloc[0])
             # If it's >=Y, the xover is active, so add it to trigMat
             if trigTemp >= (iLink + 1): trigMat[0][ixoverIn] = wagonInfoLD[iWagon]['trigRouting'][0][ixoverIn]
 
+        # Add in incoming xovers FROM ORIGINAL TO PARTNER if they are active
+        for index,x in enumerate(wagonInfoLD):
+          if x['name'] == wagonPartnerName: iWagon = index
+        ixoverIns = np.where(np.array([x[0] for x in wagonInfoLD[iWagon]['trigRouting'][0]]) == 'X')[0]
+        for ixoverIn in ixoverIns:
+          ixoverOut = int(wagonInfoLD[iWagon]['trigRouting'][0][ixoverIn][-1])
+          for index,x in enumerate(wagonInfoLD):
+            if x['name'] == wagonName: iWagonPartner = index # The partner of the partner is the original!
+          # Find MX.Y of outgoing xover on ORIGINAL wagon if it is sent
+          xoverOutLink = wagonInfoLD[iWagonPartner]['xoverRouting'][0][ixoverOut] # Here, "partner" is the original!
+          if xoverOutLink != '-':
+            iMod,iLink = [int(x) for x in xoverOutLink[1:].split('.')] # Module index according to index-changed ORIGINAL wagon
+            if (iMod-1) in newIndices: indexTemp = newIndices.index(iMod-1)
+            else: print('ERROR: Module {} (index {}) not found in wagon {} (plane {}, MB {})'.format(iMod,iMod-1,wagonName,plane,MB))
+            # Look at that module and see how many trig links are active
+            uTemp = uList[indexTemp]
+            vTemp = vList[indexTemp]
+            trigTemp = int(geomTempIndex[['trigLinks']].loc[(geomTempIndex['u'] == uTemp) & (geomTempIndex['v'] == vTemp)].iloc[0])
+            # If it's >=Y, the xover is active, so add it to trigMat
+            if trigTemp >= (iLink + 1): trigMatPartner[0][ixoverIn] = wagonInfoLD[iWagon]['trigRouting'][0][ixoverIn]
+
+        # Now that LD wagons are done, swap around uList and vList to match indexChanges instead of codes
+        uList = [uList[newIndices[i] if i < len(newIndices) else i] for i in range(len(uList))]
+        vList = [vList[newIndices[i] if i < len(newIndices) else i] for i in range(len(vList))]
+
+        #-----------------------------------------
+        # Calculate global wagon info
+        #-----------------------------------------
+        nTrigTotalPartner = int(partnerCodeString[3]) + \
+                     sum([int(partnerCodeString[5*i+5],16) for i in range(len(partnerCodeString)//5)]) + \
+                     sum([int(partnerCodeString[5*i+6],16) for i in range(len(partnerCodeString)//5)])
+        nTrigXOutTotalPartner = sum([int(partnerCodeString[5*i+6]) for i in range(len(partnerCodeString)//5)])
+        nActiveTrigEngine = nActiveTrig + nActiveTrigPartner
+        nActiveDataEngine = nActiveData + nActiveDataPartner
+ 
         # Test printouts
         #if plane == 3 and MB == 5: print('-----\n',wagonName,'( partner: ',wagonPartnerName,')',plane,u,v,'\n-----\n',trigMat,'\n',DAQMat,'\n',xoverMat)
         #if plane == 3 and MB == 5: print('-----\n',wagonPartnerName,'\n-----\n',trigMatPartner,'\n',DAQMatPartner,'\n',xoverMatPartner)
