@@ -1112,20 +1112,6 @@ def main():
           
           partialZipperMap.setdefault(wagonName,{indexTemp:{pType:zipperType}}).setdefault(indexTemp,{pType:zipperType}).setdefault(pType,zipperType)
 
-  ## WE40A1
-  #codeTemp = (0,0,0,0,'F','2',0,0,0,'F','2',0,0,0,'F','2',0,0,0,'F','1',1)
-  #partialDict['WE40A1'] = {3:{'Full':len(wagonCodesDict[codeTemp])}}
-  #zipperDict['WE40A1'] =  {3:{'HSNG':len(wagonCodesDict[codeTemp])}}
-  #partialZipperMap['WE40A1'] = {3:{'Full':'HSNG'}}
-  #for index in wagonCodesDict[codeTemp]:
-  #  zipperDictLocs[tuple(index + [3])] = 'HSNG'
-  ## WE40A2
-  #codeTemp = (0,0,3,0,'F','2',0,3,0,'F','2',0,2,2,'F','1',1,2,4,'F','2',0)
-  #partialDict['WE40A2'] = {3:{'Full':len(wagonCodesDict[codeTemp])}}
-  #zipperDict['WE40A2'] =  {3:{'HSNG':len(wagonCodesDict[codeTemp])}}
-  #partialZipperMap['WE40A2'] = {3:{'Full':'HSNG'}}
-  #for index in wagonCodesDict[codeTemp]:
-  #  zipperDictLocs[tuple(index + [3])] = 'HSNG'
 
   # Manual consolidations
   consolDict = {	(0,1,0,1,'F','5',0): 						[(0,1,0,3,'F','3',0)], 						# WW10A1 <-- WW10B1
@@ -1163,6 +1149,7 @@ def main():
  
   # Final counts
   codeCounter = Counter({tuple(key):len(val) for key,val in wagonCodesDict.items()})
+  codeCounterNames = Counter({wagonNameDict[''.join([str(x) for x in key])]:len(val) for key,val in wagonCodesDict.items()})
   maxLinks = {x:maxLinksCalculation(x,'B','trigLinks',wagonCodesDict,geomGrouped,recodedCodesList) for x in wagonCodesDict}
   maxDAQLinksLD = {x:maxLinksCalculation(x,'B','dataLinks_ld',wagonCodesDict,geomGrouped,recodedCodesList) for x in wagonCodesDict}
   maxDAQLinksHD = {x:maxLinksCalculation(x,'B','dataLinks_hd',wagonCodesDict,geomGrouped,recodedCodesList) for x in wagonCodesDict}
@@ -1370,7 +1357,7 @@ def main():
           if sum([n for pType,n in typeCounts.items()]):
             indexTemp = index
             #if wagonNameDict[codeString] in indexChanges: indexTemp = indexChanges[wagonNameDict[codeString]][index]
-            headers = ['Module {}'.format(indexTemp+1),'Zipper','N Full Detector']
+            headers = ['Module {}'.format(indexTemp+1),'Zipper Type','N']
             table = []
             for pType,pCount in typeCounts.items():
               if pCount == 0: continue
@@ -1380,7 +1367,7 @@ def main():
 
         f.write('\\columnbreak\n')
         f.write('Zipper Types\n\n\\vspace{-10pt}\n')
-        headers = ['Zipper','N Full Detector']
+        headers = ['Type','N']
         zipperCountsDict = {}
         table = []
         for index,typeCounts in zipperDict[wagonName].items():
@@ -1392,7 +1379,18 @@ def main():
         f.write(tabulate(table,headers,tablefmt="latex_raw"))
         f.write('\n\n')
 
-        f.write('\\end{multicols}\n\n')
+        f.write('\\end{multicols}\n\\vspace{-20pt}\n')
+
+      # lpGBT mezzanines
+      if nModules == 4:
+        if wagonName in ['WE31A1','WE40A1']: 	mezLoc = ['M2','M3']
+        elif wagonName in ['WE31A3','WE40A2']:	mezLoc = ['M1','M2']
+        else: print('WARNING: unknown 4-module wagon name {}'.format(wagonName))
+        f.write('lpGBT Mezzanine\n\n\\vspace{-10pt}\n')
+        headers = ['Location','Type','N']
+        table = [['Between {} and {}'.format(mezLoc[0],mezLoc[1]),'ZPLMEZ',codeCounter[key] * 6]]
+        f.write(tabulate(table,headers,tablefmt="latex_raw"))
+        f.write('\n\n')
 
       f.write('\\begin{multicols}{2}\n\n')
 
@@ -1498,15 +1496,27 @@ def main():
       print('WARNING: You must re-run to get the zipper summary page in the LDWagonInfo.tex document!')
     else:
       geomFileData = pd.read_csv('output/geometries/{}/geometry_simotherboards.hgcal.txt'.format(geomVersion),sep=' ')
-      zipperTable = geomFileData.set_index('plane')[['vx_4','vy_4','vx_5']].stack().reset_index(level=1,drop=True).reset_index(name='value')
+      # Zippers
+      geomFileDataZippers = geomFileData[geomFileData['itype'].str[0] == 'W']
+      zipperTable = geomFileDataZippers.set_index('plane')[['vx_4','vy_4','vx_5']].stack().reset_index(level=1,drop=True).reset_index(name='value')
       zipperTable = zipperTable[zipperTable['value'] != '-']
       zipperCountsByLayer = zipperTable.groupby(['value','plane']).size().unstack(fill_value=0).multiply(6)
       f.write('\\begin{landscape}\n\n')
       f.write('\\section{{Zippers Per Layer}}\n\n')
       f.write('\\scalebox{0.55}{\n\n')
       layerList = np.arange(47) + 1
-      headers = ['Zipper'] + [str(x) for x in layerList]
+      headers = ['Type'] + [str(x) for x in layerList]
       table = zipperCountsByLayer.reset_index().astype(str).to_numpy()
+      f.write(tabulate(table,headers,tablefmt="latex_raw"))
+      f.write('\n}\n\n')
+      # lpGBT mezzanines
+      geomFileDataMezz = geomFileData[geomFileData['itype'] == 'ZPLMEZ'].set_index('plane')[['itype']].stack().reset_index(level=1,drop=True).reset_index(name='value')
+      mezzCountsByLayer = geomFileDataMezz.groupby(['value','plane']).size().unstack(fill_value=0).multiply(6)
+      f.write('\\section{{lpGBT Mezzanines Per Layer}}\n\n')
+      f.write('\\scalebox{0.55}{\n\n')
+      layerList = np.arange(47) + 1
+      headers = ['Type'] + [str(x) for x in layerList]
+      table = [['ZPLMEZ'] + [mezzCountsByLayer[i].astype(str).to_numpy()[0] if i in mezzCountsByLayer else 0 for i in layerList]]
       f.write(tabulate(table,headers,tablefmt="latex_raw"))
       f.write('\n}\n\n')
       f.write('\\end{landscape}\n\n')
@@ -1516,7 +1526,7 @@ def main():
     #------------------------------
     # Parital/Zipper summary page
     #------------------------------
-    f.write('\\section{{Total Partial and Zipper Counts}}\n\n')
+    f.write('\\section{{Total Partial, Zipper, and lpGBT Mezzanine Counts}}\n\n')
 
     partialCounts = {}
     nPartialTotal = 0
@@ -1536,7 +1546,7 @@ def main():
 
     f.write('\\begin{multicols}{2}\n\n')
     f.write('\\raggedcolumns\n')
-    headers = ['Zipper Module Type','N Full Detector']
+    headers = ['Zipper Module Type','N']
     table = []
     for partialType,count in partialCounts.items():
       table.append([partialType,count])
@@ -1544,7 +1554,7 @@ def main():
     f.write(tabulate(table,headers,tablefmt="latex_raw"))
     f.write('\n\n')
     f.write('\\columnbreak\n')
-    headers = ['Zipper Type','N Full Detector']
+    headers = ['Zipper Type','N']
     table = []
     for zipperType,count in zipperCounts.items():
       table.append([zipperType,count])
@@ -1553,6 +1563,21 @@ def main():
     f.write('\n\n')
     
     f.write('\\end{multicols}\n\n')
+
+    nMezz = sum([codeCounterNames[x] for x in ['WE31A1','WE40A1','WE31A3','WE40A2']])
+    headers = ['lpGBT Mezzanine Type','N']
+    table = [['ZPLMEZ',nMezz * 6]]
+    f.write(tabulate(table,headers,tablefmt="latex_raw"))
+    f.write('\n\n')
+
+    #        if wagonName in ['WE31A1','WE40A1']:    mezLoc = ['M2','M3']
+    #        elif wagonName in ['WE31A3','WE40A2']:  mezLoc = ['M1','M2']
+    #        else: print('WARNING: unknown 4-module wagon name {}'.format(wagonName))
+    #        f.write('lpGBT Mezzanine\n\n\\vspace{-10pt}\n')
+    #        headers = ['Location','Type','N']
+    #        table = [['Between {} and {}'.format(mezLoc[0],mezLoc[1]),'ZPLMEZ',codeCounter[key] * 6]]
+    #        f.write(tabulate(table,headers,tablefmt="latex_raw"))
+    #        f.write('\n\n')
 
     f.write('\\end{document}')
     f.close()
