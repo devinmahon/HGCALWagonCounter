@@ -18,9 +18,9 @@ WE21D1,UFO,5110
 WE30A1,Seahorse,1500
 WE30A2,Scallop,7500
 WE30A3,Octopus,1600
-WE31A1,Train tracks,
-WE31A3,Covered wagon,
-WE40A1,Steam train,
+WE31A1,Covered wagon,3300
+WE31A3,Train tracks,
+WE40A1,Steam train,3200
 WE40A2,Car engine,
 WW10A1,Mushroom,1100
 WW11A1,Paper clip,820
