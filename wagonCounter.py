@@ -1112,8 +1112,27 @@ def main():
           
           partialZipperMap.setdefault(wagonName,{indexTemp:{pType:zipperType}}).setdefault(indexTemp,{pType:zipperType}).setdefault(pType,zipperType)
 
-
+  #-----------------------------------------------
   # Manual consolidations
+  #-----------------------------------------------
+
+  # First move special cases to their new types
+  consolSpecialCases =  {       (3,13,1): [(0,0,0,0,'F','0',3),(0,0,0,1,'F','5',0)],    # Change Layer 3, MB 13, wagon 1: WE10B1 --> WE10A1
+                                (3,113,1): [(0,0,0,0,'F','0',3),(0,0,0,1,'F','5',0)],   # Change Layer 3, MB 113, wagon 1: WE10B1 --> WE10A1
+                        }
+
+  for indexTemp,typeList in consolSpecialCases.items():
+    removingCode,targetCode = typeList
+    targetName = wagonNameDict[''.join([str(x) for x in typeList[1]])]
+    removingName = wagonNameDict[''.join([str(x) for x in typeList[0]])]
+    if int(targetName[3]) or int(removingName[3]): print('WARNING: Code is not currently set up to handle individual instance changes for wagons with partials. Partial and zipper counts will not be handled correctly.')
+    if list(indexTemp) in wagonCodesDict[removingCode]: 
+      wagonCodesDict[removingCode] = [x for x in wagonCodesDict[removingCode] if x != list(indexTemp)] 
+      if targetCode in wagonCodesDict: wagonCodesDict[targetCode].append(list(indexTemp))
+      else: print('ERROR: {} not in known wagon types'.format(targetName))
+    else: print('ERROR: {} is not a {} wagon, as required for the consolidation specified'.format(list(indexTemp),removingName))
+
+  # Consolidate varieties
   consolDict = {	(0,1,0,1,'F','5',0): 						[(0,1,0,3,'F','3',0)], 						# WW10A1 <-- WW10B1
 			(0,0,0,1,'F','4',0,0,5,'d','2',0):				[(0,0,1,0,'d','2',0,5,2,'F','2',0)],				# WE11A1 <-- WE11B1
 			(0,0,0,1,'F','2',0,0,0,'F','2',0,0,5,'d','2',0):		[(0,0,2,0,'d','2',0,5,2,'F','2',0,3,0,'F','2',0)],		# WE21A1 <-- WE21C5
@@ -1146,8 +1165,10 @@ def main():
               print('ERROR: Mapping of partial type to zipper types for module {} when merging {} ({}) into {} ({}) is not one-to-one'.format(index,removingName,zipper,targetName,partialZipperMap[targetName][index][partial]))
             partialZipperMap[targetName][index][partial] = zipper
         partialZipperMap.pop(removingName)
- 
+
+  #----------------------------------------------- 
   # Final counts
+  #-----------------------------------------------
   codeCounter = Counter({tuple(key):len(val) for key,val in wagonCodesDict.items()})
   codeCounterNames = Counter({wagonNameDict[''.join([str(x) for x in key])]:len(val) for key,val in wagonCodesDict.items()})
   maxLinks = {x:maxLinksCalculation(x,'B','trigLinks',wagonCodesDict,geomGrouped,recodedCodesList) for x in wagonCodesDict}
@@ -1158,6 +1179,9 @@ def main():
     if key[0] == 0: maxDAQLinks[key] = maxDAQLinksLD[key]
     elif key[0] == 1: maxDAQLinks[key] = maxDAQLinksHD[key]
     else: print('ERROR: Unknown first code in {}'.format(key))
+
+  # Make adjustment for WE10B1 (designed one extra trigger link than actually required)
+  maxLinks[(0,0,0,0,'F','0',3)] = [3]
 
   # Print out forbidden/prohibited DC/DC locations
   #for code,indices in wagonCodesDict.items():
@@ -1934,6 +1958,7 @@ def main():
         for index,x in enumerate(wagonInfoLD):
           if x['name'] == wagonName: iWagon = index
         ixoverIns = np.where(np.array([x[0] for x in wagonInfoLD[iWagon]['trigRouting'][0]]) == 'X')[0]
+        nxoverInsOriginal = len(ixoverIns) # How many incoming links are routed
         for ixoverIn in ixoverIns:
           ixoverOut = int(wagonInfoLD[iWagon]['trigRouting'][0][ixoverIn][-1])
           for index,x in enumerate(wagonInfoLD):
@@ -1971,6 +1996,22 @@ def main():
             trigTemp = int(geomTempIndex[['trigLinks']].loc[(geomTempIndex['u'] == uTemp) & (geomTempIndex['v'] == vTemp)].iloc[0])
             # If it's >=Y, the xover is active, so add it to trigMat
             if trigTemp >= (iLink + 1): trigMatPartner[0][ixoverIn] = wagonInfoLD[iWagon]['trigRouting'][0][ixoverIn]
+
+        # Check that all active outgoing xovers from partner can be received
+        for index,x in enumerate(wagonInfoLD):
+          if x['name'] == wagonPartnerName: iWagonPartner = index
+        nxoverOutsPartnerActive = 0 # Counter for how many active links are sent out by partner
+        for xoverOutLink in wagonInfoLD[iWagonPartner]['xoverRouting'][0]:
+          if xoverOutLink == '-': continue
+          iMod,iLink = [int(x) for x in xoverOutLink[1:].split('.')] # Module index according to index-changed PARTNER wagon
+          if (iMod-1) in newIndicesPartner: indexTemp = newIndicesPartner.index(iMod-1)
+          # Look at that module and see how many trig links are active
+          uTemp = uListPartner[indexTemp]
+          vTemp = vListPartner[indexTemp]
+          trigTemp = int(geomTempPartnerIndex[['trigLinks']].loc[(geomTempPartnerIndex['u'] == uTemp) & (geomTempPartnerIndex['v'] == vTemp)].iloc[0])
+          # If it's >=Y, the xover is active
+          if trigTemp >= (iLink + 1): nxoverOutsPartnerActive += 1
+        if nxoverOutsPartnerActive > nxoverInsOriginal: print('ERROR: More crossovers links are being sent than can be received! Layer {}, MB {}, wagon {} can only accept {} incoming crossovers, but {} is sending {} active links to it'.format(plane,MB,wagonName,nxoverInsOriginal,wagonPartnerName,nxoverOutsPartnerActive))
 
         # Now that LD wagons are done, swap around uList and vList to match indexChanges instead of codes
         uList = [uList[newIndices[i] if i < len(newIndices) else i] for i in range(len(uList))]
