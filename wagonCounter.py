@@ -2026,6 +2026,7 @@ def main():
         nTrigXOutTotalPartner = sum([int(partnerCodeString[5*i+6]) for i in range(len(partnerCodeString)//5)])
         nActiveTrigEngine = nActiveTrig + nActiveTrigPartner
         nActiveDataEngine = nActiveData + nActiveDataPartner
+        if nActiveDataEngine == 0: print('ERROR: Engine has no active DAQ links')
  
         # Test printouts
         #if plane == 3 and MB == 5: print('-----\n',wagonName,'( partner: ',wagonPartnerName,')',plane,u,v,'\n-----\n',trigMat,'\n',DAQMat,'\n',xoverMat)
@@ -2309,9 +2310,13 @@ def main():
           y0Center = (y0+y0East)/2
           nTrigTotal = 14
           nDataTotal = 7
-          nTriglpGBT = '-'
+          nTriglpGBT = 0
+          for i in range(trigMat.shape[0]):
+            if not np.all(trigMat[i] == None): nTriglpGBT += 1
+          for i in range(trigMatPartner.shape[0]):
+            if not np.all(trigMatPartner[i] == None): nTriglpGBT += 1
           nVTRx = 1
-          nDAQlpGBT = 1 if nActiveData > 0 else 0
+          nDAQlpGBT = 1 if nActiveDataEngine > 0 else 0
           if irot == 0: engineType = 'EL10E0' if x0 > 0 else 'EL10W0'
           elif irot == 1 or irot == 2: engineType = 'EL10E0'
           elif irot == 3: engineType = 'EL10W0' if x0 > 0 else 'EL10E0'
@@ -2413,28 +2418,18 @@ def main():
         for ilpGBT in range(len(DAQMat)):
           for iLink in range(len(DAQMat[ilpGBT])):
             if DAQMat[ilpGBT][iLink]:
-              if isHD:                  
-                lpGBTLabel = ilpGBT + 1
-                modLabel = ''
-              elif wagonName[1] == 'E': 
-                lpGBTLabel = ''
-                modLabel = 'E'
-              else:                    
-                lpGBTLabel = ''
-                modLabel = 'W'
-              DAQMatEngineString += 'D{}.{}:{},'.format(lpGBTLabel,iLink,DAQMat[ilpGBT][iLink].replace('M','{}M'.format(modLabel)))
+              if isHD:             	modLabel = ''
+              elif wagonName[1] == 'E':	modLabel = 'E'
+              else: 			modLabel = 'W'
+              DAQMatEngineString += 'D{}.{}:{},'.format(ilpGBT+1,iLink,DAQMat[ilpGBT][iLink].replace('M','{}M'.format(modLabel)))
         # DAQ links for partner wagon (LD only)
         if not isHD:
           for ilpGBT in range(len(DAQMatPartner)):
             for iLink in range(len(DAQMatPartner[ilpGBT])):
               if DAQMatPartner[ilpGBT][iLink]:
-                if wagonPartnerName[1] == 'E': 
-                  lpGBTLabel = ''
-                  modLabel = 'E'
-                else:                    
-                  lpGBTLabel = ''
-                  modLabel = 'W'
-                DAQMatEngineString += 'D{}.{}:{},'.format(lpGBTLabel,iLink,DAQMatPartner[ilpGBT][iLink].replace('M','{}M'.format(modLabel)))
+                if wagonPartnerName[1] == 'E': 	modLabel = 'E'
+                else:                    	modLabel = 'W'
+                DAQMatEngineString += 'D{}.{}:{},'.format(ilpGBT+1,iLink,DAQMatPartner[ilpGBT][iLink].replace('M','{}M'.format(modLabel)))
         if DAQMatEngineString == '': DAQMatEngineString = '-'
         if DAQMatEngineString[-1] == ',': DAQMatEngineString = DAQMatEngineString[:-1]
 
