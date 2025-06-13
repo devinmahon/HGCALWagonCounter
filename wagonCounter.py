@@ -1714,6 +1714,17 @@ def main():
       # Add to list
       wagonInfoLD.append({'name':wagonName,'code':codeString,'trigRouting':trigResultTemp,'DAQRouting':DAQResultTemp,'xoverRouting':xOverResultTemp})
 
+  # Swap mod:lpGBT --> lpGBT:mod for consistency
+  for key,val in trigRoutingGeomDict.items():
+    if val == '-': continue
+    trigRoutingGeomDict[key] = ','.join(['{}:{}'.format(y,x) for x,y in (z.split(':') for z in val.split(','))])
+  for key,val in xOverInRoutingGeomDict.items():
+    if val == '-': continue
+    xOverInRoutingGeomDict[key] = ','.join(['{}:{}'.format(y,x) for x,y in (z.split(':') for z in val.split(','))])
+  for key,val in DAQRoutingGeomDict.items():
+    if val == '-': continue
+    DAQRoutingGeomDict[key] = ','.join(['{}:{}'.format(y,x) for x,y in (z.split(':') for z in val.split(','))])
+
   if not args.noTables:
     if not os.path.exists('output/wagonInfo/{}'.format(geomVersion)): os.makedirs('output/wagonInfo/{}'.format(geomVersion))
     fInfo = open('output/wagonInfo/{}/wagonInfoHD.tex'.format(geomVersion),'w')
@@ -2383,7 +2394,7 @@ def main():
                   print('ERROR: incoming xover link X.{} for layer {} MB {} not found in partner xover link matrix:'.format(int(trigMat[ilpGBT][iLink][-1]),plane,MB))
                   print(xoverMatPartner[0])
                 trigMatEngineString += 'T{}.{}:{},'.format(lpGBTLabel,iLink,modTemp.replace('M','{}M'.format(modLabel)))
-                xoverEngineString += '{}:{}:T{}.{},'.format(modTemp.replace('M','{}M'.format(modLabel)),trigMat[ilpGBT][iLink],lpGBTLabel,iLink)
+                xoverEngineString += 'T{}.{}:{}:{},'.format(lpGBTLabel,iLink,trigMat[ilpGBT][iLink],modTemp.replace('M','{}M'.format(modLabel)))
         # Add any xovers
         if not isHD:
           # Outgoing xovers (read out by the opposite side)
@@ -2396,7 +2407,7 @@ def main():
                 print('ERROR: outgoing xover link X.{} for layer {} MB {} not found in partner trigger link matrix:'.format(iLink,plane,MB))
                 print(trigMatPartner)
               trigMatEngineString += 'T{}.{}:{},'.format(lpGBTLabel,iLinkTrig,link.replace('M','{}M'.format(modLabel)))
-              xoverEngineString += '{}:{}:T{}.{},'.format(link.replace('M','{}M'.format(modLabel)),'X.{}'.format(iLink),lpGBTLabel,iLinkTrig)
+              xoverEngineString += 'T{}.{}:{}:{},'.format(lpGBTLabel,iLinkTrig,'X.{}'.format(iLink),link.replace('M','{}M'.format(modLabel)))
           # Trig links for partner wagon (LD only), regular non-xovers links from E side since loop is over wagons and isEngine is only true for W
           for ilpGBT in range(len(trigMatPartner)):
             for iLink in range(len(trigMatPartner[ilpGBT])):
