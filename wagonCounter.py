@@ -1651,7 +1651,7 @@ def main():
 
   if not os.path.exists('output/geometriesECOND/{}'.format(geomVersion)): os.makedirs('output/geometriesECOND/{}'.format(geomVersion))
   fECOND = open('output/geometriesECOND/{}/geometryECOND.txt'.format(geomVersion),'w')
-  fECOND.write('plane MB u v modIndex typecode r')
+  fECOND.write('plane MB wagon u v modIndex typecode r')
   HDWagonECONDMap = {	'WH20A1': [(8.50,0.00),	(26.00,0.00)],
 			'WH30C1': [(9.00,0.00), (26.00,0.00),	(18.00,-16.50)],
                         'WH30D1': [(9.00,0.00),	(26.00,0.00),	(18.00,-16.50)],
@@ -2289,7 +2289,7 @@ def main():
       #-----------------------------------------
       if isHD:
         uEngine,vEngine = (uList[0],vList[0])
-        plane,MB,irot,x0,y0 = geomTempIndex[geomTempIndex['isEngine'] == True][['plane','MB','irot','x0','y0']].iloc[0]
+        plane,MB,wagon,irot,x0,y0 = geomTempIndex[geomTempIndex['isEngine'] == True][['plane','MB','wagon','irot','x0','y0']].iloc[0]
         ECONDCoords = HDWagonECONDMap[wagonNamePrint[:-1] + '1']
         apothem = 167.64 / 2.0 # IMD [mm] / 2
         for iTemp,uTemp in enumerate(uList):
@@ -2298,7 +2298,7 @@ def main():
             xTemp = x0 + apothem * np.cos(np.pi + np.pi/3*irot) + ECONDCoords[iTemp][0] * np.cos(np.pi/3*irot) + ECONDCoords[iTemp][1] * np.sin(np.pi/3*irot)
             yTemp = y0 + apothem * np.sin(np.pi + np.pi/3*irot) + ECONDCoords[iTemp][0] * np.sin(np.pi/3*irot) + ECONDCoords[iTemp][1] * np.cos(np.pi/3*irot)
             rTemp = np.sqrt(xTemp**2 + yTemp**2)
-            fECOND.write('\n{}'.format(' '.join(str(x) for x in [int(plane),int(MB),uTemp,vTemp,iTemp+1,wagonNamePrint[:-1] + '1',round(rTemp,2)])))
+            fECOND.write('\n{}'.format(' '.join(str(x) for x in [int(plane),int(MB),int(wagon),uTemp,vTemp,iTemp+1,wagonNamePrint[:-1] + '1',round(rTemp,2)])))
 
       #-----------------------------------------
       # Engines
@@ -2512,7 +2512,7 @@ def main():
   #  if wagonName not in LDWagonDictSection: LDWagonDictSection[wagonName] = {'CE-E':0,'CE-H':0,'Preseries':0,'Preproduction':0,'Total':0}
   #  for layer,MB,wagon in indices:
   #    # Zippers
-  #    z2,z3,z4 = geomFileDataGrouped.get_group((layer,MB,str(wagon)))[['vx_4','vy_4','vx_5']].iloc[0]
+  #    z2,z3,z4 = geomFileDataGrouped.get_group((layer,str(MB),str(wagon)))[['vx_4','vy_4','vx_5']].iloc[0]
   #    z2 = None if z2 == '-' else z2
   #    z3 = None if z3 == '-' else z3
   #    z4 = None if z4 == '-' else z4
