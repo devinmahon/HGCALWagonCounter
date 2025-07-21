@@ -1494,13 +1494,14 @@ def main():
         wagonLinkConfig[wagonName].setdefault('ModX',{})
 
     #------------------------------
-    # Wagons by layer summary page
+    # Wagons and engines by layer summary page
     #------------------------------
+    # Engines
     f.write('\\begin{landscape}\n\n')
     f.write('\\section{{Wagons Per Layer}}\n\n')
     f.write('\\scalebox{0.55}{\n\n')
     layerList = np.arange(47) + 1
-    headers = ['Wagon'] + [str(x) for x in layerList]
+    headers = ['Type'] + [str(x) for x in layerList]
     table = []
     for code,indices in sorted(wagonCodesDict.items(),key=lambda x:(wagonNameDict[''.join([str(y) for y in x[0]])]),reverse=False):
       wagonName = wagonNameDict[''.join([str(x) for x in code])]
@@ -1517,9 +1518,10 @@ def main():
     # Zippers by layer summary page
     #------------------------------
     if not os.path.exists('output/geometries/{}/geometry_simotherboards.hgcal.txt'.format(geomVersion)): 
-      print('WARNING: You must re-run to get the zipper summary page in the LDWagonInfo.tex document!')
+      print('WARNING: You must re-run to get the zipper/mezzanine/engine summary page in the LDWagonInfo.tex document!')
     else:
       geomFileData = pd.read_csv('output/geometries/{}/geometry_simotherboards.hgcal.txt'.format(geomVersion),sep=' ')
+
       # Zippers
       geomFileDataZippers = geomFileData[geomFileData['itype'].str[0] == 'W']
       zipperTable = geomFileDataZippers.set_index('plane')[['vx_4','vy_4','vx_5']].stack().reset_index(level=1,drop=True).reset_index(name='value')
@@ -1533,6 +1535,7 @@ def main():
       table = zipperCountsByLayer.reset_index().astype(str).to_numpy()
       f.write(tabulate(table,headers,tablefmt="latex_raw"))
       f.write('\n}\n\n')
+
       # lpGBT mezzanines
       geomFileDataMezz = geomFileData[geomFileData['itype'] == 'ZPLMEZ'].set_index('plane')[['itype']].stack().reset_index(level=1,drop=True).reset_index(name='value')
       mezzCountsByLayer = geomFileDataMezz.groupby(['value','plane']).size().unstack(fill_value=0).multiply(6)
@@ -1541,6 +1544,18 @@ def main():
       layerList = np.arange(47) + 1
       headers = ['Type'] + [str(x) for x in layerList]
       table = [['ZPLMEZ'] + [mezzCountsByLayer[i].astype(str).to_numpy()[0] if i in mezzCountsByLayer else 0 for i in layerList]]
+      f.write(tabulate(table,headers,tablefmt="latex_raw"))
+      f.write('\n}\n\n')
+
+      # Engines
+      geomFileDataEngines = geomFileData[geomFileData['itype'].str[0] == 'E'].set_index('plane')[['itype']].stack().reset_index(level=1,drop=True).reset_index(name='value')
+      #engineTable = geomFileDataEngines.set_index('plane')['itype'].stack().reset_index(level=1,drop=True).reset_index(name='value')
+      engineCountsByLayer = geomFileDataEngines.groupby(['value','plane']).size().unstack(fill_value=0).multiply(6)
+      f.write('\\section{{Engines Per Layer}}\n\n')
+      f.write('\\scalebox{0.55}{\n\n')
+      layerList = np.arange(47) + 1
+      headers = ['Type'] + [str(x) for x in layerList]
+      table = engineCountsByLayer.reset_index().astype(str).to_numpy()
       f.write(tabulate(table,headers,tablefmt="latex_raw"))
       f.write('\n}\n\n')
       f.write('\\end{landscape}\n\n')
