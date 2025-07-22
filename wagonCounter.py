@@ -1180,8 +1180,13 @@ def main():
     elif key[0] == 1: maxDAQLinks[key] = maxDAQLinksHD[key]
     else: print('ERROR: Unknown first code in {}'.format(key))
 
-  # Make adjustment for WE10B1 (designed one extra trigger link than actually required)
+  #-----------------------------------------------
+  # Manual adjustments to match schematics
+  #-----------------------------------------------
+  # WE10B1 (flower): designed with one extra trigger link (2-->3)
   maxLinks[(0,0,0,0,'F','0',3)] = [3]
+  # WE20B1 (elephant): designed with one extra DAQ link on module 1 (1-->2)
+  maxDAQLinks[(0,0,0,1,'F','3',0,0,0,'F','3',0)] = [2,1]
 
   # Print out forbidden/prohibited DC/DC locations
   #for code,indices in wagonCodesDict.items():
