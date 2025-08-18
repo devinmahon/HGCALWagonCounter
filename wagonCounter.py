@@ -1480,6 +1480,7 @@ def main():
             linkString = modDAQRoutingDictNew['M{}.{}'.format(iMod,iDAQLink)].replace('\\','')
             linkString = ''.join([x for i,x in enumerate(linkString.split('_')) if i in [0,2]])
             if wagonName[1] == 'E': linkString = linkString[:-1] + str(eastDAQMap[int(linkString[-1])])
+            if linkString == 'DAQ4': linkString = 'X_DAQ'
             modLinkString = 'DAQ{}'.format(iDAQLink)
             wagonLinkConfig[wagonName].setdefault('Mod{}'.format(iMod),{}).setdefault('Inputs',{}).setdefault(crosspointLinkInputMap[modLinkString],{'Eng_Elink':linkString,'Mod_Elink':modLinkString,'Invert':0})
         nOutputs = len([x for x in modTrigRoutingDictNew.keys() if 'M{}'.format(iMod) in x]) - (1 if hasTrig4 else 0)
