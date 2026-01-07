@@ -74,9 +74,9 @@ for name,group in econHD.groupby(['typecode']):
 
 econHD = econHD.sort_values(['plane','MB','wagon','modIndex'])
 f = open(f'output/geometriesECOND/{version}/geometryHDWagonByECONDGrades.txt','w')
-f.write('plane MB typecode grades fluenceMod1 fluenceMod2 fluenceMod3 fluenceMod4\n')
+f.write('plane MB typecode fluenceMod1 fluenceMod2 fluenceMod3 fluenceMod4\n')
 for name,mods in econHD.groupby(['plane','MB','wagon']):
-  f.write('{} {} {} {} {}\n'.format(name[0],name[1],*mods[['typecode','grades','fluences']].iloc[0].values))
+  f.write('{} {} {} {}\n'.format(name[0],name[1],*mods[['typecode','fluences']].iloc[0].values))
 f.close()
 
 #----------
