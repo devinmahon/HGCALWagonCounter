@@ -1672,7 +1672,7 @@ def main():
 
   if not os.path.exists('output/geometriesECOND/{}'.format(geomVersion)): os.makedirs('output/geometriesECOND/{}'.format(geomVersion))
   fECOND = open('output/geometriesECOND/{}/geometryECOND.txt'.format(geomVersion),'w')
-  fECOND.write('plane MB wagon u v modIndex typecode r')
+  fECOND.write('plane MB icassette wagon u v modIndex typecode r')
   HDWagonECONDMap = {	'WH20A1': [(8.50,0.00),	(26.00,0.00)],
 			'WH30C1': [(9.00,0.00), (26.00,0.00),	(18.00,-16.50)],
                         'WH30D1': [(9.00,0.00),	(26.00,0.00),	(18.00,-16.50)],
@@ -2309,21 +2309,21 @@ def main():
       # Write ECOND info
       #-----------------------------------------
       if isHD:
-        plane,MB,wagon,irot,x0,y0 = geomTempIndex[geomTempIndex['isEngine'] == True][['plane','MB','wagon','irot','x0','y0']].iloc[0]
+        plane,MB,wagon,irot,x0,y0,icassette = geomTempIndex[geomTempIndex['isEngine'] == True][['plane','MB','wagon','irot','x0','y0','icassette']].iloc[0]
         apothem = 167.64 / 2.0 # IMD [mm] / 2
         for iTemp,uTemp in enumerate(uList):
           if uTemp != '-':
             vTemp = vList[iTemp]
             ECONDCoords = HDWagonECONDMap[wagonNamePrint[:-1] + '1']
-            xTemp = x0 + apothem * np.cos(np.pi + np.pi/3*irot) + ECONDCoords[iTemp][0] * np.cos(np.pi/3*irot) + ECONDCoords[iTemp][1] * np.sin(np.pi/3*irot)
+            xTemp = x0 + apothem * np.cos(np.pi + np.pi/3*irot) + ECONDCoords[iTemp][0] * np.cos(np.pi/3*irot) - ECONDCoords[iTemp][1] * np.sin(np.pi/3*irot)
             yTemp = y0 + apothem * np.sin(np.pi + np.pi/3*irot) + ECONDCoords[iTemp][0] * np.sin(np.pi/3*irot) + ECONDCoords[iTemp][1] * np.cos(np.pi/3*irot)
             rTemp = np.sqrt(xTemp**2 + yTemp**2)
-            fECOND.write('\n{}'.format(' '.join(str(x) for x in [int(plane),int(MB),int(wagon),uTemp,vTemp,iTemp+1,wagonNamePrint[:-1] + '1',round(rTemp,2)])))
+            fECOND.write('\n{}'.format(' '.join(str(x) for x in [int(plane),int(MB),int(icassette),int(wagon),uTemp,vTemp,iTemp+1,wagonNamePrint[:-1] + '1',round(rTemp,2)])))
       else:
         for iTemp,uTemp in enumerate(uList):
           if uTemp != '-':
             vTemp = vList[iTemp]
-            plane,MB,wagon,irot,x0,y0,itypeName = geomTempIndex[(geomTempIndex['u'] == uTemp) & (geomTempIndex['v'] == vTemp)][['plane','MB','wagon','irot','x0','y0','itypeName']].iloc[0]
+            plane,MB,wagon,irot,x0,y0,itypeName,icassette = geomTempIndex[(geomTempIndex['u'] == uTemp) & (geomTempIndex['v'] == vTemp)][['plane','MB','wagon','irot','x0','y0','itypeName','icassette']].iloc[0]
             if itypeName in ['FM','FO','FOe','FMe']: 
               if plane <= 27 and not plane % 2:	typeString = 'CMF0D'
               else: 				typeString = 'CMF0T'
@@ -2348,7 +2348,7 @@ def main():
             else:
               print(f'ERROR: Unknown module type: {itypeName} in layer {plane} u = {uTemp} v = {vTemp}')
             rTemp = np.sqrt(x0**2 + y0**2)
-            fECOND.write('\n{}'.format(' '.join(str(x) for x in [int(plane),int(MB),int(wagon),uTemp,vTemp,iTemp+1,typeString,round(rTemp,2)])))
+            fECOND.write('\n{}'.format(' '.join(str(x) for x in [int(plane),int(MB),int(icassette),int(wagon),uTemp,vTemp,iTemp+1,typeString,round(rTemp,2)])))
 
       #-----------------------------------------
       # Engines
