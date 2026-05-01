@@ -811,13 +811,6 @@ def main():
         v -= 1
       elif angleCode == 5:
         v -= 1
-      #print('M1:',u,v)
-
-  #print(geomGrouped.get_group((20,11,1)))
-  #print(geomGrouped.get_group((20,11,0)))
-  #print(geomGrouped.get_group((19,11,0)))
-  #print(geomGrouped.get_group((1,8,0)))
-  #print(geomGrouped.get_group((1,8,1)))
 
   # Count no. of trigger lpGBTs required per variety and make histograms
   lpGBTCounts = {}
@@ -934,11 +927,6 @@ def main():
   HDLinkCompomises = True
   if HDLinkCompomises:
 
-    # Modify existing codes
-    #wagonCodesDict[(1,0,0,0,'F','5',0,0,0,'F','7',0,0,0,'F','9',0,0,4,'d','7',0)] = wagonCodesDict.pop((1,0,0,0,'F','5',0,0,0,'F','7',0,0,0,'F','b',0,0,4,'d','7',0))
-    #wagonCodesDict[(1,0,0,0,'F','5',0,0,0,'F','5',0,0,0,'a','4',0,4,0,'F','5',0)] = wagonCodesDict.pop((1,0,0,0,'F','5',0,0,0,'F','5',0,0,0,'a','5',0,4,0,'F','5',0))
-    #wagonCodesDict[(1,0,0,0,'F','6',0,0,0,'F','9',0,0,0,'g','8',0)] = wagonCodesDict.pop((1,0,0,0,'F','6',0,0,0,'F','9',0,0,0,'g','a',0))
-    
     # Add new codes
     wagonCodesDict[(1,0,0,0,'F','4',0,0,0,'F','5',0,0,0,'F','5',0)] = []
     wagonCodesDict[(1,0,0,0,'F','4',0,0,0,'F','5',0,4,0,'F','5',0)] = []
@@ -1187,22 +1175,6 @@ def main():
   maxLinks[(0,0,0,0,'F','0',3)] = [3]
   # WE20B1 (elephant): designed with one extra DAQ link on module 1 (1-->2)
   maxDAQLinks[(0,0,0,1,'F','3',0,0,0,'F','3',0)] = [2,1]
-
-  # Print out forbidden/prohibited DC/DC locations
-  #for code,indices in wagonCodesDict.items():
-  #  wagonName = wagonNameDict[''.join([str(x) for x in code])]
-  #  if wagonName in ['WE31A3','WE12A1','WW12A1','WE30A2','WW30B1','WE21C1','WW30A2','WW21C1','WE21D1','WW12B1','WE21C4','WE21C6','WW21E1','WE12B1','WE21C2','WW21E2','WW21E3','WE21C3','WW12C1','WW20C1','WE11C1','WE11B2']: 
-  #    for index in indices:
-  #      plane,MB,wagon = index
-  #      geomTempIndex = geomGrouped.get_group((plane,MB,wagon))
-  #      geomTempPartnerIndex = geomGrouped.get_group((plane,MB,not wagon))
-  #      isWest = 'WW' in wagonName
-  #      if isWest:
-  #        u,v = geomTempIndex[['u','v']].loc[geomTempIndex['isEngine']].iloc[0]
-  #      else: # East
-  #        uWest,vWest,irotWest = [int(x) for x in geomTempPartnerIndex[['u','v','irot']].loc[geomTempPartnerIndex['isEngine']].iloc[0]]
-  #        u,v = findEastEngineModule(plane,uWest,vWest,irotWest)
-  #      print('{} {} {}'.format(plane,u,v))
 
   # ----------------------------------------------
   # Make LD wagon info tables
@@ -1614,15 +1586,6 @@ def main():
     table = [['ZPLMZ2',nMezz * 6]]
     f.write(tabulate(table,headers,tablefmt="latex_raw"))
     f.write('\n\n')
-
-    #        if wagonName in ['WE31A1','WE40A1']:    mezLoc = ['M2','M3']
-    #        elif wagonName in ['WE31A3','WE40A2']:  mezLoc = ['M1','M2']
-    #        else: print('WARNING: unknown 4-module wagon name {}'.format(wagonName))
-    #        f.write('lpGBT Mezzanine\n\n\\vspace{-10pt}\n')
-    #        headers = ['Location','Type','N']
-    #        table = [['Between {} and {}'.format(mezLoc[0],mezLoc[1]),'ZPLMZ2',codeCounter[key] * 6]]
-    #        f.write(tabulate(table,headers,tablefmt="latex_raw"))
-    #        f.write('\n\n')
 
     f.write('\\end{document}')
     f.close()
@@ -2549,163 +2512,8 @@ def main():
     with open('wagonDict/wagonDict_{}.txt'.format(geometryFile),'w') as f:
       print(wagonCodesDict,file=f)
 
-  # Print LD wagons and zippers by locations
-  #geomFileData = pd.read_csv('output/geometries/{}/geometry_simotherboards.hgcal.txt'.format(geomVersion),sep=' ')
-  #geomFileDataGrouped = geomFileData.groupby(['plane','MB','wagon'])
-  #print('Zipper counts (full detector):')
-  #print(pd.concat([geomFileData['vx_4'],geomFileData['vy_4'],geomFileData['vx_5']],axis=0,ignore_index=True).value_counts().drop('-') * 6)
-  #LDWagonDictSection = {}
-  #zipperDictSection = {}
-  #for code,indices in wagonCodesDict.items():
-  #  wagonName = wagonNameDict[''.join([str(x) for x in code])]
-  #  if code[0] != 0: continue
-  #  if wagonName not in LDWagonDictSection: LDWagonDictSection[wagonName] = {'CE-E':0,'CE-H':0,'Preseries':0,'Preproduction':0,'Total':0}
-  #  for layer,MB,wagon in indices:
-  #    # Zippers
-  #    z2,z3,z4 = geomFileDataGrouped.get_group((layer,str(MB),str(wagon)))[['vx_4','vy_4','vx_5']].iloc[0]
-  #    z2 = None if z2 == '-' else z2
-  #    z3 = None if z3 == '-' else z3
-  #    z4 = None if z4 == '-' else z4
-  #    if layer < 27: 
-  #      LDWagonDictSection[wagonName]['CE-E'] += 1
-  #      for z in [z2,z3,z4]:
-  #        if z:
-  #          if z not in zipperDictSection: zipperDictSection[z] = {'CE-E':1,'CE-H':0,'Preseries':0,'Preproduction':0,'Total':1}
-  #          else: 
-  #            zipperDictSection[z]['CE-E'] += 1
-  #            zipperDictSection[z]['Total'] += 1
-  #    else:
-  #      LDWagonDictSection[wagonName]['CE-H'] += 1
-  #      for z in [z2,z3,z4]:
-  #        if z:
-  #          if z not in zipperDictSection: zipperDictSection[z] = {'CE-E':0,'CE-H':1,'Preseries':0,'Preproduction':0,'Total':1}
-  #          else:
-  #            zipperDictSection[z]['CE-H'] += 1
-  #            zipperDictSection[z]['Total'] += 1
-  #    if layer in [25,26,44,45,46,47]: 
-  #      LDWagonDictSection[wagonName]['Preproduction'] += 1
-  #      for z in [z2,z3,z4]:
-  #        if z:
-  #          zipperDictSection[z]['Preproduction'] += 1
-  #    if layer in [25,26,33,44,45,46,47] : 
-  #      LDWagonDictSection[wagonName]['Preseries'] += 1
-  #      for z in [z2,z3,z4]:
-  #        if z:
-  #          zipperDictSection[z]['Preseries'] += 1
-  #    LDWagonDictSection[wagonName]['Total'] += 1
-  #    
-  #for name,sectionCounts in LDWagonDictSection.items():
-  #  #if sectionCounts['CE-E'] == 0: print(name,'is only in CE-H')
-  #  nCEE,nCEH,nPreseries,nPreproduction,n = np.array([sectionCounts['CE-E'],sectionCounts['CE-H'],sectionCounts['Preseries'],sectionCounts['Preproduction'],sectionCounts['Total']]) * 6
-  #  print('{},{},{},{},{},{}'.format(name,nCEE,nCEH,nPreseries,nPreproduction,n))
-  #for name,sectionCounts in zipperDictSection.items():
-  #  nCEE,nCEH,nPreseries,nPreproduction,n = np.array([sectionCounts['CE-E'],sectionCounts['CE-H'],sectionCounts['Preseries'],sectionCounts['Preproduction'],sectionCounts['Total']]) * 6
-  #  print('{},{},{},{},{},{}'.format(name,nCEE,nCEH,nPreseries,nPreproduction,n))
-
-  # Count certain wagons
-  #extraFibers = {}
-  #for code,indices in wagonCodesDict.items():
-  #  for index in indices:
-  #    wagonName = wagonNameDict[''.join([str(x) for x in code])]
-  #    if wagonName[0:2] == 'WH' or wagonName[2:4] not in ['31','40']: continue
-  #    layer = index[0]
-  #    icassette = geomGrouped.get_group(tuple(index))['icassette'].iloc[0]
-  #    extraFibers[(layer,icassette,'DAQ')] = extraFibers.get((layer,icassette,'DAQ'),0) + 1
-  #    extraFibers[(layer,icassette,'Trig')] = extraFibers.get((layer,icassette,'Trig'),0) + 1
-  #extraFibersList = sorted([list(loc) + [count] for loc,count in extraFibers.items()])
-  #layerCurr,cassetteCurr = extraFibersList[0][0],extraFibersList[0][1]
-  #for i,item in enumerate(extraFibersList):
-  #  layer,cassette,linkType,count = item
-  #  if i == 0 or layer != layerCurr: 
-  #    print('----------Layer {}----------'.format(layer))
-  #    print('Cassette {}:'.format(cassette))
-  #  elif cassette != cassetteCurr:
-  #    print('Cassette {}:'.format(cassette))
-  #  print('  {}: +{}'.format(linkType,count * 6))
-  #  layerCurr,cassetteCurr = [layer,cassette]
-
-  # Print wagon info
-  #wagonCodesDict = dict(sorted(wagonCodesDict.items(),key=lambda x:(x[0][0],len(x[0]),len(x[1])),reverse=True))
-  #with open('wagonInfo/wagonInfo_{}.txt'.format(geomVersion),'w') as f:
-  #  for code,locs in wagonCodesDict.items():
-  #    if len(locs) > 10: continue
-  #    print('-'*20,''.join([str(x) for x in code]),'-'*20,file=f)
-  #    print('No. of instances:',len(locs),file=f)
-  #    print('Locations:',sorted(locs,key=lambda x:x[0]),file=f)
-  #    partnerCodes = []
-  #    for loc in locs:
-  #      index = 99999
-  #      for i,val in enumerate(wagonCodesDict.values()):
-  #        if [loc[0],loc[1],int(not loc[2])] in val:
-  #          index = i
-  #      partnerCodes.append(''.join(str(i) for i in list(wagonCodesDict.keys())[index]))
-  #    print('Partner codes and counts:',Counter(partnerCodes),file=f)
-  #    print('-'*(40+len(''.join([str(x) for x in code]))),'\n',file=f)
-
-  # Print max DAQ links
-  #maxDAQLinks = {x:maxLinksCalculation(x,'B','dataLinks_ld',wagonCodesDict,geomGrouped,recodedCodesList) for x in wagonCodesDict}
-  #for key,val in maxDAQLinks.items():
-  #  keyString = ''.join([str(x) for x in key])
-  #  if not keyString[0] == '0': continue
-  #  print('{}: {} {}'.format(keyString,maxLinks[key],val))
-
-  # Select only varieties with <= 10 instances
-  #for key,val in list(wagonCodesDict.items()):
-  #  if len(val) > 10: del wagonCodesDict[key]
-  #codeCounter = Counter({tuple(key):len(val) for key,val in wagonCodesDict.items()})
-  # maxLinks = {x:maxLinksCalculation(x,'B','trigLinks'wagonCodesDict,geomGrouped,recodedCodesList) for x in wagonCodesDict}
-
-  # Select only wagons in certain layers/cassettes
-  #wagonCodesSubDict = copy.deepcopy(wagonCodesDict)
-  #for key,vals in wagonCodesDict.items():
-  #  for val in vals:
-  #    geomTemp = geomGrouped.get_group(tuple(val))
-  #    if not (geomTemp['plane'].iloc[0] in [25,26] and geomTemp['icassette'].iloc[0] == 1) and \
-  #       not (geomTemp['plane'].iloc[0] in [33]    and geomTemp['icassette'].iloc[0] in [1,2]) and \
-  #       not (geomTemp['plane'].iloc[0] in [44]    and geomTemp['icassette'].iloc[0] in [3,4]): 
-  #      wagonCodesSubDict[key].remove(val)
-  #  wagonCodesSubDict[wagonNameDict[''.join(str(x) for x in key)]] = wagonCodesSubDict.pop(key)
-  #wagonCodesSubDict = {key:val for key,val in wagonCodesSubDict.items() if len(val)}
-  #codeCounterSubDict = dict(sorted(Counter({key:len(val) for key,val in wagonCodesSubDict.items()}).items(),key=lambda item: item[1],reverse=True))
-  #print('-'*20)
-  #print('{:<10}{:<10}'.format('Type','N'))
-  #print('-'*20)
-  #for key,val in codeCounterSubDict.items():
-  #  print('{:<10}{:<10}'.format(key,val))
-
   # Sort by HD/LD then no. of modules then no. of instances 
   codeCounter = dict(sorted(codeCounter.items(), key=lambda item: (item[0][0],len(item[0]),item[1]), reverse=True))
-
-  # Count no. of LD wagons with partials
-  #NNoPart = 0
-  #NPart = 0
-  #for code,N in codeCounter.items():
-  #  c = ''.join([str(x) for x in code])
-  #  if c[0] != '0': continue
-  #  if c[3] == '0': NNoPart += N
-  #  else: NPart += N
-  #print('Wagons with no partials:',NNoPart)
-  #print('Wagons with partials:',NPart)
-
-  #xoverOutWagons = {}
-  #xoverInWagons = {}
-  #for code,N in codeCounter.items():
-  #  c = ''.join([str(x) for x in code])
-  #  if int(c[3]) > 0: xoverInWagons['{} ({})'.format(wagonNameDict[c],c)] = N
-  #  else:
-  #    nX = sum([int(x) for x in c[6::5]])
-  #    if nX > 0: xoverOutWagons['{} ({})'.format(wagonNameDict[c],c)] = N
-  #print('LD wagons with incoming crossover links:')
-  #for name,N in xoverInWagons.items():
-  #  print(name.split('(')[0])
-  #print('LD wagons with outgoing crossover links:')
-  #for name,N in xoverOutWagons.items():
-  #  print(name.split('(')[0])
-
-  # Print out quantities
-  #with open('output/wagonCounts/wagonCounts_{}.txt'.format(geomVersion),'w') as f:
-  #  for key, item in codeCounter.items():
-  #    f.write('{}:\t{}\n'.format(wagonNameDict[''.join(str(x) for x in key)],item))
 
   # Draw and save the wagon summary (see wagonDrawer.py)
   if not args.noImages: wagonDrawer.wagonDrawer(codeCounter,geomVersion,maxLinks,maxDAQLinks,wagonNameDict,indexChanges)

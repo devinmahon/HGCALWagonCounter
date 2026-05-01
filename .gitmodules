@@ -1,0 +1,4 @@
+[submodule "hgcal-econd-planning"]
+	path = hgcal-econd-planning
+	url = ssh://git@gitlab.cern.ch:7999/hgcal-integration/hgcal-econd-planning.git
+	branch = scenario3_plan
