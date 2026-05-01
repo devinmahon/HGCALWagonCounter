@@ -1417,7 +1417,7 @@ def main():
         else: print('WARNING: unknown 4-module wagon name {}'.format(wagonName))
         f.write('lpGBT Mezzanine\n\n\\vspace{-10pt}\n')
         headers = ['Location','Type','N']
-        table = [['Between {} and {}'.format(mezLoc[0],mezLoc[1]),'ZPLMEZ',codeCounter[key] * 6]]
+        table = [['Between {} and {}'.format(mezLoc[0],mezLoc[1]),'ZPLMZ2',codeCounter[key] * 6]]
         f.write(tabulate(table,headers,tablefmt="latex_raw"))
         f.write('\n\n')
 
@@ -1543,13 +1543,13 @@ def main():
       f.write('\n}\n\n')
 
       # lpGBT mezzanines
-      geomFileDataMezz = geomFileData[geomFileData['itype'] == 'ZPLMEZ'].set_index('plane')[['itype']].stack().reset_index(level=1,drop=True).reset_index(name='value')
+      geomFileDataMezz = geomFileData[geomFileData['itype'] == 'ZPLMZ2'].set_index('plane')[['itype']].stack().reset_index(level=1,drop=True).reset_index(name='value')
       mezzCountsByLayer = geomFileDataMezz.groupby(['value','plane']).size().unstack(fill_value=0).multiply(6)
       f.write('\\section{{lpGBT Mezzanines Per Layer}}\n\n')
       f.write('\\scalebox{0.55}{\n\n')
       layerList = np.arange(47) + 1
       headers = ['Type'] + [str(x) for x in layerList]
-      table = [['ZPLMEZ'] + [mezzCountsByLayer[i].astype(str).to_numpy()[0] if i in mezzCountsByLayer else 0 for i in layerList]]
+      table = [['ZPLMZ2'] + [mezzCountsByLayer[i].astype(str).to_numpy()[0] if i in mezzCountsByLayer else 0 for i in layerList]]
       f.write(tabulate(table,headers,tablefmt="latex_raw"))
       f.write('\n}\n\n')
 
@@ -1611,7 +1611,7 @@ def main():
 
     nMezz = sum([codeCounterNames[x] for x in ['WE31A1','WE40A1','WE31A3','WE40A2']])
     headers = ['lpGBT Mezzanine Type','N']
-    table = [['ZPLMEZ',nMezz * 6]]
+    table = [['ZPLMZ2',nMezz * 6]]
     f.write(tabulate(table,headers,tablefmt="latex_raw"))
     f.write('\n\n')
 
@@ -1620,7 +1620,7 @@ def main():
     #        else: print('WARNING: unknown 4-module wagon name {}'.format(wagonName))
     #        f.write('lpGBT Mezzanine\n\n\\vspace{-10pt}\n')
     #        headers = ['Location','Type','N']
-    #        table = [['Between {} and {}'.format(mezLoc[0],mezLoc[1]),'ZPLMEZ',codeCounter[key] * 6]]
+    #        table = [['Between {} and {}'.format(mezLoc[0],mezLoc[1]),'ZPLMZ2',codeCounter[key] * 6]]
     #        f.write(tabulate(table,headers,tablefmt="latex_raw"))
     #        f.write('\n\n')
 
@@ -2267,12 +2267,12 @@ def main():
                                                             	'-','-'])))                                                                                                     # 52-53
             # PCMs
             itypeNameTemp = geomBasic[(geomBasic['plane'] == plane) & (geomBasic['u'] == uList[iTemp]) & (geomBasic['v'] == vList[iTemp])]['itypeName'].iloc[0]
-            if   itypeNameTemp == 'Semi Right':		itypeNameTemp = 'CM3SRD'
-            elif itypeNameTemp == 'Semi Left':		itypeNameTemp = 'CM3SLT'
-            elif itypeNameTemp == 'Half Top':  		itypeNameTemp = 'CM3HTT'
-            elif itypeNameTemp == 'Half Bottom':  	itypeNameTemp = 'CM3HBT'
-            elif itypeNameTemp == 'Five RL':  		itypeNameTemp = 'CM3RLD'
-            elif itypeNameTemp == 'Five LR':  		itypeNameTemp = 'CM3LRT'
+            if   itypeNameTemp == 'Semi Right':		itypeNameTemp = 'CMSRD'
+            elif itypeNameTemp == 'Semi Left':		itypeNameTemp = 'CMSLT'
+            elif itypeNameTemp == 'Half Top':  		itypeNameTemp = 'CMHTT'
+            elif itypeNameTemp == 'Half Bottom':  	itypeNameTemp = 'CMHBT'
+            elif itypeNameTemp == 'Five RL':  		itypeNameTemp = 'CMRLD'
+            elif itypeNameTemp == 'Five LR':  		itypeNameTemp = 'CMLRT'
             else: print('ERROR: Unknown module type {} for PCM output'.format(itypeNameTemp)) 
             f.write('\n{}'.format(' '.join(str(x) for x in [    plane,uList[iTemp],vList[iTemp],itypeNameTemp,itypeNameTemp,'-',                                                # 1-6
                                                                 '-',irotTemp,'-','-','-',                                                                                       # 7-11
@@ -2293,7 +2293,7 @@ def main():
           elif wagonName in ['WE40A2','WE31A3']: iModTemp = 0
           else: print('WARNING: unknown 4-module wagon name {}'.format(wagonName))
           irotTemp = geomBasic[(geomBasic['plane'] == plane) & (geomBasic['u'] == uList[iModTemp]) & (geomBasic['v'] == vList[iModTemp])]['irot'].iloc[0]
-          f.write('\n{}'.format(' '.join(str(x) for x in [    plane,uList[iModTemp],vList[iModTemp],'ZPLMEZ','ZPLMEZ','-', 	                                                        # 1-6
+          f.write('\n{}'.format(' '.join(str(x) for x in [    plane,uList[iModTemp],vList[iModTemp],'ZPLMZ2','ZPLMZ2','-', 	                                                        # 1-6
                                                                 '-',irotTemp,'-','-','-',                                                                                       # 7-11
                                                                 '-','-','-','-','-',                                                                                            # 12-16
                                                                 '-','-','-','-','-',                                                                                            # 17-21
