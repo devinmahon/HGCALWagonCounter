@@ -2685,7 +2685,7 @@ def main():
   
   geomCMMerged = geomCM.drop(columns=['typecode']).merge(gradesCM,on=['plane','u','v','icassette'],how='outer',validate='1:1')
   geomCMMerged['itype'] = geomCMMerged['typecode'].str[0:2] + geomCMMerged['typecode'].str[2:]
-  geomCMMerged['typecode'] = geomCMMerged['typecode'].str[0:2] + '-' + geomCMMerged['typecode'].str[2:] + '-' + geomCMMerged['grades'].str[0]
+  geomCMMerged['typecode'] = geomCMMerged['typecode'].str[0:2] + '-' + geomCMMerged['typecode'].str[2:] + geomCMMerged['grades'].str[0]
   geomCM = geomCMMerged[geomCM.columns].astype(str).replace('nan', '-')
   
   # Add irot for full module CMs
