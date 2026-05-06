@@ -13,6 +13,8 @@ from matplotlib.ticker import MaxNLocator
 import argparse
 from tabulate import tabulate
 import json
+import importlib
+import re
 
 pd.set_option('display.max_columns', None)
 
@@ -319,7 +321,6 @@ def main():
   geomBasic['itype'] = geomBasic['itype'].str[0]
   geomBasic['irot'] %= 6
 
-
   #  Specify the file with the fiber counts
   fiberCountsFile = 'fiberCounts/fiberCounts_220221_163022.txt'
   fiberCounts = pd.read_csv(fiberCountsFile,delim_whitespace=True,dtype={'TlpGBT':'Int64'})
@@ -332,10 +333,6 @@ def main():
 
   # Group modules by plane (layer), MB index, and wagon index
   geomGrouped = geomBasic.sort_values('r',ascending=True).groupby(['plane','MB','wagon'])
-
-  #print(geomGrouped.get_group((1,3,0)))
-  #print('#'*50)
-  #print(geomGrouped.get_group((2,1,0)))
 
   wagonCodes = []
   wagonCodesDict = {}
@@ -2163,30 +2160,39 @@ def main():
       elif plane <= 26 and not plane % 2: wagonNamePrint = wagonName[:-1] + 'D'
       else:                               wagonNamePrint = wagonName[:-1] + 'T'
 
-      # Active xover info
+      # To do: add active xover info
       
+      # Correct for swapped DAQ links in LD engine design (DAQ 0,1,2 map to DAQ 2,1,0)
+      if not isHD:
+        stringsToModify = [DAQRoutingGeomDict[wagonName],DAQMatString]
 
+        linkSwapDict = {	'D1.0':	'D1.2',
+				'D1.2':	'D1.0',}
 
+        pattern = re.compile(r'\b(' + '|'.join(re.escape(key) for key in linkSwapDict.keys()) + r')\b')
+        stringsToModify = [pattern.sub(lambda m: linkSwapDict[m.group(0)], s) for s in stringsToModify]
 
+        DAQRoutingGeomDictTemp = stringsToModify[0] # Use a temporary variable for each iteration to avoid introducing bugs above
+        DAQMatString = stringsToModify[1]
+      else:
+        DAQRoutingGeomDictTemp = DAQRoutingGeomDict[wagonName]
 
+      # Add fiber-centric info (rather than lpGBT)
+      stringsToModify = [trigRoutingGeomDict[wagonName],DAQRoutingGeomDictTemp,xOverInRoutingGeomDict[wagonName],trigMatString,DAQMatString]
 
+      lpGBTToFiberDict = {	'T1':	'F1.2',
+				'T2':	'F1.1',
+				'T3':	'F2.2',
+				'T4':	'F2.1',
+				'D1':	'F1.0', # both LD and HD
+				'D2':	'F2.0',
+				'TW':	'F1.1',
+				'TE':	'F1.2'}
 
+      pattern = re.compile(r'\b(' + '|'.join(re.escape(key) for key in lpGBTToFiberDict.keys()) + r')\b')
+      stringsToModify = [pattern.sub(lambda m: lpGBTToFiberDict[m.group(0)], s) for s in stringsToModify]
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+      trigRoutingGeomDictFiber, DAQRoutingGeomDictFiber, xOverInRoutingGeomDictFiber, trigMatStringFiber, DAQMatStringFiber = stringsToModify
 
       #-----------------------------------------
       # Write wagon info
@@ -2199,9 +2205,9 @@ def main():
 							nDataTotal,int(nActiveData),int(tempCodeString[3]),nTrigXOutTotal,MB,						# 27-31
 							wagon,0,0,'-',wagonRot,												# 32-36
 							'-',isHD,'-','-',trigRoutingGeomDict[wagonName],								# 37-41
-							DAQRoutingGeomDict[wagonName],tempCodeString,xOverInRoutingGeomDict[wagonName],trigMatString,DAQMatString,	# 42-46
-							'-','-','-','-','-',												# 47-51
-							'-','-'])))													# 52-53
+							DAQRoutingGeomDictTemp,tempCodeString,xOverInRoutingGeomDict[wagonName],trigMatString,DAQMatString,	# 42-46
+							trigRoutingGeomDictFiber,DAQRoutingGeomDictFiber,xOverInRoutingGeomDictFiber,'-',trigMatStringFiber,		# 47-51
+							DAQMatStringFiber,'-'])))											# 52-53
 
       #-----------------------------------------
       # Write zipper, lpGBT mezzanine, and PCM info
@@ -2457,20 +2463,49 @@ def main():
         if DAQMatEngineString == '': DAQMatEngineString = '-'
         if DAQMatEngineString[-1] == ',': DAQMatEngineString = DAQMatEngineString[:-1]
 
+        # Correct for swapped DAQ links in LD engine design (DAQ 0,1,2 map to DAQ 2,1,0)
+        if not isHD:
+          stringsToModify = [DAQMatEngineString]
+
+          linkSwapDict = {	'D1.0':	'D1.2',
+          			'D1.2':	'D1.0',}
+
+          pattern = re.compile(r'\b(' + '|'.join(re.escape(key) for key in linkSwapDict.keys()) + r')\b')
+          stringsToModify = [pattern.sub(lambda m: linkSwapDict[m.group(0)], s) for s in stringsToModify]
+
+          DAQMatEngineString = stringsToModify[0]
+
+        # Add fiber-centric info (rather than lpGBT)
+        stringsToModify = [trigMatEngineString,DAQMatEngineString,xoverEngineString]
+
+        lpGBTToFiberDict = {	'T1':	'F1.2',
+          			'T2':	'F1.1',
+          			'T3':	'F2.2',
+          			'T4':	'F2.1',
+          			'D1':	'F1.0', # both LD and HD
+          			'D2':	'F2.0',
+          			'TW':	'F1.1',
+          			'TE':	'F1.2'}
+
+        pattern = re.compile(r'\b(' + '|'.join(re.escape(key) for key in lpGBTToFiberDict.keys()) + r')\b')
+        stringsToModify = [pattern.sub(lambda m: lpGBTToFiberDict[m.group(0)], s) for s in stringsToModify]
+
+        trigMatEngineStringFiber, DAQMatEngineStringFiber, xoverEngineStringFiber = stringsToModify
+
         #-----------------------------------------
         # Write engine info
         #-----------------------------------------
-        f.write('\n{}'.format(' '.join(str(x) for x in [plane,round(uCenter,1),round(vCenter,1),engineType,engineType,round(x0Center,3),	# 1-6
-            						round(y0Center,3),irot,engineType[-2],u if isHD else uEast,v if isHD else vEast,	# 7-11
-            						uLD if isHD else u,vLD if isHD else v,'-','-','-',					# 12-16
-            						'-','-','-','-','-',									# 17-21
-            						'-','-',icassette,nTrigTotal,nActiveTrigEngine,						# 22-26
-            						nDataTotal,nActiveDataEngine,'-','-',MB,						# 27-31
-            						'-',1,'-','-','-',									# 32-36
-            						'-',isHD,'-','-',nTriglpGBT,								# 37-41
-            						nDAQlpGBT,nCtrlFibers,nVTRx,trigMatEngineString,DAQMatEngineString,			# 42-46
-            						xoverEngineString,'-','-','-','-',							# 47-51
-            						'-','-'])))										# 52-53
+        f.write('\n{}'.format(' '.join(str(x) for x in [plane,round(uCenter,1),round(vCenter,1),engineType,engineType,round(x0Center,3),		# 1-6
+            						round(y0Center,3),irot,engineType[-2],u if isHD else uEast,v if isHD else vEast,		# 7-11
+            						uLD if isHD else u,vLD if isHD else v,'-','-','-',						# 12-16
+            						'-','-','-','-','-',										# 17-21
+            						'-','-',icassette,nTrigTotal,nActiveTrigEngine,							# 22-26
+            						nDataTotal,nActiveDataEngine,'-','-',MB,							# 27-31
+            						'-',1,'-','-','-',										# 32-36
+            						'-',isHD,'-','-',nTriglpGBT,									# 37-41
+            						nDAQlpGBT,nCtrlFibers,nVTRx,trigMatEngineString,DAQMatEngineString,				# 42-46
+            						xoverEngineString,'-',trigMatEngineStringFiber,DAQMatEngineStringFiber,xoverEngineStringFiber,	# 47-51
+            						'-','-'])))											# 52-53
 
     # Write tables
     if not args.noTables: fInfo.write('\\n{}\\\\'.format('&'.join([	wagonName,'-',
@@ -2517,6 +2552,119 @@ def main():
 
   # Draw and save the wagon summary (see wagonDrawer.py)
   if not args.noImages: wagonDrawer.wagonDrawer(codeCounter,geomVersion,maxLinks,maxDAQLinks,wagonNameDict,indexChanges)
+
+  # ----------------------------------------------
+  # Adjust for final format of motherboard geometry format and add ECON-D grades
+  # ----------------------------------------------
+
+  # Import from submodule hgcal-econd-planning
+  planningDir = 'hgcal-econd-planning'
+  if planningDir not in sys.path: sys.path.insert(0,planningDir)
+  #Load the data files with fluence info
+  fl = importlib.import_module('hgcal-econd-planning.fluence_to_ECON_grade')
+  #fl = getattr(hgcal_econd_planning,'fluence_to_ECON_grade')
+  #import hgcal-econd-planning.fluence_to_ECON_grade as fl
+  myrawdataLD = fl.read_data(f'{planningDir}/geometryLDECONDGrades.txt')
+  myrawdataHD = fl.read_data(f'{planningDir}/geometryHDWagonByECONDGrades.txt')
+  
+  # Create object with ECON grade to fluence mapping
+  myECOND = fl.ECOND(grades=['F','D', 'B', 'A'],
+                     breakpoints=[0.20,0.65,3.5] 
+                    )
+  #print("##################################################")
+  #print("ECOND grade map", myECOND.grade_map)
+  #print("Using ECOND grades:", myECOND.grades)
+  #print("For fluence bins:",myECOND.fluence_breakpoints)
+  #print("##################################################")
+  
+  boards = fl.make_boards(myrawdataLD,myECOND)+fl.make_boards(myrawdataHD,myECOND)
+      
+  #econd_summary = fl.make_summary(boards)
+  #cm_summary = fl.make_CM_summary(boards)
+  #hd_summary = fl.make_HDwagon_summary(boards)
+  
+  boards = fl.consolidate_boards(boards,'Rule 1')
+  
+  #econd_summary = fl.make_summary(boards)
+  #cm_summary = fl.make_CM_summary(boards)
+  #hd_summary = fl.make_HDwagon_summary(boards)
+  
+  # Load motherboard geometry file
+  geom = pd.read_csv('output/geometries/{}/geometry_simotherboards.hgcal.txt'.format(geomVersion),sep=' ')
+  geom['MB'] = pd.to_numeric(geom['MB'], errors='coerce').astype('Int64')
+  geom = geom.astype({'plane':'Int64'}) 
+  
+  #print('Total boards in geom:',len(geom))
+  
+  geomHDW = geom[geom['typecode'].str[0:2] == 'WH'].reset_index(drop=True)
+  geomCM = geom[geom['typecode'].str[0:2] == 'CM'].reset_index(drop=True) # Includes CMs + PCMs
+  geomCM['MB'] = '-'
+  geomOther = geom[(geom['typecode'].str[0:2] != 'WH') & (geom['typecode'].str[0:2] != 'CM')].reset_index(drop=True)
+  
+  #print('Total HD wagons:',len(geomHDW))
+  #print('Total PCMs:',len(geomCM))
+  #print('Total zippers + mezz:',len(geom[geom['typecode'].str[0:2] == 'ZP']))
+  #print('Total LD W wagons:',len(geom[geom['typecode'].str[0:2] == 'WW']))
+  #print('Total LD E wagons:',len(geom[geom['typecode'].str[0:2] == 'WE']))
+  #print('Total LD engines:',len(geom[geom['typecode'].str[0:2] == 'EL']))
+  #print('Total HD engines:',len(geom[geom['typecode'].str[0:2] == 'EH']))
+  
+  ##################################################
+  # OUTPUT
+  ##################################################
+ 
+  gradesList = []
+  for board in boards:
+  	if board.typecode[0:2] == 'CM':
+  		rawdata = board.raw_data
+  		gradesList.append({	'typecode':	board.typecode,
+  					'plane':	board.layer,
+  					'u':		rawdata['u'],
+  					'v':		rawdata['v'],
+  					'icassette':	rawdata['icassette'],
+  					'grades':	board.grades})
+  	else:
+  		gradesList.append({	'typecode':     board.typecode,
+  					'plane':	board.layer,
+  					'MB':		int(board.MB),
+  					'grades':	board.grades})
+  grades = pd.DataFrame(gradesList)
+  for col in ['u','v']: grades[col] = pd.to_numeric(grades[col],errors='coerce')
+  grades = grades.astype({'plane':'Int64','u':'Float64','v':'Float64','MB':'Int64','icassette':'Int64'})
+  
+  gradesHDW = grades[grades['typecode'].str[0:2] == 'WH'][['typecode','plane','MB','grades']]
+  gradesCM = grades[grades['typecode'].str[0:2] == 'CM'][['typecode','plane','u','v','icassette','grades']]
+  
+  geomHDWMerged = geomHDW.merge(gradesHDW,on=['typecode','plane','MB'],how='left',validate='1:1')
+  geomHDWMerged['typecode'] = geomHDWMerged['typecode'].str[0:2] + '-' + geomHDWMerged['typecode'].str[2:] + '-' + geomHDWMerged['grades'].apply(lambda x: ''.join(map(str,x)))
+  geomHDW = geomHDW.assign(typecode=geomHDWMerged['typecode'])
+  
+  geomCMMerged = geomCM.drop(columns=['typecode']).merge(gradesCM,on=['plane','u','v','icassette'],how='outer',validate='1:1')
+  geomCMMerged['itype'] = geomCMMerged['typecode'].str[0:2] + geomCMMerged['typecode'].str[2:]
+  geomCMMerged['typecode'] = geomCMMerged['typecode'].str[0:2] + '-' + geomCMMerged['typecode'].str[2:] + '-' + geomCMMerged['grades'].str[0]
+  geomCM = geomCMMerged[geomCM.columns].astype(str).replace('nan', '-')
+  
+  # Add irot for full module CMs
+  geomCM = geomCM.merge(geomBasic.astype({'plane':'Int64','u':'Float64','v':'Float64'}).astype(str)[['plane','u','v','irot']],on=['plane','u','v'],how='left',suffixes=('','_new'))
+  mask = geomCM['irot'] == '-'
+  geomCM.loc[mask,'irot'] = geomCM.loc[mask,'irot_new']
+  geomCM.drop(columns=['irot_new'],inplace=True) 
+
+  geomOther['typecode'] = geomOther['typecode'].str[0:2] + '-' + geomOther['typecode'].str[2:]
+  
+  # Final geom
+  geom = pd.concat([geomHDW,geomCM,geomOther],axis=0)
+
+  def cleanirot(x):
+    try:
+      return str(int(float(x)))
+    except (ValueError, TypeError):
+      return x
+
+  geom['irot'] = geom['irot'].apply(cleanirot)
+  
+  # Overwrite geometry file
+  geom.to_csv('output/geometries/{}/geometry_simotherboards.hgcal.txt'.format(geomVersion),sep=' ',index=False)
 
 if __name__ == '__main__':
   main()
