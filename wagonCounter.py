@@ -1224,6 +1224,7 @@ def main():
     f.write('\\usepackage{pdflscape}\n')
     f.write('\\setlength\columnsep{15pt}\n')
     f.write('\\usepackage{tocloft}\n')
+    f.write('\\usepackage{adjustbox}\n')
     f.write('\\renewcommand{\cftsecleader}{\cftdotfill{\cftdotsep}}\n')
     f.write('\\setlength{\cftbeforesecskip}{0pt}\n')
     f.write('\\renewcommand{\contentsname}{}\n')
@@ -1266,7 +1267,7 @@ def main():
       f.write('\\end{tikzpicture}\n\n')
 
       f.write('\\vspace{-70pt}\n')
-      f.write('\\section{{{} ({})}}\n\n'.format(wagonNameDict[codeString],codeString))
+      f.write('\\section{{{} ({})}}\n\n'.format(wagonNameDict[codeString],LDWagonIdentifiers[LDWagonIdentifiers['typecode'] == wagonName]['nickname'].iloc[0] if wagonName in LDWagonIdentifiers['typecode'].values else 'Not found'))
       f.write('\\vspace{-20pt}\n')
       f.write('N = {} full detector\n\n'.format(codeCounter[key] * 6))
 
@@ -1437,14 +1438,30 @@ def main():
       # Wagon partner table
       wagonPartners = []
       for loc in wagonDict[key]:
-        wagonPartners.append(wagonNameDict[''.join([str(x) for x in findCode(wagonDict,[loc[0],loc[1],int(not loc[2])])])])
-      wagonPartners = Counter(wagonPartners).most_common()
+        wagonPartners.append([wagonNameDict[''.join([str(x) for x in findCode(wagonDict,[loc[0],loc[1],int(not loc[2])])])],loc[0]])
+      partnerDict = {}
+      for name,layer in wagonPartners:
+        tempDict = partnerDict.setdefault(name, {})
+        tempDict[layer] = tempDict.get(layer, 0) + 1
+      wagonPartnerCounts = {item: sum(counts.values()) for item, counts in partnerDict.items()}
+      wagonPartnerCounts = dict(sorted(wagonPartnerCounts.items()))
+      layerList = sorted(list({val for subDict in partnerDict.values() for val in subDict}))
+      layerCounts = [0] * len(layerList)
       f.write('Partner wagons\n\n\\vspace{-10pt}\n')
-      headers = ['Type','N']
+      f.write('\\begin{adjustbox}{max width=\\textwidth}\n')
+      headers = ['Type','N'] + ['By layer: ' + str(layerList[0])] + [str(x) for x in layerList[1:]]
       table = []
-      for name,count in wagonPartners:
-        table.append([name,count * 6])
-      f.write(tabulate(table,headers,tablefmt="latex_raw")) 
+      totalsPerLayer = [0] * len(layerList)
+      for name,_ in wagonPartnerCounts.items():
+        countsPerLayer = []
+        for ilayer,layer in enumerate(layerList):
+          countTemp = 0 if layer not in partnerDict[name] else partnerDict[name][layer] * 6
+          countsPerLayer.append(countTemp)
+          totalsPerLayer[ilayer] += countTemp
+        table.append([name,wagonPartnerCounts[name] * 6] + countsPerLayer)
+      table.append(['\\hline TOTAL',str(sum(totalsPerLayer))] + [str(x) for x in totalsPerLayer])
+      f.write(tabulate(table,headers,tablefmt="latex_raw"))
+      f.write('\\end{adjustbox}')
 
       f.write('\n\\newpage\n')
 
@@ -1591,7 +1608,7 @@ def main():
     table = []
     for partialType,count in partialCounts.items():
       table.append([partialType,count])
-    table.append(['TOTAL',nPartialTotal])
+    table.append(['\\hline TOTAL',nPartialTotal])
     f.write(tabulate(table,headers,tablefmt="latex_raw"))
     f.write('\n\n')
     f.write('\\columnbreak\n')
@@ -1599,7 +1616,7 @@ def main():
     table = []
     for zipperType,count in zipperCounts.items():
       table.append([zipperType,count])
-    table.append(['TOTAL',nZipperTotal])
+    table.append(['\\hline TOTAL',nZipperTotal])
     f.write(tabulate(table,headers,tablefmt="latex_raw"))
     f.write('\n\n')
     
