@@ -15,6 +15,7 @@ from tabulate import tabulate
 import json
 import importlib
 import re
+import ast
 
 pd.set_option('display.max_columns', None)
 
@@ -232,6 +233,14 @@ def maxLinksCalculation(code,codeFormat,linkType,wagonCodesDict,geomGrouped,reco
   maxLinksList = [int(x) for x in maxLinksList]
 
   return maxLinksList
+
+def findCode(wagonDict,loc):
+
+  for i,val in enumerate(wagonDict.values()):
+    if loc in val:
+      index = i
+
+  return ''.join(str(i) for i in list(wagonDict.keys())[index])
 
 ##################################################
 # MAIN
@@ -1198,10 +1207,15 @@ def main():
     # Load information about wagon nicknames and resistors
     LDWagonIdentifiers = pd.read_csv('wagonInfo/LDWagonIdentifiers.txt')
 
+    # Load wagonDict (must run this script twice to make sure it gets the latest version!)
+    with open('wagonDict/wagonDict_{}.txt'.format(geometryFile)) as f:
+      wagonDict = f.read()
+    wagonDict = ast.literal_eval(wagonDict)
+
     if not os.path.exists('output/latex/{}'.format(geomVersion)): os.makedirs('output/latex/{}'.format(geomVersion))
     f = open('output/latex/{}/LDWagonInfo.tex'.format(geomVersion),'w')
 
-    f.write('\\documentclass[10pt]{article}\n')
+    f.write('\\documentclass[8pt]{article}\n')
     f.write('\\renewcommand{\\familydefault}{\\ttdefault}\n')
     f.write('\\usepackage[margin=1in]{geometry}\n')
     f.write('\\usepackage{hyperref}\n')
@@ -1245,12 +1259,13 @@ def main():
       code = [[int(x[0]),int(x[1])] for x in code]
 
       f.write('\\begin{tikzpicture}[overlay, remember picture]\n')
-      f.write('\\node[xshift=-2in,yshift=-1.75in] at (current page.north east) {{\IfFileExists{{/Users/devinmahon/Documents/CMS/wagonCounter/output/wagonImages/cartoons/{}.png}}{{\includegraphics[width=0.85in,height=0.85in,keepaspectratio]{{/Users/devinmahon/Documents/CMS/wagonCounter/output/wagonImages/cartoons/{}.png}}}}{{\includegraphics[width=0.85in,height=0.85in,keepaspectratio]{{/Users/devinmahon/Downloads/NotFound.png}}}}}};\n'.format(wagonNameDict[codeString],wagonNameDict[codeString]))
-      f.write('\\node[xshift=-2in,yshift=-2.3in] at (current page.north east) {{Nickname: {}}};\n'.format(LDWagonIdentifiers[LDWagonIdentifiers['typecode'] == wagonName]['nickname'].iloc[0] if wagonName in LDWagonIdentifiers['typecode'].values else 'Not found'))
-      f.write('\\node[xshift=-2in,yshift=-2.5in] at (current page.north east) {{ID Resistor: {} $\Omega$}};\n'.format('Not found' if wagonName not in LDWagonIdentifiers['typecode'].values or np.isnan(LDWagonIdentifiers[LDWagonIdentifiers['typecode'] == wagonName]['resistor'].iloc[0]) else round(LDWagonIdentifiers[LDWagonIdentifiers['typecode'] == wagonName]['resistor'].iloc[0])))
-      f.write('\\node (rect) at ([xshift=-2in,yshift=-1.95in] current page.north east) [draw,thick,minimum width=2.0in,minimum height=1.5in] {};\n')
+      f.write('\\node[xshift=-2in,yshift=-1.15in] at (current page.north east) {{\IfFileExists{{/Users/devinmahon/Documents/CMS/wagonCounter/output/wagonImages/cartoons/{}.png}}{{\includegraphics[width=0.85in,height=0.85in,keepaspectratio]{{/Users/devinmahon/Documents/CMS/wagonCounter/output/wagonImages/cartoons/{}.png}}}}{{\includegraphics[width=0.85in,height=0.85in,keepaspectratio]{{/Users/devinmahon/Downloads/NotFound.png}}}}}};\n'.format(wagonNameDict[codeString],wagonNameDict[codeString]))
+      f.write('\\node[xshift=-2in,yshift=-1.7in] at (current page.north east) {{Nickname: {}}};\n'.format(LDWagonIdentifiers[LDWagonIdentifiers['typecode'] == wagonName]['nickname'].iloc[0] if wagonName in LDWagonIdentifiers['typecode'].values else 'Not found'))
+      f.write('\\node[xshift=-2in,yshift=-1.9in] at (current page.north east) {{ID Resistor: {} $\Omega$}};\n'.format('Not found' if wagonName not in LDWagonIdentifiers['typecode'].values or np.isnan(LDWagonIdentifiers[LDWagonIdentifiers['typecode'] == wagonName]['resistor'].iloc[0]) else round(LDWagonIdentifiers[LDWagonIdentifiers['typecode'] == wagonName]['resistor'].iloc[0])))
+      f.write('\\node (rect) at ([xshift=-2in,yshift=-1.35in] current page.north east) [draw,thick,minimum width=2.0in,minimum height=1.5in] {};\n')
       f.write('\\end{tikzpicture}\n\n')
 
+      f.write('\\vspace{-70pt}\n')
       f.write('\\section{{{} ({})}}\n\n'.format(wagonNameDict[codeString],codeString))
       f.write('\\vspace{-20pt}\n')
       f.write('N = {} full detector\n\n'.format(codeCounter[key] * 6))
@@ -1342,7 +1357,7 @@ def main():
       f.write('\n\n')
 
       headers = ['Module Indices','Trigger Link Distribution','DAQ Link Distribution']
-      table = [['\includegraphics[width=0.2\\textwidth]{{/Users/devinmahon/Documents/CMS/wagonCounter/output/wagonImages/indices/{}.jpg}}'.format(wagonNameDict[codeString]),'\includegraphics[width=0.2\\textwidth]{{/Users/devinmahon/Documents/CMS/wagonCounter/output/wagonImages/trig/{}.jpg}}'.format(wagonNameDict[codeString]),'\includegraphics[width=0.2\\textwidth]{{/Users/devinmahon/Documents/CMS/wagonCounter/output/wagonImages/DAQ/{}.jpg}}'.format(wagonNameDict[codeString])]]
+      table = [['\includegraphics[width=0.15\\textwidth]{{/Users/devinmahon/Documents/CMS/wagonCounter/output/wagonImages/indices/{}.jpg}}'.format(wagonNameDict[codeString]),'\includegraphics[width=0.15\\textwidth]{{/Users/devinmahon/Documents/CMS/wagonCounter/output/wagonImages/trig/{}.jpg}}'.format(wagonNameDict[codeString]),'\includegraphics[width=0.15\\textwidth]{{/Users/devinmahon/Documents/CMS/wagonCounter/output/wagonImages/DAQ/{}.jpg}}'.format(wagonNameDict[codeString])]]
       f.write(tabulate(table,headers,tablefmt="latex_raw"))
       f.write('\n\n')
 
@@ -1377,7 +1392,7 @@ def main():
         f.write(tabulate(table,headers,tablefmt="latex_raw"))
         f.write('\n\n')
 
-        f.write('\\end{multicols}\n\\vspace{-20pt}\n')
+        f.write('\\end{multicols}\n\\vspace{-10pt}\n')
 
       # lpGBT mezzanines
       if nModules == 4:
@@ -1418,6 +1433,18 @@ def main():
         table = xOverInRoutingDict
         f.write(tabulate(table,headers,tablefmt="latex_raw"))
         f.write('\n\n')
+
+      # Wagon partner table
+      wagonPartners = []
+      for loc in wagonDict[key]:
+        wagonPartners.append(wagonNameDict[''.join([str(x) for x in findCode(wagonDict,[loc[0],loc[1],int(not loc[2])])])])
+      wagonPartners = Counter(wagonPartners).most_common()
+      f.write('Partner wagons\n\n\\vspace{-10pt}\n')
+      headers = ['Type','N']
+      table = []
+      for name,count in wagonPartners:
+        table.append([name,count * 6])
+      f.write(tabulate(table,headers,tablefmt="latex_raw")) 
 
       f.write('\n\\newpage\n')
 
