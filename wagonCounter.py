@@ -2685,6 +2685,12 @@ def main():
   
   geomCMMerged = geomCM.drop(columns=['typecode']).merge(gradesCM,on=['plane','u','v','icassette'],how='outer',validate='1:1')
   geomCMMerged['itype'] = geomCMMerged['typecode'].str[0:2] + geomCMMerged['typecode'].str[2:]
+  # Update itype and typecode for fives: RL --> 5R and LR --> 5L
+  geomCMMerged['itype'] = geomCMMerged['itype'].str.replace(r'^(.{2})RL', r'\g<1>5R', regex=True)
+  geomCMMerged['itype'] = geomCMMerged['itype'].str.replace(r'^(.{2})LR', r'\g<1>5L', regex=True)
+  geomCMMerged['typecode'] = geomCMMerged['typecode'].str.replace(r'^(.{2})RL', r'\g<1>5R', regex=True)
+  geomCMMerged['typecode'] = geomCMMerged['typecode'].str.replace(r'^(.{2})LR', r'\g<1>5L', regex=True)
+  # Add hyphens
   geomCMMerged['typecode'] = geomCMMerged['typecode'].str[0:2] + '-' + geomCMMerged['typecode'].str[2:] + geomCMMerged['grades'].str[0]
   geomCM = geomCMMerged[geomCM.columns].astype(str).replace('nan', '-')
   
